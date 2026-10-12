@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # 1. La base de datos (PostgreSQL)
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Qwerty123.
+      POSTGRES_DB: observabilidad_db
+    ports:
+      - "5432:5432"
+
+  # 2. El servidor de nuestra API (FastAPI)
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+
+  # 3. La interfaz web (React)
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
