@@ -1,31 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import ParticlesBackground from './ParticlesBackground';
+import JarvisOnboarding from './JarvisOnboarding';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // =================================================================
-// 1. LOGIN Y REGISTRO
+// 1. LOGIN, REGISTRO, VERIFICACIÓN Y RECUPERACIÓN
 // =================================================================
 function Login() {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [necesitaVerificacion, setNecesitaVerificacion] = useState(false);
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
   const manejarLogin = async (e) => {
     e.preventDefault();
-    setError(''); setCargando(true);
+    setError(''); setNecesitaVerificacion(false); setCargando(true);
     const formData = new URLSearchParams(); formData.append('username', correo); formData.append('password', password);
     try {
       const response = await axios.post('http://127.0.0.1:8000/login/', formData, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
       localStorage.setItem('token_plurione', response.data.access_token);
       localStorage.setItem('usuario_nombre', response.data.nombre);
       navigate('/app');
-    } catch (err) { setError('Correo o contraseña incorrectos.'); } finally { setCargando(false); }
+    } catch (err) { 
+      if (err.response?.status === 403) {
+        setError(err.response.data.detail);
+        setNecesitaVerificacion(true);
+      } else {
+        setError('Correo o contraseña incorrectos.'); 
+      }
+    } finally { setCargando(false); }
   };
 
   return (
@@ -34,13 +43,23 @@ function Login() {
       <div style={{ position: 'relative', zIndex: 10, width: '400px', padding: '40px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
         <h2 style={{ color: '#E5B80B', marginBottom: '5px', letterSpacing: '2px', textTransform: 'uppercase' }}>PluriOne</h2>
         <p style={{ color: '#E63946', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '30px' }}>Sistema Central de Acceso</p>
+        
         {error && <div style={{ backgroundColor: 'rgba(139,0,0,0.4)', border: '1px solid #ff4444', color: '#ff4444', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
-        <form onSubmit={manejarLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left' }}>
-          <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo" style={{ width: '100%', padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Contraseña" style={{ width: '100%', padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-          <button type="submit" disabled={cargando} style={{ background: 'linear-gradient(135deg, #E5B80B 0%, #B8860B 100%)', color: '#0b0c10', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>{cargando ? 'Verificando...' : 'Iniciar Sesión'}</button>
-        </form>
-        <div style={{ marginTop: '25px', fontSize: '0.85em' }}><Link to="/registro" style={{ color: '#E5B80B', fontWeight: 'bold' }}>Regístrate aquí</Link></div>
+        
+        {necesitaVerificacion ? (
+           <button onClick={() => navigate('/verificar', { state: { email: correo } })} style={{ width: '100%', background: 'transparent', color: '#E5B80B', border: '1px solid #E5B80B', padding: '10px', marginBottom: '20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Ir a Verificar Cuenta</button>
+        ) : (
+          <form onSubmit={manejarLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left' }}>
+            <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo" style={{ width: '100%', padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Contraseña" style={{ width: '100%', padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+            <button type="submit" disabled={cargando} style={{ background: 'linear-gradient(135deg, #E5B80B 0%, #B8860B 100%)', color: '#0b0c10', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>{cargando ? 'Verificando...' : 'Iniciar Sesión'}</button>
+          </form>
+        )}
+        
+        <div style={{ marginTop: '25px', fontSize: '0.85em', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <Link to="/recuperar" style={{ color: '#888', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</Link>
+          <Link to="/registro" style={{ color: '#E5B80B', fontWeight: 'bold', textDecoration: 'none' }}>Regístrate aquí</Link>
+        </div>
       </div>
     </div>
   );
@@ -57,7 +76,11 @@ function Registro() {
   
   const manejarRegistro = async (e) => {
     e.preventDefault();
-    try { await axios.post('http://127.0.0.1:8000/registro/', { nombre_completo: nombreCompleto, correo, telefono, password }); setExito(true); setTimeout(() => navigate('/login'), 2000); } catch (err) { setError(err.response?.data?.detail || 'Error al registrar.'); }
+    try { 
+      await axios.post('http://127.0.0.1:8000/registro/', { nombre_completo: nombreCompleto, correo, telefono, password }); 
+      setExito(true); 
+      setTimeout(() => navigate('/verificar', { state: { email: correo } }), 2000); 
+    } catch (err) { setError(err.response?.data?.detail || 'Error al registrar.'); }
   };
   
   return (
@@ -66,7 +89,8 @@ function Registro() {
       <div style={{ position: 'relative', zIndex: 10, width: '420px', padding: '35px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
         <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>PluriOne</h2>
         <p style={{ color: '#E63946', fontWeight: 'bold', marginBottom: '20px' }}>Registro de Nuevo Ingeniero</p>
-        {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}{exito && <div style={{ color: '#4BB543', marginBottom: '15px' }}>¡Registro exitoso!</div>}
+        {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}
+        {exito && <div style={{ color: '#4BB543', marginBottom: '15px' }}>¡Registro exitoso! Revisa tu correo.</div>}
         <form onSubmit={manejarRegistro} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <input type="text" value={nombreCompleto} onChange={(e) => setNombreCompleto(e.target.value)} required placeholder="Nombre Completo" style={{ padding: '10px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff' }} />
           <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo" style={{ padding: '10px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff' }} />
@@ -80,14 +104,93 @@ function Registro() {
   );
 }
 
+// === PANTALLA DE VERIFICACIÓN CORREGIDA Y AUTORELLENABLE ===
+function Verificar() {
+  const location = useLocation();
+  const [correo, setCorreo] = useState(location.state?.email || '');
+  const [codigo, setCodigo] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const manejarVerificacion = async (e) => {
+    e.preventDefault();
+    setError(''); setMensaje('');
+    try {
+      await axios.post('http://127.0.0.1:8000/verificar/', { correo, codigo });
+      setMensaje('¡Cuenta verificada exitosamente!');
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) { setError(err.response?.data?.detail || 'Código incorrecto.'); }
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b0c10', overflow: 'hidden' }}>
+      <ParticlesBackground />
+      <div style={{ position: 'relative', zIndex: 10, width: '400px', padding: '40px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
+        <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>Verificación</h2>
+        <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Ingresa el código de 6 dígitos que enviamos a tu correo.</p>
+        {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}
+        {mensaje && <div style={{ color: '#4BB543', marginBottom: '15px' }}>{mensaje}</div>}
+        <form onSubmit={manejarVerificacion} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Confirma tu Correo" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+          <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} required placeholder="Código (Ej. 123456)" maxLength="6" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #E5B80B', color: '#E5B80B', fontWeight: 'bold', textAlign: 'center', letterSpacing: '5px', fontSize: '1.2em', borderRadius: '4px' }} />
+          <button type="submit" style={{ background: '#E5B80B', color: '#0b0c10', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Activar Cuenta</button>
+        </form>
+        <div style={{ marginTop: '20px' }}><Link to="/login" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9em' }}>Volver al Login</Link></div>
+      </div>
+    </div>
+  );
+}
+
+// === PANTALLA DE RECUPERACIÓN DE CONTRASEÑA ===
+function RecuperarPassword() {
+  const [correo, setCorreo] = useState('');
+  const [nuevaPassword, setNuevaPassword] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const manejarRecuperacion = async (e) => {
+    e.preventDefault();
+    setError(''); setMensaje('');
+    try {
+      await axios.post('http://127.0.0.1:8000/recuperar-password/', { correo, nueva_password: nuevaPassword });
+      setMensaje('Contraseña actualizada correctamente.');
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) { setError(err.response?.data?.detail || 'Error al actualizar contraseña.'); }
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b0c10', overflow: 'hidden' }}>
+      <ParticlesBackground />
+      <div style={{ position: 'relative', zIndex: 10, width: '400px', padding: '40px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
+        <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>Recuperar Acceso</h2>
+        <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Ingresa tu correo registrado y tu nueva contraseña.</p>
+        {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}
+        {mensaje && <div style={{ color: '#4BB543', marginBottom: '15px' }}>{mensaje}</div>}
+        <form onSubmit={manejarRecuperacion} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo registrado" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+          <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required placeholder="Nueva Contraseña" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+          <button type="submit" style={{ background: '#457B9D', color: '#fff', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Actualizar Contraseña</button>
+        </form>
+        <div style={{ marginTop: '20px' }}><Link to="/login" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9em' }}>Volver al Login</Link></div>
+      </div>
+    </div>
+  );
+}
+
 // =================================================================
-// 2. APLICACIÓN PRINCIPAL
+// 2. APLICACIÓN PRINCIPAL (Dashboard y Gráficas)
 // =================================================================
 function PluriOneApp() {
   const [vista, setVista] = useState('dashboard');
   const [anomalias, setAnomalias] = useState([]);
   const [generando, setGenerando] = useState(false);
-  const [idOcultosHasta, setIdOcultosHasta] = useState(() => parseInt(localStorage.getItem('plurione_id_ocultos') || '0', 10));
+  
+  const [idOcultosHasta, setIdOcultosHasta] = useState(() => {
+    const userId = localStorage.getItem('usuario_nombre');
+    return parseInt(localStorage.getItem(`plurione_id_ocultos_${userId}`) || '0', 10);
+  });
   
   const [mensajes, setMensajes] = useState([{ role: 'jarvis', text: 'Sistemas en línea. Listo para diagnósticos profundos.' }]);
   const [pregunta, setPregunta] = useState('');
@@ -153,12 +256,17 @@ function PluriOneApp() {
   const limpiarHistorial = () => {
     if (anomalias.length > 0) {
       const maxId = Math.max(...anomalias.map(a => a.id));
-      setIdOcultosHasta(maxId); localStorage.setItem('plurione_id_ocultos', maxId.toString());
+      setIdOcultosHasta(maxId); 
+      localStorage.setItem(`plurione_id_ocultos_${nombreUsuario}`, maxId.toString());
     }
     setAnomalias([]);
   };
 
-  const cerrarSesion = () => { localStorage.clear(); navigate('/login'); };
+  const cerrarSesion = () => { 
+    localStorage.removeItem('token_plurione');
+    localStorage.removeItem('usuario_nombre');
+    navigate('/login'); 
+  };
 
   // ================= EXPORTACIÓN A PDF =================
   const exportarPDF = () => {
@@ -418,6 +526,8 @@ function PluriOneApp() {
             </table>
           </div>
         )}
+        
+        <JarvisOnboarding />
 
       </div>
     </div>
@@ -430,6 +540,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
+        <Route path="/verificar" element={<Verificar />} />
+        <Route path="/recuperar" element={<RecuperarPassword />} />
         <Route path="/app" element={<PluriOneApp />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

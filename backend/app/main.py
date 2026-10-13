@@ -6,6 +6,7 @@ from typing import List
 import os
 import json
 import smtplib
+import random
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from groq import Groq
@@ -45,6 +46,22 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# =================================================================
+#                 MODELOS EXTRAS PARA REQUESTS
+# =================================================================
+class ChatRequest(BaseModel):
+    anomaly_id: int
+    pregunta: str
+    contexto_anomalia: str
+
+class VerificarRequest(BaseModel):
+    correo: str
+    codigo: str
+
+class RecuperarRequest(BaseModel):
+    correo: str
+    nueva_password: str
 
 # =================================================================
 #                 GESTOR DE WEBSOCKETS
@@ -113,7 +130,39 @@ def get_color(estado):
     if estado == "Alerta": return "#D4A017"
     return "#4BB543"
 
-# CORREO CONSOLIDADO: Muestra los tres estados (Normal, Alerta, Crítico) y el diagnóstico de la IA
+# =================================================================
+#                 SISTEMA DE CORREOS
+# =================================================================
+def enviar_correo_verificacion(destinatario: str, codigo: str):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = destinatario 
+        msg['Subject'] = "🔒 Código de Verificación - PluriOne"
+
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; background-color: #0b0c10; color: #c5c6c7; padding: 20px;">
+                <div style="border: 2px solid #E5B80B; border-radius: 8px; padding: 30px; background-color: #1a1a1d; text-align: center;">
+                    <h2 style="color: #E5B80B; margin-top: 0;">VERIFICACIÓN DE CUENTA PLURIONE</h2>
+                    <p style="font-size: 16px;">Para completar tu registro, ingresa el siguiente código de 6 dígitos en la plataforma:</p>
+                    <div style="background-color: #0b0c10; padding: 15px; margin: 20px 0; border-radius: 8px; display: inline-block;">
+                        <h1 style="color: #E63946; margin: 0; letter-spacing: 5px;">{codigo}</h1>
+                    </div>
+                    <p style="font-size: 12px; color: #888;">Si tú no solicitaste este acceso, puedes ignorar este mensaje.</p>
+                </div>
+            </body>
+        </html>
+        """
+        msg.attach(MIMEText(body, 'html'))
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print(f"Error al enviar código de verificación: {e}")
+
 def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, cal_v: str, cal_s: str, fal_v: str, fal_s: str, diag_general: str):
     try:
         msg = MIMEMultipart()
@@ -178,29 +227,71 @@ def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float)
         except Exception: continue
     return f"Revisar anomalía en {pipeline_name}."
 
-class ChatRequest(BaseModel):
-    anomaly_id: int
-    pregunta: str
-    contexto_anomalia: str
-
 # =================================================================
 #                 ENDPOINTS DE AUTENTICACIÓN
 # =================================================================
 @app.post("/registro/", response_model=schemas.UserResponse)
-def registrar_usuario(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.correo == user.correo).first():
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
-    nuevo_usuario = models.User(nombre_completo=user.nombre_completo, correo=user.correo, telefono=user.telefono, hashed_password=get_password_hash(user.password))
+    
+    # Generamos código de 6 dígitos
+    codigo_secreto = str(random.randint(100000, 999999))
+    
+    nuevo_usuario = models.User(
+        nombre_completo=user.nombre_completo, 
+        correo=user.correo, 
+        telefono=user.telefono, 
+        hashed_password=get_password_hash(user.password),
+        codigo_verificacion=codigo_secreto,
+        is_active=False # Aún no verificado
+    )
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+
+    # Mandamos el correo de verificación en segundo plano
+    background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
+    
     return nuevo_usuario
+
+@app.post("/verificar/")
+def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.correo == req.correo).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.is_active:
+        return {"status": "El usuario ya estaba verificado"}
+    if user.codigo_verificacion != req.codigo:
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+    
+    # ¡Verificación exitosa! Activamos la cuenta
+    user.is_active = True
+    user.codigo_verificacion = None
+    db.commit()
+    return {"status": "Cuenta verificada con éxito"}
+
+@app.post("/recuperar-password/")
+def recuperar_password(req: RecuperarRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.correo == req.correo).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
+    
+    # Hasheamos la nueva contraseña y la guardamos
+    user.hashed_password = get_password_hash(req.nueva_password)
+    db.commit()
+    return {"status": "Contraseña actualizada exitosamente"}
 
 @app.post("/login/")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.correo == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    
+    # Bloqueamos si no se ha verificado el correo
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Tu cuenta aún no está verificada. Revisa tu correo o verifica tu cuenta.")
+        
     token = create_access_token(data={"sub": user.correo}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return {"access_token": token, "token_type": "bearer", "nombre": user.nombre_completo, "correo": user.correo}
 
@@ -212,16 +303,16 @@ async def create_anomaly(anomalia: schemas.AnomalyLogCreate, background_tasks: B
     recomendacion = generar_recomendacion_ia(anomalia.pipeline_name, anomalia.metric_type, anomalia.value)
     anomalia.ai_recommendation = recomendacion
 
-    db_anomalia = models.AnomalyLog(**anomalia.model_dump())
+    # Se guarda la anomalía vinculada al ID del usuario activo
+    db_anomalia = models.AnomalyLog(**anomalia.model_dump(), user_id=current_user.id)
     db.add(db_anomalia)
     db.commit()
     db.refresh(db_anomalia)
 
-    # Al ocurrir un estado crítico, consolidamos los estados actuales de los tres componentes y generamos el diagnóstico IA global
     if anomalia.status == "Critico":
-        lat = db.query(models.AnomalyLog).filter(models.AnomalyLog.metric_type == "latencia_ms").order_by(models.AnomalyLog.id.desc()).first()
-        cal = db.query(models.AnomalyLog).filter(models.AnomalyLog.metric_type == "datos_corruptos_%").order_by(models.AnomalyLog.id.desc()).first()
-        fal = db.query(models.AnomalyLog).filter(models.AnomalyLog.metric_type == "tasa_fallos_%").order_by(models.AnomalyLog.id.desc()).first()
+        lat = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "latencia_ms").order_by(models.AnomalyLog.id.desc()).first()
+        cal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "datos_corruptos_%").order_by(models.AnomalyLog.id.desc()).first()
+        fal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "tasa_fallos_%").order_by(models.AnomalyLog.id.desc()).first()
 
         lat_v = f"{lat.value} ms" if lat else "0 ms"
         lat_s = lat.status if lat else "Normal"
@@ -256,12 +347,12 @@ async def create_anomaly(anomalia: schemas.AnomalyLogCreate, background_tasks: B
     return db_anomalia
 
 @app.get("/anomalias/", response_model=list[schemas.AnomalyLogResponse])
-def read_anomalies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.AnomalyLog).offset(skip).limit(limit).all()
+def read_anomalies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id).offset(skip).limit(limit).all()
 
 @app.delete("/anomalias/")
-def clear_anomalies(db: Session = Depends(get_db)):
-    db.query(models.AnomalyLog).delete()
+def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id).delete()
     db.commit()
     return {"status": "Historial borrado exitosamente"}
 
