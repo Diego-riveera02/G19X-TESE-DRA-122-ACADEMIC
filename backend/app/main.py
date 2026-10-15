@@ -239,7 +239,6 @@ def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTask
     if db.query(models.User).filter(models.User.correo == user.correo).first():
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
     
-    # Generamos código de 6 dígitos
     codigo_secreto = str(random.randint(100000, 999999))
     
     nuevo_usuario = models.User(
@@ -248,15 +247,13 @@ def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTask
         telefono=user.telefono, 
         hashed_password=get_password_hash(user.password),
         codigo_verificacion=codigo_secreto,
-        is_active=False # Aún no verificado
+        is_active=False 
     )
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
 
-    # Mandamos el correo de verificación en segundo plano
     background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
-    
     return nuevo_usuario
 
 @app.post("/verificar/")
@@ -269,7 +266,6 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
     if user.codigo_verificacion != req.codigo:
         raise HTTPException(status_code=400, detail="Código incorrecto")
     
-    # ¡Verificación exitosa! Activamos la cuenta
     user.is_active = True
     user.codigo_verificacion = None
     db.commit()
@@ -281,12 +277,10 @@ def solicitar_recuperacion(req: SolicitarCodigoRequest, background_tasks: Backgr
     if not user:
         raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
     
-    # Generamos nuevo código de 6 dígitos
     codigo_secreto = str(random.randint(100000, 999999))
     user.codigo_verificacion = codigo_secreto
     db.commit()
     
-    # Mandamos el correo de verificación en segundo plano
     background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
     return {"status": "Código de recuperación enviado al correo"}
 
@@ -296,13 +290,11 @@ def recuperar_password(req: RecuperarRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
     
-    # Validamos que el código enviado sea el correcto
     if not user.codigo_verificacion or user.codigo_verificacion != req.codigo:
         raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
     
-    # Hasheamos la nueva contraseña y la guardamos
     user.hashed_password = get_password_hash(req.nueva_password)
-    user.codigo_verificacion = None # Limpiamos el código para que no se reutlice
+    user.codigo_verificacion = None 
     db.commit()
     return {"status": "Contraseña actualizada exitosamente"}
 
@@ -312,7 +304,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
     
-    # Bloqueamos si no se ha verificado el correo
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Tu cuenta aún no está verificada. Revisa tu correo o verifica tu cuenta.")
         
@@ -320,14 +311,63 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": token, "token_type": "bearer", "nombre": user.nombre_completo, "correo": user.correo}
 
 # =================================================================
-#                ENDPOINTS DE OBSERVABILIDAD
+#                ENDPOINTS DE OBSERVABILIDAD E INGESTA
 # =================================================================
+@app.post("/simular-ingesta/", response_model=schemas.AnomalyLogResponse)
+def simular_ingesta(background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    pipelines = ["API Gateway Core", "Pipeline Ventas MX", "Migración AWS S3", "Sync PostgreSQL"]
+    metricas = [
+        ("latencia_ms", 120.0, 900.0, "ms"),
+        ("datos_corruptos_%", 0.5, 15.0, "%"),
+        ("tasa_fallos_%", 1.0, 25.0, "%")
+    ]
+    
+    pipe = random.choice(pipelines)
+    m_tipo, min_v, max_v, unidad = random.choice(metricas)
+    valor_generado = round(random.uniform(min_v, max_v), 2)
+    
+    estado = "Normal"
+    if valor_generado > (max_v * 0.75):
+        estado = "Critico"
+    elif valor_generado > (max_v * 0.45):
+        estado = "Alerta"
+        
+    recomendacion = generar_recomendacion_ia(pipe, m_tipo, valor_generado)
+    
+    db_anomalia = models.AnomalyLog(
+        pipeline_name=pipe,
+        metric_type=m_tipo,
+        value=valor_generado,
+        status=estado,
+        ai_recommendation=recomendacion,
+        user_id=current_user.id
+    )
+    db.add(db_anomalia)
+    db.commit()
+    db.refresh(db_anomalia)
+
+    if estado == "Critico":
+        lat = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "latencia_ms").order_by(models.AnomalyLog.id.desc()).first()
+        cal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "datos_corruptos_%").order_by(models.AnomalyLog.id.desc()).first()
+        fal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "tasa_fallos_%").order_by(models.AnomalyLog.id.desc()).first()
+
+        lat_v = f"{lat.value} ms" if lat else "0 ms"
+        lat_s = lat.status if lat else "Normal"
+        cal_v = f"{cal.value} %" if cal else "0 %"
+        cal_s = cal.status if cal else "Normal"
+        fal_v = f"{fal.value} %" if fal else "0 %"
+        fal_s = fal.status if fal else "Normal"
+
+        diag_general = recomendacion
+        background_tasks.add_task(enviar_alerta_correo_consolidado, current_user.correo, lat_v, lat_s, cal_v, cal_s, fal_v, fal_s, diag_general)
+
+    return db_anomalia
+
 @app.post("/anomalias/", response_model=schemas.AnomalyLogResponse)
 async def create_anomaly(anomalia: schemas.AnomalyLogCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     recomendacion = generar_recomendacion_ia(anomalia.pipeline_name, anomalia.metric_type, anomalia.value)
     anomalia.ai_recommendation = recomendacion
 
-    # Se guarda la anomalía vinculada al ID del usuario activo
     db_anomalia = models.AnomalyLog(**anomalia.model_dump(), user_id=current_user.id)
     db.add(db_anomalia)
     db.commit()
