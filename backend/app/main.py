@@ -48,7 +48,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # =================================================================
-#                 MODELOS EXTRAS PARA REQUESTS
+#                MODELOS EXTRAS PARA REQUESTS
 # =================================================================
 class ChatRequest(BaseModel):
     anomaly_id: int
@@ -59,12 +59,16 @@ class VerificarRequest(BaseModel):
     correo: str
     codigo: str
 
+class SolicitarCodigoRequest(BaseModel):
+    correo: str
+
 class RecuperarRequest(BaseModel):
     correo: str
+    codigo: str
     nueva_password: str
 
 # =================================================================
-#                 GESTOR DE WEBSOCKETS
+#                GESTOR DE WEBSOCKETS
 # =================================================================
 class ConnectionManager:
     def __init__(self):
@@ -93,7 +97,7 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 # =================================================================
-#                 FUNCIONES DE UTILIDAD Y SEGURIDAD
+#                FUNCIONES DE UTILIDAD Y SEGURIDAD
 # =================================================================
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -131,7 +135,7 @@ def get_color(estado):
     return "#4BB543"
 
 # =================================================================
-#                 SISTEMA DE CORREOS
+#                SISTEMA DE CORREOS
 # =================================================================
 def enviar_correo_verificacion(destinatario: str, codigo: str):
     try:
@@ -145,7 +149,7 @@ def enviar_correo_verificacion(destinatario: str, codigo: str):
             <body style="font-family: Arial, sans-serif; background-color: #0b0c10; color: #c5c6c7; padding: 20px;">
                 <div style="border: 2px solid #E5B80B; border-radius: 8px; padding: 30px; background-color: #1a1a1d; text-align: center;">
                     <h2 style="color: #E5B80B; margin-top: 0;">VERIFICACIÓN DE CUENTA PLURIONE</h2>
-                    <p style="font-size: 16px;">Para completar tu registro, ingresa el siguiente código de 6 dígitos en la plataforma:</p>
+                    <p style="font-size: 16px;">Para completar tu solicitud, ingresa el siguiente código de 6 dígitos en la plataforma:</p>
                     <div style="background-color: #0b0c10; padding: 15px; margin: 20px 0; border-radius: 8px; display: inline-block;">
                         <h1 style="color: #E63946; margin: 0; letter-spacing: 5px;">{codigo}</h1>
                     </div>
@@ -228,7 +232,7 @@ def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float)
     return f"Revisar anomalía en {pipeline_name}."
 
 # =================================================================
-#                 ENDPOINTS DE AUTENTICACIÓN
+#                ENDPOINTS DE AUTENTICACIÓN
 # =================================================================
 @app.post("/registro/", response_model=schemas.UserResponse)
 def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -271,14 +275,34 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "Cuenta verificada con éxito"}
 
+@app.post("/solicitar-recuperacion/")
+def solicitar_recuperacion(req: SolicitarCodigoRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.correo == req.correo).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
+    
+    # Generamos nuevo código de 6 dígitos
+    codigo_secreto = str(random.randint(100000, 999999))
+    user.codigo_verificacion = codigo_secreto
+    db.commit()
+    
+    # Mandamos el correo de verificación en segundo plano
+    background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
+    return {"status": "Código de recuperación enviado al correo"}
+
 @app.post("/recuperar-password/")
 def recuperar_password(req: RecuperarRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.correo == req.correo).first()
     if not user:
         raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
     
+    # Validamos que el código enviado sea el correcto
+    if not user.codigo_verificacion or user.codigo_verificacion != req.codigo:
+        raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
+    
     # Hasheamos la nueva contraseña y la guardamos
     user.hashed_password = get_password_hash(req.nueva_password)
+    user.codigo_verificacion = None # Limpiamos el código para que no se reutlice
     db.commit()
     return {"status": "Contraseña actualizada exitosamente"}
 
@@ -296,7 +320,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": token, "token_type": "bearer", "nombre": user.nombre_completo, "correo": user.correo}
 
 # =================================================================
-#                 ENDPOINTS DE OBSERVABILIDAD
+#                ENDPOINTS DE OBSERVABILIDAD
 # =================================================================
 @app.post("/anomalias/", response_model=schemas.AnomalyLogResponse)
 async def create_anomaly(anomalia: schemas.AnomalyLogCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -357,7 +381,7 @@ def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = D
     return {"status": "Historial borrado exitosamente"}
 
 @app.post("/chat/")
-def chat_causa_raiz(chat_req: ChatRequest):
+def chat_causa_raiz(chat_req: ChatRequest, current_user: models.User = Depends(get_current_user)):
     contexto = chat_req.contexto_anomalia if chat_req.contexto_anomalia else "Sin diagnóstico previo."
     mensajes = [
         {"role": "system", "content": "Eres J.A.R.V.I.S., experto en datos. Responde en español."},
