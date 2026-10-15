@@ -1,5 +1,3 @@
-Aquí tienes tu documento PRD completo y respetado íntegramente en su estructura, contenido original y formato, enriquecido de manera precisa con todo lo que construimos sobre la seguridad avanzada, verificación de cuentas por correo electrónico mediante códigos de 6 dígitos, control de estado activo y recuperación de credenciales:
-
 Documento de Requisitos del Producto (PRD)
 Proyecto: Plataforma de Observabilidad de Datos con Inteligencia Artificial (PluriOne)
 Empresa: PluriOne S.A. de C.V. (Puebla 46, CDMX)
