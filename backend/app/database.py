@@ -3,10 +3,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
 
-# Activamos el lector del archivo .env
-load_dotenv()
+# Cargamos el archivo .env forzando la codificación
+load_dotenv(encoding='utf-8')
 
-# Jalamos la ruta directamente de tu .env
+# La contraseña se lee de forma segura desde el .env
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
@@ -20,4 +20,3 @@ def get_db():
         yield db
     finally:
         db.close()
-        

@@ -7,6 +7,7 @@ import os
 import json
 import smtplib
 import random
+import asyncio
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from groq import Groq
@@ -18,9 +19,9 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
 from . import models, schemas
-from .database import engine, get_db
+from .database import engine, get_db, SessionLocal
 
-load_dotenv()
+load_dotenv(encoding='utf-8')
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -135,7 +136,7 @@ def get_color(estado):
     return "#4BB543"
 
 # =================================================================
-#                SISTEMA DE CORREOS
+#                SISTEMA DE CORREOS E IA
 # =================================================================
 def enviar_correo_verificacion(destinatario: str, codigo: str):
     try:
@@ -232,6 +233,80 @@ def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float)
     return f"Revisar anomalía en {pipeline_name}."
 
 # =================================================================
+#                SIMULADOR DE INGESTA AUTOMATICA (NIVEL INGENIERÍA)
+# =================================================================
+async def generar_telemetria_automatica():
+    """Motor que genera métricas continuas en segundo plano."""
+    while True:
+        await asyncio.sleep(5)  # Espera 5 segundos entre cada inyección de datos
+        
+        # Solo inyecta datos si hay alguien conectado al WebSocket
+        if not manager.active_connections:
+            continue
+            
+        pipelines = ["API Gateway Core", "Pipeline Ventas MX", "Migración AWS S3", "Sync PostgreSQL"]
+        metricas = [
+            ("latencia_ms", 50.0, 900.0, "ms"),
+            ("datos_corruptos_%", 0.0, 15.0, "%"),
+            ("tasa_fallos_%", 0.0, 25.0, "%")
+        ]
+        
+        pipe = random.choice(pipelines)
+        m_tipo, min_v, max_v, unidad = random.choice(metricas)
+        valor_generado = round(random.uniform(min_v, max_v), 2)
+        
+        estado = "Normal"
+        if valor_generado > (max_v * 0.75):
+            estado = "Critico"
+        elif valor_generado > (max_v * 0.45):
+            estado = "Alerta"
+
+        # Abre una sesión a la BD de forma independiente para la tarea en segundo plano
+        db = SessionLocal()
+        try:
+            # Selecciona un usuario "Admin" o el primero para asignarle la métrica
+            user = db.query(models.User).first()
+            if not user:
+                continue
+
+            # Genera anomalía solo si es Crítico o Alerta
+            recomendacion = "Operación normal."
+            if estado != "Normal":
+                recomendacion = generar_recomendacion_ia(pipe, m_tipo, valor_generado)
+
+            db_anomalia = models.AnomalyLog(
+                pipeline_name=pipe,
+                metric_type=m_tipo,
+                value=valor_generado,
+                status=estado,
+                ai_recommendation=recomendacion,
+                user_id=user.id
+            )
+            db.add(db_anomalia)
+            db.commit()
+            db.refresh(db_anomalia)
+
+            # Envía el dato en tiempo real a todos los clientes (React)
+            mensaje_ws = json.dumps({
+                "id": db_anomalia.id,
+                "pipeline_name": db_anomalia.pipeline_name,
+                "metric_type": db_anomalia.metric_type,
+                "value": db_anomalia.value,
+                "status": db_anomalia.status,
+                "ai_recommendation": db_anomalia.ai_recommendation
+            })
+            await manager.broadcast(mensaje_ws)
+        except Exception as e:
+            print(f"Error en simulador: {e}")
+        finally:
+            db.close()
+
+# Inicia el motor automático al prender FastAPI
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(generar_telemetria_automatica())
+
+# =================================================================
 #                ENDPOINTS DE AUTENTICACIÓN
 # =================================================================
 @app.post("/registro/", response_model=schemas.UserResponse)
@@ -311,105 +386,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": token, "token_type": "bearer", "nombre": user.nombre_completo, "correo": user.correo}
 
 # =================================================================
-#                ENDPOINTS DE OBSERVABILIDAD E INGESTA
+#                ENDPOINTS DE LECTURA E HISTORIAL
 # =================================================================
-@app.post("/simular-ingesta/", response_model=schemas.AnomalyLogResponse)
-def simular_ingesta(background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    pipelines = ["API Gateway Core", "Pipeline Ventas MX", "Migración AWS S3", "Sync PostgreSQL"]
-    metricas = [
-        ("latencia_ms", 120.0, 900.0, "ms"),
-        ("datos_corruptos_%", 0.5, 15.0, "%"),
-        ("tasa_fallos_%", 1.0, 25.0, "%")
-    ]
-    
-    pipe = random.choice(pipelines)
-    m_tipo, min_v, max_v, unidad = random.choice(metricas)
-    valor_generado = round(random.uniform(min_v, max_v), 2)
-    
-    estado = "Normal"
-    if valor_generado > (max_v * 0.75):
-        estado = "Critico"
-    elif valor_generado > (max_v * 0.45):
-        estado = "Alerta"
-        
-    recomendacion = generar_recomendacion_ia(pipe, m_tipo, valor_generado)
-    
-    db_anomalia = models.AnomalyLog(
-        pipeline_name=pipe,
-        metric_type=m_tipo,
-        value=valor_generado,
-        status=estado,
-        ai_recommendation=recomendacion,
-        user_id=current_user.id
-    )
-    db.add(db_anomalia)
-    db.commit()
-    db.refresh(db_anomalia)
-
-    if estado == "Critico":
-        lat = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "latencia_ms").order_by(models.AnomalyLog.id.desc()).first()
-        cal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "datos_corruptos_%").order_by(models.AnomalyLog.id.desc()).first()
-        fal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "tasa_fallos_%").order_by(models.AnomalyLog.id.desc()).first()
-
-        lat_v = f"{lat.value} ms" if lat else "0 ms"
-        lat_s = lat.status if lat else "Normal"
-        cal_v = f"{cal.value} %" if cal else "0 %"
-        cal_s = cal.status if cal else "Normal"
-        fal_v = f"{fal.value} %" if fal else "0 %"
-        fal_s = fal.status if fal else "Normal"
-
-        diag_general = recomendacion
-        background_tasks.add_task(enviar_alerta_correo_consolidado, current_user.correo, lat_v, lat_s, cal_v, cal_s, fal_v, fal_s, diag_general)
-
-    return db_anomalia
-
-@app.post("/anomalias/", response_model=schemas.AnomalyLogResponse)
-async def create_anomaly(anomalia: schemas.AnomalyLogCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    recomendacion = generar_recomendacion_ia(anomalia.pipeline_name, anomalia.metric_type, anomalia.value)
-    anomalia.ai_recommendation = recomendacion
-
-    db_anomalia = models.AnomalyLog(**anomalia.model_dump(), user_id=current_user.id)
-    db.add(db_anomalia)
-    db.commit()
-    db.refresh(db_anomalia)
-
-    if anomalia.status == "Critico":
-        lat = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "latencia_ms").order_by(models.AnomalyLog.id.desc()).first()
-        cal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "datos_corruptos_%").order_by(models.AnomalyLog.id.desc()).first()
-        fal = db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id, models.AnomalyLog.metric_type == "tasa_fallos_%").order_by(models.AnomalyLog.id.desc()).first()
-
-        lat_v = f"{lat.value} ms" if lat else "0 ms"
-        lat_s = lat.status if lat else "Normal"
-        cal_v = f"{cal.value} %" if cal else "0 %"
-        cal_s = cal.status if cal else "Normal"
-        fal_v = f"{fal.value} %" if fal else "0 %"
-        fal_s = fal.status if fal else "Normal"
-
-        prompt_global = f"Estado actual de infraestructura:\n1. Latencia API Gateway: {lat_v} [Estado: {lat_s}]\n2. Calidad Ventas MX: {cal_v} [Estado: {cal_s}]\n3. Fallos AWS: {fal_v} [Estado: {fal_s}]\nAnaliza por qué se originó este fallo crítico y explica las causas técnicas de manera clara en un párrafo conciso."
-        diag_general = "Se detectó una degradación crítica en los servicios que requiere revisión inmediata de los logs de red y base de datos."
-        
-        for modelo in ["openai/gpt-oss-20b", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]:
-            try:
-                res = client.chat.completions.create(messages=[{"role": "user", "content": prompt_global}], model=modelo)
-                if res.choices[0].message.content: 
-                    diag_general = res.choices[0].message.content
-                    break
-            except Exception: continue
-
-        background_tasks.add_task(enviar_alerta_correo_consolidado, current_user.correo, lat_v, lat_s, cal_v, cal_s, fal_v, fal_s, diag_general)
-
-    mensaje_ws = json.dumps({
-        "id": db_anomalia.id,
-        "pipeline_name": db_anomalia.pipeline_name,
-        "metric_type": db_anomalia.metric_type,
-        "value": db_anomalia.value,
-        "status": db_anomalia.status,
-        "ai_recommendation": db_anomalia.ai_recommendation
-    })
-    await manager.broadcast(mensaje_ws)
-
-    return db_anomalia
-
 @app.get("/anomalias/", response_model=list[schemas.AnomalyLogResponse])
 def read_anomalies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id).offset(skip).limit(limit).all()

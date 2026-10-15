@@ -92,14 +92,13 @@ function RecuperarPassword() {
 function PluriOneApp() {
   const [vista, setVista] = useState('dashboard');
   const [anomalias, setAnomalias] = useState([]);
-  const [generando, setGenerando] = useState(false);
   
   const [idOcultosHasta, setIdOcultosHasta] = useState(() => {
     const userId = localStorage.getItem('usuario_nombre');
     return parseInt(localStorage.getItem(`plurione_id_ocultos_${userId}`) || '0', 10);
   });
   
-  const [mensajes, setMensajes] = useState([{ role: 'jarvis', text: 'Sistemas en línea. Listo para diagnósticos profundos.' }]);
+  const [mensajes, setMensajes] = useState([{ role: 'jarvis', text: 'Sistemas en línea. Escuchando telemetría automáticamente. Listo para diagnósticos.' }]);
   const [pregunta, setPregunta] = useState('');
   const chatEndRef = useRef(null);
 
@@ -107,6 +106,7 @@ function PluriOneApp() {
   const token = localStorage.getItem('token_plurione');
   const navigate = useNavigate();
 
+  // Conexión WebSockets y carga inicial
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
     
@@ -123,17 +123,6 @@ function PluriOneApp() {
   }, [idOcultosHasta, token, navigate]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [mensajes]);
-
-  // AHORA LLAMA AL SIMULADOR AUTOMÁTICO EN EL BACKEND
-  const inyectarAnomalia = async () => {
-    setGenerando(true);
-    try { 
-      await axios.post('http://127.0.0.1:8000/simular-ingesta/', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      }); 
-    } catch (error) { console.error(error); }
-    setGenerando(false);
-  };
 
   const enviarPregunta = async () => {
     if (!pregunta.trim()) return;
@@ -331,22 +320,14 @@ function PluriOneApp() {
               </div>
             </div>
 
-            {/* JARVIS & SIMULADOR DE INGESTA AUTOMÁTICA */}
+            {/* JARVIS PANEL */}
             <div style={{ gridColumn: '3', background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #E5B80B', height: '280px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <strong style={{ color: '#E5B80B', fontSize: '0.9em' }}>J.A.R.V.I.S.</strong>
-                <button 
-                  onClick={inyectarAnomalia} 
-                  disabled={generando} 
-                  style={{ 
-                    background: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', 
-                    color: '#fff', border: '1px solid #ff4444', padding: '5px 10px', 
-                    borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.7em',
-                    boxShadow: '0 0 10px rgba(255, 75, 43, 0.5)', display: 'flex', alignItems: 'center', gap: '4px'
-                  }}
-                >
-                  {generando ? 'INGIRIENDO...' : '⚡ SIMULAR INGESTA ➔'}
-                </button>
+                <span style={{ color: '#4BB543', fontSize: '0.7em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: '#4BB543', borderRadius: '50%' }}></span>
+                  ● EN VIVO
+                </span>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', background: '#0b0c10', padding: '10px', borderRadius: '4px', marginBottom: '10px', fontSize: '0.8em', display: 'flex', flexDirection: 'column', gap: '8px' }}>
