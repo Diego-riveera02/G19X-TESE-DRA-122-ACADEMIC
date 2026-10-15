@@ -4,107 +4,12 @@ import axios from 'axios';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import ParticlesBackground from './ParticlesBackground';
 import JarvisOnboarding from './JarvisOnboarding';
+import Login from './Login';
+import Registro from './Registro';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// =================================================================
-// 1. LOGIN, REGISTRO, VERIFICACIÓN Y RECUPERACIÓN
-// =================================================================
-function Login() {
-  const [correo, setCorreo] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [necesitaVerificacion, setNecesitaVerificacion] = useState(false);
-  const [cargando, setCargando] = useState(false);
-  const navigate = useNavigate();
-
-  const manejarLogin = async (e) => {
-    e.preventDefault();
-    setError(''); setNecesitaVerificacion(false); setCargando(true);
-    const formData = new URLSearchParams(); formData.append('username', correo); formData.append('password', password);
-    try {
-      const response = await axios.post('http://127.0.0.1:8000/login/', formData, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-      localStorage.setItem('token_plurione', response.data.access_token);
-      localStorage.setItem('usuario_nombre', response.data.nombre);
-      navigate('/app');
-    } catch (err) { 
-      if (err.response?.status === 403) {
-        setError(err.response.data.detail);
-        setNecesitaVerificacion(true);
-      } else {
-        setError('Correo o contraseña incorrectos.'); 
-      }
-    } finally { setCargando(false); }
-  };
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b0c10', overflow: 'hidden' }}>
-      <ParticlesBackground />
-      <div style={{ position: 'relative', zIndex: 10, width: '400px', padding: '40px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
-        <h2 style={{ color: '#E5B80B', marginBottom: '5px', letterSpacing: '2px', textTransform: 'uppercase' }}>PluriOne</h2>
-        <p style={{ color: '#E63946', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '30px' }}>Sistema Central de Acceso</p>
-        
-        {error && <div style={{ backgroundColor: 'rgba(139,0,0,0.4)', border: '1px solid #ff4444', color: '#ff4444', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
-        
-        {necesitaVerificacion ? (
-           <button onClick={() => navigate('/verificar', { state: { email: correo } })} style={{ width: '100%', background: 'transparent', color: '#E5B80B', border: '1px solid #E5B80B', padding: '10px', marginBottom: '20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Ir a Verificar Cuenta</button>
-        ) : (
-          <form onSubmit={manejarLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left' }}>
-            <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo" style={{ width: '100%', padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Contraseña" style={{ width: '100%', padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
-            <button type="submit" disabled={cargando} style={{ background: 'linear-gradient(135deg, #E5B80B 0%, #B8860B 100%)', color: '#0b0c10', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>{cargando ? 'Verificando...' : 'Iniciar Sesión'}</button>
-          </form>
-        )}
-        
-        <div style={{ marginTop: '25px', fontSize: '0.85em', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <Link to="/recuperar" style={{ color: '#888', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</Link>
-          <Link to="/registro" style={{ color: '#E5B80B', fontWeight: 'bold', textDecoration: 'none' }}>Regístrate aquí</Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Registro() {
-  const [nombreCompleto, setNombreCompleto] = useState(''); 
-  const [correo, setCorreo] = useState(''); 
-  const [telefono, setTelefono] = useState(''); 
-  const [password, setPassword] = useState(''); 
-  const [error, setError] = useState(''); 
-  const [exito, setExito] = useState(false); 
-  const navigate = useNavigate();
-  
-  const manejarRegistro = async (e) => {
-    e.preventDefault();
-    try { 
-      await axios.post('http://127.0.0.1:8000/registro/', { nombre_completo: nombreCompleto, correo, telefono, password }); 
-      setExito(true); 
-      setTimeout(() => navigate('/verificar', { state: { email: correo } }), 2000); 
-    } catch (err) { setError(err.response?.data?.detail || 'Error al registrar.'); }
-  };
-  
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b0c10', overflow: 'hidden' }}>
-      <ParticlesBackground />
-      <div style={{ position: 'relative', zIndex: 10, width: '420px', padding: '35px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
-        <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>PluriOne</h2>
-        <p style={{ color: '#E63946', fontWeight: 'bold', marginBottom: '20px' }}>Registro de Nuevo Ingeniero</p>
-        {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}
-        {exito && <div style={{ color: '#4BB543', marginBottom: '15px' }}>¡Registro exitoso! Revisa tu correo.</div>}
-        <form onSubmit={manejarRegistro} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <input type="text" value={nombreCompleto} onChange={(e) => setNombreCompleto(e.target.value)} required placeholder="Nombre Completo" style={{ padding: '10px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff' }} />
-          <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo" style={{ padding: '10px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff' }} />
-          <input type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value.replace(/[^0-9]/g, ''))} placeholder="Teléfono" style={{ padding: '10px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff' }} />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Contraseña" style={{ padding: '10px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff' }} />
-          <button type="submit" disabled={exito} style={{ background: '#E5B80B', color: '#0b0c10', padding: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Crear Cuenta</button>
-        </form>
-        <div style={{ marginTop: '20px' }}><Link to="/login" style={{ color: '#E5B80B', fontWeight: 'bold' }}>Inicia Sesión</Link></div>
-      </div>
-    </div>
-  );
-}
-
-// === PANTALLA DE VERIFICACIÓN CORREGIDA Y AUTORELLENABLE ===
+// === PANTALLA DE VERIFICACIÓN ===
 function Verificar() {
   const location = useLocation();
   const [correo, setCorreo] = useState(location.state?.email || '');
@@ -146,6 +51,7 @@ function Verificar() {
 function RecuperarPassword() {
   const [correo, setCorreo] = useState('');
   const [nuevaPassword, setNuevaPassword] = useState('');
+  const [codigo, setCodigo] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -154,7 +60,7 @@ function RecuperarPassword() {
     e.preventDefault();
     setError(''); setMensaje('');
     try {
-      await axios.post('http://127.0.0.1:8000/recuperar-password/', { correo, nueva_password: nuevaPassword });
+      await axios.post('http://127.0.0.1:8000/recuperar-password/', { correo, codigo, nueva_password: nuevaPassword });
       setMensaje('Contraseña actualizada correctamente.');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) { setError(err.response?.data?.detail || 'Error al actualizar contraseña.'); }
@@ -165,11 +71,12 @@ function RecuperarPassword() {
       <ParticlesBackground />
       <div style={{ position: 'relative', zIndex: 10, width: '400px', padding: '40px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
         <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>Recuperar Acceso</h2>
-        <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Ingresa tu correo registrado y tu nueva contraseña.</p>
+        <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Ingresa tu correo, el código de verificación y tu nueva contraseña.</p>
         {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}
         {mensaje && <div style={{ color: '#4BB543', marginBottom: '15px' }}>{mensaje}</div>}
         <form onSubmit={manejarRecuperacion} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo registrado" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+          <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} required placeholder="Código de 6 dígitos" maxLength="6" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px', textAlign: 'center', letterSpacing: '3px' }} />
           <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required placeholder="Nueva Contraseña" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
           <button type="submit" style={{ background: '#457B9D', color: '#fff', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Actualizar Contraseña</button>
         </form>
@@ -217,28 +124,13 @@ function PluriOneApp() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [mensajes]);
 
+  // AHORA LLAMA AL SIMULADOR AUTOMÁTICO EN EL BACKEND
   const inyectarAnomalia = async () => {
     setGenerando(true);
-    const tipos = ["latencia", "calidad", "fallo"];
-    const tipoSeleccionado = tipos[Math.floor(Math.random() * tipos.length)];
-    
-    let esc = {};
-    if (tipoSeleccionado === "latencia") {
-        esc = { pipeline: "api_gateway", metrica: "latencia_ms", valor: (Math.random() * 4000 + 500).toFixed(0) };
-        esc.estado = esc.valor > 3000 ? "Critico" : esc.valor > 1500 ? "Alerta" : "Normal";
-    } else if (tipoSeleccionado === "calidad") {
-        esc = { pipeline: "pipeline_ventas_mx", metrica: "datos_corruptos_%", valor: (Math.random() * 100).toFixed(1) };
-        esc.estado = esc.valor > 15 ? "Critico" : esc.valor > 5 ? "Alerta" : "Normal";
-    } else {
-        esc = { pipeline: "migracion_aws", metrica: "tasa_fallos_%", valor: (Math.random() * 100).toFixed(1) };
-        esc.estado = esc.valor > 10 ? "Critico" : esc.valor > 3 ? "Alerta" : "Normal";
-    }
-    
     try { 
-      await axios.post('http://127.0.0.1:8000/anomalias/', 
-        { pipeline_name: esc.pipeline, metric_type: esc.metrica, value: parseFloat(esc.valor), status: esc.estado },
-        { headers: { Authorization: `Bearer ${token}` } }
-      ); 
+      await axios.post('http://127.0.0.1:8000/simular-ingesta/', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      }); 
     } catch (error) { console.error(error); }
     setGenerando(false);
   };
@@ -248,7 +140,9 @@ function PluriOneApp() {
     const ultimoCritico = anomalias.find(a => a.status === 'Critico') || { id: 0, ai_recommendation: '' };
     setMensajes(prev => [...prev, { role: 'user', text: pregunta }]); setPregunta('');
     try {
-      const response = await axios.post('http://127.0.0.1:8000/chat/', { anomaly_id: ultimoCritico.id, pregunta: pregunta, contexto_anomalia: ultimoCritico.ai_recommendation });
+      const response = await axios.post('http://127.0.0.1:8000/chat/', { anomaly_id: ultimoCritico.id, pregunta: pregunta, contexto_anomalia: ultimoCritico.ai_recommendation }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setMensajes(prev => [...prev, { role: 'jarvis', text: response.data.respuesta }]);
     } catch (error) { setMensajes(prev => [...prev, { role: 'jarvis', text: "Error de red." }]); }
   };
@@ -268,7 +162,6 @@ function PluriOneApp() {
     navigate('/login'); 
   };
 
-  // ================= EXPORTACIÓN A PDF =================
   const exportarPDF = () => {
     if (anomalias.length === 0) {
       alert("No hay datos en el historial para exportar.");
@@ -299,16 +192,13 @@ function PluriOneApp() {
       theme: 'grid',
       headStyles: { fillColor: [229, 184, 11] },
       styles: { fontSize: 9 },
-      columnStyles: {
-        5: { cellWidth: 70 }
-      }
+      columnStyles: { 5: { cellWidth: 70 } }
     });
 
     const fechaArchivo = new Date().toLocaleDateString().replace(/\//g, '-');
     doc.save(`Bitacora_PluriOne_${fechaArchivo}.pdf`);
   };
 
-  // ================= EXTRACCIÓN DE DATOS PARA GRÁFICAS =================
   const latencias = [...anomalias].reverse().filter(a => a.metric_type === "latencia_ms").slice(-10);
   const calidad = [...anomalias].reverse().filter(a => a.metric_type === "datos_corruptos_%").slice(-10);
   
@@ -327,7 +217,7 @@ function PluriOneApp() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden', backgroundColor: '#0b0c10', color: '#c5c6c7', fontFamily: '"Segoe UI", Roboto, sans-serif' }}>
       
-      {/* 1. CABECERA (Header) */}
+      {/* 1. CABECERA */}
       <div style={{ height: '70px', padding: '0 30px', backgroundColor: '#111217', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: '#457B9D', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', color: '#fff' }}>
@@ -353,7 +243,7 @@ function PluriOneApp() {
         {vista === 'dashboard' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'auto auto', gap: '20px', height: '100%' }}>
             
-            {/* --- COLUMNA 1: LATENCIA --- */}
+            {/* LATENCIA */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
                 <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Latencia de Red (ms)</h4>
@@ -367,21 +257,18 @@ function PluriOneApp() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              
               <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
                 <span style={{ background: ultimoLatencia?.status === 'Critico' ? '#8B0000' : ultimoLatencia?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
                   ESTADO: {ultimoLatencia ? ultimoLatencia.status : 'Normal'}
                 </span>
               </div>
-              
-              {/* BLOQUE CON SCROLL SUAVE Y ALTURA CÓMODA */}
               <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
                 <strong style={{ color: '#E5B80B' }}>Diagnóstico IA (Latencia): </strong>
                 <span style={{ color: '#a8a8a8' }}>{ultimoLatencia ? ultimoLatencia.ai_recommendation : 'Esperando datos...'}</span>
               </div>
             </div>
 
-            {/* --- COLUMNA 2: CALIDAD DE DATOS --- */}
+            {/* CALIDAD */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
                 <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Calidad (% Corruptos)</h4>
@@ -395,21 +282,18 @@ function PluriOneApp() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              
               <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
                 <span style={{ background: ultimoCalidad?.status === 'Critico' ? '#8B0000' : ultimoCalidad?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
                   ESTADO: {ultimoCalidad ? ultimoCalidad.status : 'Normal'}
                 </span>
               </div>
-              
-              {/* BLOQUE CON SCROLL SUAVE Y ALTURA CÓMODA */}
               <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
                 <strong style={{ color: '#E5B80B' }}>Diagnóstico IA (Calidad): </strong>
                 <span style={{ color: '#a8a8a8' }}>{ultimoCalidad ? ultimoCalidad.ai_recommendation : 'Esperando datos...'}</span>
               </div>
             </div>
 
-            {/* --- COLUMNA 3: TASA DE FALLOS --- */}
+            {/* TASA DE FALLOS */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
                 <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Tasa de Fallos</h4>
@@ -422,21 +306,18 @@ function PluriOneApp() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              
               <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
                 <span style={{ background: ultimoFallo?.status === 'Critico' ? '#8B0000' : ultimoFallo?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
                   ESTADO: {ultimoFallo ? ultimoFallo.status : 'Normal'}
                 </span>
               </div>
-              
-              {/* BLOQUE CON SCROLL SUAVE Y ALTURA CÓMODA */}
               <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
                 <strong style={{ color: '#E5B80B' }}>Diagnóstico IA (Fallos): </strong>
                 <span style={{ color: '#a8a8a8' }}>{ultimoFallo ? ultimoFallo.ai_recommendation : 'Esperando datos...'}</span>
               </div>
             </div>
 
-            {/* --- BLOQUE INFERIOR IZQUIERDO: Feed de Alertas (280px) --- */}
+            {/* FEED DE ALERTAS */}
             <div style={{ gridColumn: 'span 2', background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '280px', display: 'flex', flexDirection: 'column' }}>
               <h4 style={{ margin: '0 0 10px 0', color: '#E5B80B' }}>Feed de Alertas Recientes</h4>
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85em' }}>
@@ -450,31 +331,21 @@ function PluriOneApp() {
               </div>
             </div>
 
-            {/* --- BLOQUE INFERIOR DERECHO: JARVIS y Botón Compacto/Llamativo --- */}
+            {/* JARVIS & SIMULADOR DE INGESTA AUTOMÁTICA */}
             <div style={{ gridColumn: '3', background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #E5B80B', height: '280px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <strong style={{ color: '#E5B80B', fontSize: '0.9em' }}>J.A.R.V.I.S.</strong>
-                
-                {/* BOTÓN SIMULAR COMPACTO Y LLAMATIVO */}
                 <button 
                   onClick={inyectarAnomalia} 
                   disabled={generando} 
                   style={{ 
                     background: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', 
-                    color: '#fff', 
-                    border: '1px solid #ff4444', 
-                    padding: '5px 10px', 
-                    borderRadius: '5px', 
-                    fontWeight: 'bold', 
-                    cursor: 'pointer', 
-                    fontSize: '0.7em',
-                    boxShadow: '0 0 10px rgba(255, 75, 43, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
+                    color: '#fff', border: '1px solid #ff4444', padding: '5px 10px', 
+                    borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.7em',
+                    boxShadow: '0 0 10px rgba(255, 75, 43, 0.5)', display: 'flex', alignItems: 'center', gap: '4px'
                   }}
                 >
-                  {generando ? 'PROCESANDO...' : '⚡ SIMULAR ➔'}
+                  {generando ? 'INGIRIENDO...' : '⚡ SIMULAR INGESTA ➔'}
                 </button>
               </div>
 
@@ -493,12 +364,11 @@ function PluriOneApp() {
           </div>
         )}
 
-        {/* --- PESTAÑA HISTORIAL --- */}
+        {/* PESTAÑA HISTORIAL */}
         {vista === 'historial' && (
           <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h4 style={{ margin: 0, color: '#E5B80B' }}>Registro Detallado (Auditoría)</h4>
-              
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={exportarPDF} style={{ background: 'transparent', color: '#457B9D', border: '1px solid #457B9D', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>📄 Descargar PDF</button>
                 <button onClick={limpiarHistorial} style={{ background: 'transparent', color: '#E63946', border: '1px solid #E63946', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Vaciar Tabla</button>
