@@ -21,7 +21,8 @@ from datetime import datetime, timedelta
 from . import models, schemas
 from .database import engine, get_db, SessionLocal
 
-load_dotenv(encoding='utf-8')
+# Fuerza a Python a leer la llave nueva
+load_dotenv(override=True, encoding='utf-8')
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -34,7 +35,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = Groq()
+# Obligamos a Groq a usar la llave del archivo .env
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -224,12 +226,15 @@ def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, 
 
 def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float) -> str:
     prompt = f"Anomalía en {pipeline_name}, Métrica: {metric_type}, Valor: {value}. Explica brevemente por qué representa un riesgo técnico."
-    for modelo in ["openai/gpt-oss-20b", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]:
+    # CAMBIO FINAL: Nombres exactos actualizados
+    for modelo in ["openai/gpt-oss-20b", "qwen/qwen3-32b"]:
         try:
             chat_completion = client.chat.completions.create(messages=[{"role": "user", "content": prompt}], model=modelo)
             contenido = chat_completion.choices[0].message.content
             if contenido: return contenido
-        except Exception: continue
+        except Exception as e: 
+            print(f"Error IA en simulador ({modelo}): {e}")
+            continue
     return f"Revisar anomalía en {pipeline_name}."
 
 # =================================================================
@@ -402,12 +407,15 @@ def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = D
 def chat_causa_raiz(chat_req: ChatRequest, current_user: models.User = Depends(get_current_user)):
     contexto = chat_req.contexto_anomalia if chat_req.contexto_anomalia else "Sin diagnóstico previo."
     mensajes = [
-        {"role": "system", "content": "Eres J.A.R.V.I.S., experto en datos. Responde en español."},
+        {"role": "system", "content": "Eres J.A.R.V.I.S., experto en observabilidad de datos. Responde en español de forma útil y concisa."},
         {"role": "user", "content": f"Fallo: {contexto}. Pregunta: {chat_req.pregunta}"}
     ]
-    for modelo in ["openai/gpt-oss-20b", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]:
+    # CAMBIO FINAL: Nombres exactos actualizados
+    for modelo in ["openai/gpt-oss-20b", "qwen/qwen3-32b"]:
         try:
             respuesta = client.chat.completions.create(messages=mensajes, model=modelo, temperature=0.3)
             if respuesta.choices[0].message.content: return {"respuesta": respuesta.choices[0].message.content}
-        except Exception: continue
+        except Exception as e:
+            print(f"Error IA en chat ({modelo}): {e}")
+            continue
     return {"respuesta": "Analizando... verifique logs de la base de datos."}
