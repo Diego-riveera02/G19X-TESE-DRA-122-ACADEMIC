@@ -52,7 +52,7 @@ Este proyecto tiene como finalidad el desarrollo de una Plataforma de Observabil
 - **Interfaz de usuario (Frontend):** React.js + Recharts
 - **Base de datos relacional:** PostgreSQL
 - **Comunicación en Tiempo Real:** WebSockets
-- **Servicio de Correo Electrónico:** SMTP (Gmail API) con uso restringido a seguridad (login/recuperación).
+- **Servicio de Correo Electrónico:** SMTP de Gmail para envío de códigos de verificación de cuentas y recuperación de contraseñas.
 - **Contenedores:** Docker & Docker Compose
 
 ## 6. Arquitectura General

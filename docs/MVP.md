@@ -21,7 +21,7 @@ El Producto Mínimo Viable (MVP) de PluriOne se centra en entregar un software c
 [x] Implementación de la comunicación en tiempo real mediante WebSockets.
 [x] Desarrollo del frontend moderno en React.js con componentes de visualización y enrutamiento dinámico.
 [x] Integración de la guía interactiva flotante (Onboarding) en el inicio.
-[ ] Empaquetamiento y pruebas de ejecución local mediante Docker Compose.
+[x] Empaquetamiento y pruebas de ejecución local mediante Docker Compose.
 
 ## 3. Criterios de Validación del MVP
 - **Seguridad y Activación:** El sistema restringe el acceso a usuarios no verificados mediante un flujo de código de 6 dígitos por correo, garantizando la autenticidad y seguridad de cada cuenta registrada.

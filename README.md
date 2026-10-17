@@ -3,7 +3,8 @@
 **PluriOne** es una plataforma diseñada para monitorear, detectar y diagnosticar anomalías en flujos de datos corporativos en tiempo real, utilizando inteligencia artificial (J.A.R.V.I.S.) para emitir recomendaciones técnicas.
 
 ## ✨ Características Principales (Nivel Ingeniería)
-- ⚙️ **Motor de Ingesta Automática:** Generación y transmisión de telemetría continua en segundo plano mediante procesos asíncronos (sin necesidad de inyección manual).
+
+- ⚙️ **Motor de Ingesta Automática Simulada:** Generación y transmisión continua de métricas simuladas de latencia, calidad de datos y fallos mediante procesos asíncronos en segundo plano, sin intervención manual. En esta etapa, el sistema utiliza un simulador interno y no realiza una ingesta directa desde fuentes empresariales reales.
 - 🔐 **Seguridad Robusta:** Autenticación con JWT, contraseñas encriptadas y verificación de identidad obligatoria vía correo electrónico (SMTP).
 - 📊 **Monitoreo en Tiempo Real:** Dashboard interactivo conectado vía WebSockets que actualiza las gráficas en vivo.
 - 🧠 **Diagnóstico Inteligente:** Análisis de causa raíz automático y asistente conversacional potenciado por Groq AI.
