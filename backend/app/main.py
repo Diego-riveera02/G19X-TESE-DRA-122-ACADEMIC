@@ -8,6 +8,7 @@ import json
 import smtplib
 import random
 import asyncio
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from groq import Groq
@@ -78,31 +79,126 @@ class RecuperarRequest(BaseModel):
 # =================================================================
 #                GESTOR DE WEBSOCKETS
 # =================================================================
+
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        # Cada usuario tiene sus propias conexiones.
+        self.active_connections = {}
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
+    def connect(self, user_id: int, websocket: WebSocket):
+        self.active_connections.setdefault(user_id, set()).add(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    def disconnect(self, user_id: int, websocket: WebSocket):
+        conexiones = self.active_connections.get(user_id)
+        if conexiones is not None:
+            conexiones.discard(websocket)
+            if not conexiones:
+                del self.active_connections[user_id]
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+    async def send_to_user(self, user_id: int, message: str):
+        conexiones = list(self.active_connections.get(user_id, set()))
+        for conexion in conexiones:
+            try:
+                await conexion.send_text(message)
+            except Exception:
+                self.disconnect(user_id, conexion)
+
 
 manager = ConnectionManager()
 
+
 @app.websocket("/ws/anomalias")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+    origen = websocket.headers.get("origin")
+    permitidos = {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    }
+
+    if origen is not None and origen not in permitidos:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    user_id = None
+
     try:
+        # El token se recibe en el primer mensaje,
+        # nunca como parámetro en la URL.
+        datos = await asyncio.wait_for(
+            websocket.receive_json(),
+            timeout=10
+        )
+
+        if (
+            not isinstance(datos, dict)
+            or datos.get("type") != "auth"
+            or not isinstance(datos.get("token"), str)
+            or len(datos["token"]) > 4096
+        ):
+            await websocket.close(code=1008)
+            return
+
+        try:
+            payload = jwt.decode(
+                datos["token"],
+                SECRET_KEY,
+                algorithms=[ALGORITHM]
+            )
+        except JWTError:
+            await websocket.close(code=1008)
+            return
+
+        correo = payload.get("sub")
+        expiracion = payload.get("exp")
+
+        if (
+            not isinstance(correo, str)
+            or not isinstance(expiracion, (int, float))
+        ):
+            await websocket.close(code=1008)
+            return
+
+        # Verificar que la cuenta exista y esté activa.
+        with SessionLocal() as db:
+            usuario = db.query(models.User).filter(
+                models.User.correo == correo,
+                models.User.is_active.is_(True)
+            ).first()
+
+            if usuario:
+                user_id = usuario.id
+
+        if user_id is None:
+            await websocket.close(code=1008)
+            return
+
+        manager.connect(user_id, websocket)
+        await websocket.send_json({"type": "auth_ok"})
+
         while True:
-            await websocket.receive_text()
+            tiempo_restante = expiracion - time.time()
+
+            if tiempo_restante <= 0:
+                await websocket.close(code=1008)
+                break
+
+            try:
+                await asyncio.wait_for(
+                    websocket.receive_text(),
+                    timeout=tiempo_restante
+                )
+            except asyncio.TimeoutError:
+                await websocket.close(code=1008)
+                break
+
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        pass
+    except (asyncio.TimeoutError, ValueError):
+        await websocket.close(code=1008)
+    finally:
+        if user_id is not None:
+            manager.disconnect(user_id, websocket)
 
 # =================================================================
 #                FUNCIONES DE UTILIDAD Y SEGURIDAD
@@ -249,11 +345,9 @@ async def generar_telemetria_automatica():
     """Motor que genera métricas continuas en segundo plano."""
     while True:
         await asyncio.sleep(5)  # Espera 5 segundos entre cada inyección de datos
-        
-        # Solo inyecta datos si hay alguien conectado al WebSocket
-        if not manager.active_connections:
-            continue
-            
+
+        # La telemetria se genera automaticamente,
+        # sin depender de conexiones WebSocket activas.
         pipelines = ["API Gateway Core", "Pipeline Ventas MX", "Migración AWS S3", "Sync PostgreSQL"]
         metricas = [
             ("latencia_ms", 50.0, 900.0, "ms"),
@@ -274,10 +368,16 @@ async def generar_telemetria_automatica():
         # Abre una sesión a la BD de forma independiente para la tarea en segundo plano
         db = SessionLocal()
         try:
-            # Selecciona un usuario "Admin" o el primero para asignarle la métrica
-            user = db.query(models.User).first()
-            if not user:
+            # Seleccionar usuarios activos para la telemetria simulada
+            usuarios_activos = db.query(models.User).filter(
+                models.User.is_active.is_(True)
+            ).all()
+
+            if not usuarios_activos:
                 continue
+
+            user = random.choice(usuarios_activos)
+
 
             # Genera anomalía solo si es Crítico o Alerta
             recomendacion = "Operación normal."
@@ -296,7 +396,7 @@ async def generar_telemetria_automatica():
             db.commit()
             db.refresh(db_anomalia)
 
-            # Envía el dato en tiempo real a todos los clientes (React)
+            # Envia la anomalia solo al usuario correspondiente
             mensaje_ws = json.dumps({
                 "id": db_anomalia.id,
                 "pipeline_name": db_anomalia.pipeline_name,
@@ -305,7 +405,7 @@ async def generar_telemetria_automatica():
                 "status": db_anomalia.status,
                 "ai_recommendation": db_anomalia.ai_recommendation
             })
-            await manager.broadcast(mensaje_ws)
+            await manager.send_to_user(user.id, mensaje_ws)
         except Exception as e:
             print(f"Error en simulador: {e}")
         finally:
