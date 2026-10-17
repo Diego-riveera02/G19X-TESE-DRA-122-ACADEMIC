@@ -113,13 +113,64 @@ function PluriOneApp() {
     axios.get('http://127.0.0.1:8000/anomalias/', { headers: { Authorization: `Bearer ${token}` } }).then(res => {
       setAnomalias(res.data.filter(item => item.id > idOcultosHasta).sort((a, b) => b.id - a.id));
     }).catch(() => navigate('/login'));
+
     
+    // Conexion WebSocket autenticada mediante JWT
     const ws = new WebSocket('ws://127.0.0.1:8000/ws/anomalias');
-    ws.onmessage = (event) => {
-      const nueva = JSON.parse(event.data);
-      setAnomalias(prev => [nueva, ...prev].sort((a, b) => b.id - a.id));
+
+    // Enviar el token al establecer la conexion
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        type: 'auth',
+        token: token
+      }));
     };
+
+    // Recibir solamente las anomalias del usuario autenticado
+    ws.onmessage = (event) => {
+      try {
+        const nueva = JSON.parse(event.data);
+
+        // Confirmacion de autenticacion del servidor
+        if (nueva.type === 'auth_ok') {
+          console.log('WebSocket autenticado correctamente');
+          return;
+        }
+
+        // Ignorar mensajes que no sean anomalias validas
+        if (typeof nueva.id !== 'number') {
+          return;
+        }
+
+        // Respetar el historial oculto del usuario
+        if (nueva.id <= idOcultosHasta) {
+          return;
+        }
+
+        setAnomalias(prev => {
+          // Evitar registros duplicados
+          if (prev.some(a => a.id === nueva.id)) {
+            return prev;
+          }
+
+          return [nueva, ...prev].sort((a, b) => b.id - a.id);
+        });
+
+      } catch (error) {
+        console.error('Error al procesar mensaje WebSocket');
+      }
+    };
+
+    // Detectar cierre por autenticacion o politica de seguridad
+    ws.onclose = (event) => {
+      if (event.code === 1008) {
+        console.warn('Conexion WebSocket rechazada o expirada');
+      }
+    };
+
+    // Cerrar la conexion al desmontar el componente
     return () => ws.close();
+
   }, [idOcultosHasta, token, navigate]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [mensajes]);
