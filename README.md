@@ -6,7 +6,7 @@ Alcance actual: la telemetría procede de un simulador interno del backend. Las 
 - Telemetría automática simulada: un proceso asíncrono en FastAPI genera registros de prueba aproximadamente cada 5 segundos, sin botones de inyección manual.
 - Persistencia: PostgreSQL almacena usuarios y anomalías con identificador, pipeline, métrica, valor, estado, recomendación y fecha de registro.
 - Monitoreo en tiempo real: React presenta gráficas de latencia, calidad de datos y fallos, junto con un feed de alertas. WebSocket entrega eventos a las sesiones autenticadas del usuario correspondiente.
-- Acceso a la plataforma: registro, verificación de cuenta mediante código enviado por correo, inicio de sesión con JWT, contraseñas almacenadas mediante hash y flujo de recuperación de contraseña con código.
+- Acceso a la plataforma: registro y verificación de cuenta por código SMTP, inicio de sesión con JWT, contraseñas almacenadas mediante hash y recuperación de contraseña desde React. En la pantalla Recuperar Acceso el usuario solicita un código al correo registrado, lo introduce junto con la nueva contraseña y puede iniciar sesión con la contraseña actualizada.
 - J.A.R.V.I.S. 2.0: chat en español mediante Groq, seguimiento del contexto reciente de la conversación y consultas autorizadas a PostgreSQL mediante function calling.
 - Consultas de anomalías: la herramienta disponible permite consultar el total y hasta 10 registros recientes del usuario autenticado, filtrados por estado normal, alerta, critico o todos. No se incluyen todavía filtros por fecha, métrica o severidad.
 - Diagnósticos orientativos: J.A.R.V.I.S. relaciona los datos consultados con posibles causas y acciones de investigación. No confirma causas sin evidencia adicional ni ejecuta cambios en sistemas externos.
@@ -43,6 +43,7 @@ GROQ_API_KEY	Clave de acceso a Groq para las consultas del asistente.
 
 
 Verificar también las variables de PostgreSQL utilizadas por docker-compose.yml, si las hubiera; deben permanecer fuera del código fuente y tener valores coherentes con DATABASE_URL. No subir archivos .env, contraseñas, tokens ni claves API a GitHub. La plantilla .env.example debe contener valores ficticios.
+Control de acceso: FastAPI comprueba la firma del JWT, identifica la cuenta en PostgreSQL y rechaza el acceso a rutas protegidas si la cuenta no existe o está inactiva (is_active = False). En las pruebas locales, los endpoints /anomalias/ y /chat/ respondieron HTTP 401 a solicitudes sin JWT; una cuenta inactiva también recibió HTTP 401 con un JWT válido.
 5. Ejecución local con Docker Compose
 Desde la raíz del repositorio:
 docker compose up -d --build api
@@ -68,7 +69,7 @@ npm run dev
 Nota: la configuración de DATABASE_URL cambia según la ubicación de PostgreSQL. Si se utilizan puertos, credenciales o servicios distintos, adaptar las variables de entorno antes de iniciar la API.
 7. Uso básico
 1. Registrar una cuenta y completar la verificación enviada al correo configurado.
-2. Iniciar sesión y abrir Datos (Dashboard).
+2. Iniciar sesión y abrir Datos (Dashboard). Si es necesario recuperar el acceso, abrir ¿Olvidaste tu contraseña?, escribir el correo registrado, pulsar Enviar código de recuperación, consultar el correo recibido e introducir el código y una nueva contraseña en Recuperar Acceso.
 3. Observar la simulación de métricas y las nuevas alertas; cada evento de WebSocket incorpora su marca de tiempo registrada por el backend.
 4. Consultar a J.A.R.V.I.S., por ejemplo: «¿Cuántas anomalías críticas tengo?» o «Analiza mi última alerta crítica y distingue hechos de posibles causas».
 5. Abrir Historial y exportar un PDF de los registros cargados.
@@ -87,12 +88,13 @@ Ejemplo ilustrativo de un mensaje de anomalía (los valores no representan un re
 }
 La opción de vaciar el historial visible puede ocultar registros en la interfaz; esto no equivale necesariamente a eliminarlos de PostgreSQL.
 8. Validación y limitaciones
-Durante el desarrollo se han realizado pruebas locales de compilación de React, arranque de FastAPI y PostgreSQL con Docker, recepción de telemetría por WebSocket, conversación con Groq y generación de diagnósticos. La auditoría de npm reportó 0 vulnerabilidades después de la actualización aplicada en el entorno de pruebas de octubre de 2026; el resultado puede cambiar conforme se publiquen nuevos avisos.
+Durante el desarrollo se han realizado pruebas locales de compilación de React, arranque de FastAPI y PostgreSQL con Docker, recepción de telemetría por WebSocket, conversación con Groq y generación de diagnósticos. También se probó el flujo de recuperación (envío del código SMTP desde React, actualización de contraseña y nuevo inicio de sesión), el rechazo de peticiones sin JWT y el bloqueo de cuentas inactivas. La auditoría de npm reportó 0 vulnerabilidades después de la actualización aplicada en el entorno de pruebas de octubre de 2026; el resultado puede cambiar conforme se publiquen nuevos avisos.
 Limitaciones de esta versión:
 - Las métricas y alertas provienen de un simulador, no de AWS, bases productivas u otros servicios reales.
 - El diagnóstico de IA es orientativo y puede ser incorrecto; verificar sus hipótesis antes de intervenir sistemas.
 - La herramienta actual de J.A.R.V.I.S. consulta estados y registros recientes: no implementa búsqueda general por fechas, métricas, severidades ni análisis histórico arbitrario.
 - El asistente depende de la disponibilidad de Groq y está sujeto a límites de uso de su API.
+- Códigos de recuperación: la implementación actual exige un código de seis dígitos y lo invalida al usarlo, pero no aplica todavía un vencimiento temporal ni un límite de intentos fallidos por código. No se debe presentar esta mejora pendiente como implementada ni considerar el flujo listo para un servicio público de producción.
 - No hay pruebas documentadas que acrediten preparación para uso productivo, alta disponibilidad o escalabilidad empresarial.
 9. Documentación
 - [`frontend/README.md`](frontend/README.md): instalación y funcionamiento de la interfaz.
@@ -105,6 +107,8 @@ La siguiente lista separa lo implementado de las actividades que siguen pendient
 - [x] Consultar anomalías por estado a través de J.A.R.V.I.S. 2.0.
 - [x] Presentar respuestas Markdown y exportar una bitácora en PDF.
 - [x] Documentar las limitaciones de la simulación y la IA.
+- [x] Solicitar un código SMTP desde React, restablecer la contraseña e iniciar sesión nuevamente (prueba manual local).
+- [x] Rechazar solicitudes sin JWT y JWT de cuentas inactivas en las rutas protegidas probadas.
 - [ ] Ejecutar una batería automatizada de pruebas integrales y de seguridad.
 - [ ] Integrar fuentes de datos reales (fuera del alcance del MVP actual).
 Proyecto académico: PluriOne. Documentación revisada en octubre de 2026.

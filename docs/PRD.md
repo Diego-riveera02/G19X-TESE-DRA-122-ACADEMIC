@@ -15,7 +15,7 @@ Público objetivo
 - Líderes técnicos y responsables de observabilidad: consulta de tableros, tendencias y bitácoras.
 - Administradores de la plataforma: supervisión de los flujos de registro, autenticación y acceso de usuarios.
 Objetivos específicos
-1. Implementar registro, verificación por código SMTP, autenticación JWT, almacenamiento de contraseñas mediante hash y recuperación de acceso.
+1. Implementar registro, verificación por código SMTP, autenticación JWT, almacenamiento de contraseñas mediante hash y recuperación de acceso iniciada desde el formulario React con envío de código al correo registrado.
 2. Generar automáticamente métricas simuladas en el backend y persistir las anomalías en PostgreSQL.
 3. Mostrar gráficas y alertas con actualización en tiempo real mediante WebSocket autenticado por usuario.
 4. Proporcionar un asistente conversacional que consulte datos del usuario mediante herramientas backend autorizadas y distinga hechos de hipótesis.
@@ -23,7 +23,7 @@ Objetivos específicos
 6. Mantener instrucciones reproducibles de instalación, configuración y ejecución local.
 3. Alcance del proyecto
 Dentro del alcance del prototipo actual
-- Alta y validación de cuentas, autenticación y recuperación de acceso.
+- Alta y validación de cuentas, autenticación con bloqueo de cuentas inactivas y recuperación de acceso solicitando el código SMTP desde React.
 - Simulador asíncrono de telemetría con registros de latencia, calidad e incidencias de fallos cada ~5 segundos.
 - Persistencia y consulta de anomalías en PostgreSQL con marca de tiempo.
 - Distribución en tiempo real por WebSocket con autenticación JWT y segmentación por usuario.
@@ -43,7 +43,8 @@ Fuera del alcance de esta versión
 4. Requisitos funcionales e historias de usuario
 ID	Requisito / historia de usuario	Estado de la versión documentada
 RF-01	Como usuario nuevo, quiero registrarme y verificar mi cuenta mediante un código enviado por correo.	Implementado.
-RF-02	Como usuario, quiero iniciar sesión con JWT y recuperar mi contraseña mediante un código.	Implementado.
+RF-02	Como usuario, quiero iniciar sesión con JWT y recuperar mi contraseña solicitando un código por correo desde React, introduciéndolo y estableciendo una contraseña nueva.	Implementado y probado manualmente; permite volver a iniciar sesión.
+RF-02A	Como usuario cuya cuenta fue desactivada, no debo conservar acceso a rutas protegidas aunque tenga un JWT anterior.	Implementado; se comprobó respuesta HTTP 401 con cuenta inactiva.
 RF-03	Como operador, quiero recibir automáticamente métricas simuladas y consultarlas sin disparar eventos manualmente.	Implementado.
 RF-04	Como operador, quiero visualizar latencia, datos corruptos y fallos en el dashboard.	Implementado.
 RF-05	Como usuario autenticado, quiero recibir por WebSocket únicamente los eventos correspondientes a mi cuenta.	Implementado; requiere pruebas sistemáticas de aislamiento como parte de la validación.
@@ -57,7 +58,7 @@ RF-12	Como usuario nuevo, quiero una guía interactiva de bienvenida.	Implementa
 
 
 Requisitos no funcionales
-- RNF-01 — Seguridad: contraseñas mediante hash, JWT, verificación de cuentas, credenciales en variables de entorno y control de acceso en los endpoints y WebSockets. Ninguna clave secreta debe almacenarse en el repositorio.
+- RNF-01 — Seguridad: contraseñas mediante hash, JWT, verificación de cuentas, credenciales en variables de entorno y control de acceso en los endpoints y WebSockets. El backend debe rechazar JWT de cuentas inexistentes o inactivas. Ninguna clave secreta debe almacenarse en el repositorio.
 - RNF-02 — Aislamiento: las consultas de anomalías y la transmisión de eventos deben limitarse al usuario autenticado.
 - RNF-03 — Tiempo real: la simulación busca generar eventos aproximadamente cada 5 segundos y propagarlos sin recarga manual. No se promete una latencia estricta garantizada.
 - RNF-04 — Persistencia: almacenar usuarios y anomalías con marca de tiempo en PostgreSQL.
@@ -74,7 +75,7 @@ Inteligencia artificial	Groq, modelo openai/gpt-oss-20b, función autorizada con
 Interfaz web	React, Vite, React Router, Axios, Recharts.
 Presentación de diagnósticos	react-markdown, remark-gfm; tablas y chat con desplazamiento controlado.
 Reportes	jsPDF y jspdf-autotable.
-Mensajería SMTP	Envío de códigos de registro y recuperación de acceso.
+Mensajería SMTP	Envío de códigos de registro y recuperación de acceso solicitados desde el formulario de React.
 Entorno local	Docker Compose y herramientas locales de desarrollo frontend.
 
 
@@ -126,18 +127,22 @@ Evolución posterior	Conectores reales, consultas históricas avanzadas, pruebas
 - CA-05: las respuestas de IA separan valores observados de causas no verificadas y sugieren verificaciones seguras.
 - CA-06: los mensajes largos y las tablas pueden recorrerse dentro del chat, y el botón «↓ Último» funciona sin deformar el dashboard.
 - CA-07: el usuario puede consultar registros disponibles y exportar la bitácora visible a PDF.
-- CA-08: la verificación de cuenta y las rutas protegidas impiden accesos no autorizados según las reglas implementadas, y las credenciales no aparecen en Git.
+- CA-08: la verificación de cuenta y las rutas protegidas impiden accesos no autorizados según las reglas implementadas; el backend rechaza solicitudes sin JWT y con JWT de usuarios inactivos, y las credenciales no aparecen en los archivos versionados revisados.
 - CA-09: la compilación del frontend concluye sin errores y los servicios API/BD pueden ejecutarse en el entorno documentado.
 - CA-10: README, MVP y PRD describen expresamente la simulación y no atribuyen capacidades productivas inexistentes.
-Estado de validación: se han comprobado localmente compilación, arranque de servicios y funciones clave del dashboard y del chat. La aceptación académica definitiva y una eventual certificación para producción requieren pruebas adicionales y evaluación externa.
+- CA-11: desde la pantalla React de recuperación se solicita el código SMTP, se recibe en el correo registrado, se restablece la contraseña y se puede volver a iniciar sesión. Comprobado manualmente en el entorno local.
+Estado de validación: se han comprobado localmente compilación, arranque de servicios y funciones clave del dashboard y del chat. También se probaron la recuperación de contraseña completa y las respuestas de autorización HTTP 401 en rutas protegidas. La aceptación académica definitiva y una eventual certificación para producción requieren pruebas adicionales y evaluación externa.
 9. Riesgos, supuestos y restricciones
 - La calidad de los diagnósticos depende de los registros entregados, del modelo y de sus límites de cuota; no existe certeza causal automática.
 - La telemetría sintética sirve para demostrar flujos y no predice confiablemente incidentes empresariales reales.
 - El rendimiento observado en una computadora local no equivale a la capacidad en producción.
 - La memoria de chat enviada desde React es temporal y limitada.
 - El sistema SMTP depende de credenciales y conectividad externas y no se emplea como canal de alerta masiva.
+- Limitación de los códigos: el flujo implementado requiere el código enviado por correo y lo invalida al usarlo, pero todavía no aplica expiración temporal ni límite de intentos fallidos. No se considera un sistema de recuperación endurecido para producción.
 10. Lista de verificación de los requisitos
 - [x] Registro, verificación de cuentas, JWT y recuperación de acceso implementados.
+- [x] Solicitud del código SMTP desde React, actualización de contraseña y nuevo inicio de sesión probados manualmente.
+- [x] Acceso sin JWT y mediante JWT de cuenta inactiva rechazado en pruebas HTTP locales.
 - [x] Simulación, almacenamiento y actualización por WebSocket implementados.
 - [x] J.A.R.V.I.S. con consulta controlada de anomalías y respuesta orientativa implementado.
 - [x] Lectura de tablas y desplazamiento del chat comprobados localmente.
@@ -148,4 +153,4 @@ Estado de validación: se han comprobado localmente compilación, arranque de se
 - [`../frontend/README.md`](../frontend/README.md) — implementación y uso de la interfaz.
 - [`MVP.md`](MVP.md) — alcance implementado, validaciones y exclusiones.
 Conclusión: PluriOne cumple el propósito de demostrar un flujo integral de observabilidad simulada asistida por IA en un entorno local. Su arquitectura deja abierta la posibilidad de integrar fuentes reales en versiones futuras, sin afirmar que esa capacidad ya existe.
-Versión documental del prototipo académico, octubre de 2026
+Versión documental del prototipo académico, octubre de 2026.

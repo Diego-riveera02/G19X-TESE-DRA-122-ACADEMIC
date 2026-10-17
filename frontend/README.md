@@ -11,7 +11,7 @@ No existe en esta etapa una conexión directa del frontend con pipelines empresa
 - react-markdown y remark-gfm: visualización de respuestas del asistente con títulos, listas, negritas y tablas.
 - jsPDF y jspdf-autotable: exportación a PDF de la bitácora cargada en la interfaz.
 3. Funcionalidades implementadas
-- Registro de usuarios, verificación de cuenta mediante código, inicio de sesión y recuperación de contraseña, en coordinación con el backend.
+- Registro de usuarios, verificación de cuenta mediante código e inicio de sesión. La pantalla Recuperar Acceso incluye el botón Enviar código de recuperación, que solicita un código por SMTP al backend; después permite validar ese código y establecer la nueva contraseña.
 - Dashboard con tres visualizaciones de métricas y distintivos de estado Normal, Alerta y Critico.
 - Feed de alertas recientes con hora del registro enviada por el backend, en vez de usar la hora actual del navegador.
 - Actualización de anomalías mediante WebSocket autenticado y filtrado por usuario desde el servidor; controles para evitar duplicados en la interfaz.
@@ -46,7 +46,7 @@ En la configuración local utilizada durante el desarrollo:
 - API HTTP: http://127.0.0.1:8000
 - WebSocket: ws://127.0.0.1:8000/ws/anomalias
 - Interfaz: http://127.0.0.1:5173
-El frontend envía el token JWT en las solicitudes autenticadas a FastAPI. Al abrir WebSocket transmite un mensaje de autenticación y recibe eventos de anomalías destinados al usuario correspondiente. La seguridad y separación entre cuentas deben aplicarse en el backend, no depender exclusivamente de filtros de React.
+El frontend envía el token JWT en las solicitudes autenticadas a FastAPI. Al abrir WebSocket transmite un mensaje de autenticación y recibe eventos de anomalías destinados al usuario correspondiente. La seguridad y separación entre cuentas deben aplicarse en el backend, no depender exclusivamente de filtros de React. En las rutas protegidas comprobadas, FastAPI también rechaza las cuentas inactivas aunque presenten un JWT válido.
 La vista del feed utiliza el campo timestamp de cada anomalía. Para los eventos nuevos, el backend envía una fecha UTC serializada, que el navegador presenta en formato de hora local.
 Ejemplo del primer mensaje de autenticación del WebSocket, sin incluir un token real:
 {
@@ -58,9 +58,17 @@ Interfaces de comunicación utilizadas
 Interfaz	Función	Protección
 GET /anomalias/	Recuperar anomalías del usuario.	JWT en la solicitud HTTP.
 POST /chat/	Enviar preguntas al asistente.	JWT; herramientas restringidas en FastAPI.
+POST /solicitar-recuperacion/	Solicitar un código SMTP para el correo registrado desde el formulario de recuperación.	Solicitud pública de recuperación; no requiere JWT.
+POST /recuperar-password/	Enviar correo, código recibido y nueva contraseña para restablecer el acceso.	Requiere la coincidencia del código guardado para esa cuenta.
 ws://127.0.0.1:8000/ws/anomalias	Recibir anomalías nuevas.	Mensaje de autenticación JWT.
 
 
+Recuperación de acceso desde la interfaz
+1. Desde Login, elegir ¿Olvidaste tu contraseña? para abrir /recuperar.
+2. Escribir el correo registrado y pulsar Enviar código de recuperación. El botón se deshabilita durante la solicitud para evitar clics simultáneos.
+3. Consultar el correo más reciente, introducir el código de seis dígitos y la nueva contraseña y pulsar Actualizar Contraseña.
+4. Volver al inicio de sesión y autenticarse con la contraseña actualizada.
+En la prueba manual local de octubre de 2026 se recibió el correo SMTP, se actualizó la contraseña y se pudo acceder nuevamente al dashboard. Nota de alcance: la versión actual no aplica un vencimiento temporal ni un número máximo de intentos fallidos para los códigos; estas defensas quedan pendientes de endurecimiento de seguridad.
 7. J.A.R.V.I.S. 2.0: capacidades y límites
 El chat permite preguntas generales sobre observabilidad, seguimiento de la conversación reciente y consultas acerca de las anomalías del usuario. Cuando necesita registros concretos, el backend puede invocar la herramienta autorizada consultar_anomalias_usuario, que filtra por estado (normal, alerta, critico, todos) y devuelve el total y hasta 10 registros recientes.
 No se han implementado en esa herramienta filtros arbitrarios por fechas, severidad, palabras clave o métricas. Las explicaciones sobre posibles causas no sustituyen una investigación técnica de sistemas reales.
