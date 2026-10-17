@@ -43,7 +43,12 @@ SMTP_PORT = 587
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD") 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "plurione_super_secret_key_2026") 
+SECRET_KEY = (os.getenv("SECRET_KEY") or "").strip()
+
+if len(SECRET_KEY) < 32:
+    raise RuntimeError(
+        "Debes configurar SECRET_KEY con al menos 32 caracteres."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 
 
