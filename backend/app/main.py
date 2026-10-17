@@ -325,18 +325,39 @@ def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, 
     except Exception as e:
         print(f"Error al enviar correo: {e}")
 
+
 def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float) -> str:
-    prompt = f"Anomalía en {pipeline_name}, Métrica: {metric_type}, Valor: {value}. Explica brevemente por qué representa un riesgo técnico."
-    # CAMBIO FINAL: Nombres exactos actualizados
-    for modelo in ["openai/gpt-oss-20b", "qwen/qwen3-32b"]:
-        try:
-            chat_completion = client.chat.completions.create(messages=[{"role": "user", "content": prompt}], model=modelo)
-            contenido = chat_completion.choices[0].message.content
-            if contenido: return contenido
-        except Exception as e: 
-            print(f"Error IA en simulador ({modelo}): {e}")
-            continue
-    return f"Revisar anomalía en {pipeline_name}."
+    """
+    Genera recomendaciones técnicas locales para la telemetría simulada.
+    No realiza solicitudes a Groq ni consume tokens de IA.
+    """
+
+    if metric_type == "latencia_ms":
+        return (
+            f"Se detectó una latencia de {value:.2f} ms en {pipeline_name}. "
+            "Revisar tiempos de respuesta, consultas lentas, "
+            "saturación de recursos y posibles cuellos de botella."
+        )
+
+    elif metric_type == "datos_corruptos_%":
+        return (
+            f"Se detectó un {value:.2f}% de datos corruptos en {pipeline_name}. "
+            "Verificar validaciones, integridad de registros, "
+            "transformaciones y calidad de los datos de origen."
+        )
+
+    elif metric_type == "tasa_fallos_%":
+        return (
+            f"Se detectó una tasa de fallos del {value:.2f}% en {pipeline_name}. "
+            "Revisar registros de errores, conectividad, "
+            "dependencias del servicio y mecanismos de reintento."
+        )
+
+    return (
+        f"Se detectó una anomalía en {pipeline_name}. "
+        "Revisar los registros del sistema y el comportamiento de la métrica."
+    )
+
 
 # =================================================================
 #                SIMULADOR DE INGESTA AUTOMATICA (NIVEL INGENIERÍA)
@@ -508,19 +529,191 @@ def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = D
     db.commit()
     return {"status": "Historial borrado exitosamente"}
 
+
 @app.post("/chat/")
-def chat_causa_raiz(chat_req: ChatRequest, current_user: models.User = Depends(get_current_user)):
-    contexto = chat_req.contexto_anomalia if chat_req.contexto_anomalia else "Sin diagnóstico previo."
+def chat_causa_raiz(
+    chat_req: ChatRequest,
+      current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contexto = (
+        chat_req.contexto_anomalia
+        if chat_req.contexto_anomalia
+        else "Sin diagnóstico previo."
+    )
+    # Consultar la última alerta crítica real del usuario autenticado.
+    pregunta_texto = chat_req.pregunta.lower()
+
+    es_ultima = any(
+        palabra in pregunta_texto
+        for palabra in ["última", "ultima", "último", "ultimo"]
+    )
+
+    es_critica = any(
+        palabra in pregunta_texto
+        for palabra in ["crítica", "critica", "crítico", "critico"]
+    )
+
+    # Consultar cuántas alertas críticas tiene el usuario.
+    pregunta_cantidad = (
+        (
+            "esa" in pregunta_texto
+            and any(
+                expresion in pregunta_texto
+                for expresion in [
+                    "nada más", "nada mas",
+                    "solo", "única", "unica"
+                ]
+            )
+        )
+        or (
+            es_critica
+            and any(
+                expresion in pregunta_texto
+                for expresion in [
+                    "cuántas", "cuantas",
+                    "número de", "numero de"
+                ]
+            )
+        )
+    )
+
+    if pregunta_cantidad:
+        total_criticas = (
+            db.query(models.AnomalyLog)
+            .filter(
+                models.AnomalyLog.user_id == current_user.id,
+                models.AnomalyLog.status.in_(["Critico", "Crítico"])
+            )
+            .count()
+        )
+
+        if total_criticas == 0:
+            return {
+                "respuesta": "No tienes alertas críticas registradas."
+            }
+
+        if total_criticas == 1:
+            return {
+                "respuesta": (
+                    "Sí, solamente tienes una alerta crítica "
+                    "registrada hasta el momento."
+                )
+            }
+
+        return {
+            "respuesta": (
+                f"No, tienes {total_criticas} alertas críticas "
+                "registradas hasta el momento. "
+                "Puedes preguntarme por la última alerta crítica."
+            )
+        }
+
+    if es_ultima and es_critica:
+        ultima_critica = (
+            db.query(models.AnomalyLog)
+            .filter(
+                models.AnomalyLog.user_id == current_user.id,
+                models.AnomalyLog.status.in_(["Critico", "Crítico"])
+            )
+            .order_by(
+                models.AnomalyLog.timestamp.desc(),
+                models.AnomalyLog.id.desc()
+            )
+            .first()
+        )
+
+        if ultima_critica is None:
+            return {
+                "respuesta": (
+                    "No encontré alertas críticas registradas "
+                    "para tu usuario."
+                )
+            }
+
+        fecha_utc = ultima_critica.timestamp.strftime(
+            "%d/%m/%Y a las %H:%M:%S"
+        )
+
+        return {
+            "respuesta": (
+                f"Tu última alerta crítica se registró el "
+                f"{fecha_utc} UTC.\n"
+                f"Pipeline: {ultima_critica.pipeline_name}.\n"
+                f"Métrica: {ultima_critica.metric_type}.\n"
+                f"Valor: {ultima_critica.value}.\n"
+                f"Estado: {ultima_critica.status}."
+            )
+        }
     mensajes = [
-        {"role": "system", "content": "Eres J.A.R.V.I.S., experto en observabilidad de datos. Responde en español de forma útil y concisa."},
-        {"role": "user", "content": f"Fallo: {contexto}. Pregunta: {chat_req.pregunta}"}
+        {
+            "role": "system",
+            "content": (
+                "Eres J.A.R.V.I.S., experto en observabilidad de datos. "
+                "Responde en español de forma clara, útil y concisa."
+            )
+        },
+        {
+            "role": "user",
+            "content": f"Fallo: {contexto}. Pregunta: {chat_req.pregunta}"
+        }
     ]
-    # CAMBIO FINAL: Nombres exactos actualizados
-    for modelo in ["openai/gpt-oss-20b", "qwen/qwen3-32b"]:
-        try:
-            respuesta = client.chat.completions.create(messages=mensajes, model=modelo, temperature=0.3)
-            if respuesta.choices[0].message.content: return {"respuesta": respuesta.choices[0].message.content}
-        except Exception as e:
-            print(f"Error IA en chat ({modelo}): {e}")
-            continue
-    return {"respuesta": "Analizando... verifique logs de la base de datos."}
+
+    try:
+        respuesta = client.chat.completions.create(
+            messages=mensajes,
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_tokens=2048
+        )
+
+        contenido = respuesta.choices[0].message.content
+
+        if contenido and contenido.strip():
+            return {"respuesta": contenido.strip()}
+
+        return {
+            "respuesta": (
+                "No recibí una respuesta del modelo de IA. "
+                "Por favor, intenta reformular tu pregunta."
+            )
+        }
+
+    except Exception as e:
+        codigo = getattr(e, "status_code", None)
+
+        print(
+            f"Error IA en chat: "
+            f"tipo={type(e).__name__}, codigo={codigo}"
+        )
+
+        if codigo == 429:
+            return {
+                "respuesta": (
+                    "J.A.R.V.I.S. alcanzó temporalmente el límite "
+                    "de uso de Groq. Intenta nuevamente más tarde."
+                )
+            }
+
+        if codigo in (401, 403):
+            return {
+                "respuesta": (
+                    "J.A.R.V.I.S. no pudo autenticarse con Groq. "
+                    "Es necesario revisar la configuración del servicio."
+                )
+            }
+
+        if codigo == 404:
+            return {
+                "respuesta": (
+                    "El modelo de inteligencia artificial configurado "
+                    "no está disponible."
+                )
+            }
+
+        return {
+            "respuesta": (
+                "No fue posible obtener una respuesta del servicio "
+                "de inteligencia artificial. Intenta nuevamente más tarde."
+            )
+        }
