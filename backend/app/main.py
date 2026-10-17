@@ -12,7 +12,7 @@ import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from groq import Groq
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 from passlib.context import CryptContext
@@ -20,6 +20,10 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
 from . import models, schemas
+from .jarvis_tools import (
+    consultar_anomalias_usuario,
+    HERRAMIENTAS_JARVIS
+)
 from .database import engine, get_db, SessionLocal
 
 # Fuerza a Python a leer la llave nueva
@@ -30,7 +34,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], 
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +46,7 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD") 
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 
 SECRET_KEY = (os.getenv("SECRET_KEY") or "").strip()
 
@@ -51,7 +55,7 @@ if len(SECRET_KEY) < 32:
         "Debes configurar SECRET_KEY con al menos 32 caracteres."
     )
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -59,10 +63,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 # =================================================================
 #                MODELOS EXTRAS PARA REQUESTS
 # =================================================================
+
 class ChatRequest(BaseModel):
     anomaly_id: int
     pregunta: str
     contexto_anomalia: str
+    historial: List[dict] = Field(default_factory=list)
+
 
 class VerificarRequest(BaseModel):
     correo: str
@@ -229,7 +236,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
     user = db.query(models.User).filter(models.User.correo == correo).first()
-    if user is None:
+    if user is None or not user.is_active:
         raise credentials_exception
     return user
 
@@ -245,7 +252,7 @@ def enviar_correo_verificacion(destinatario: str, codigo: str):
     try:
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
-        msg['To'] = destinatario 
+        msg['To'] = destinatario
         msg['Subject'] = "🔒 Código de Verificación - PluriOne"
 
         body = f"""
@@ -275,7 +282,7 @@ def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, 
     try:
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
-        msg['To'] = destinatario 
+        msg['To'] = destinatario
         msg['Subject'] = "🚨 REPORTE CONSOLIDADO DE INFRAESTRUCTURA - PluriOne"
 
         body = f"""
@@ -284,7 +291,7 @@ def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, 
                 <div style="border: 2px solid #8B0000; border-radius: 8px; padding: 20px; background-color: #1a1a1d;">
                     <h2 style="color: #E63946; margin-top: 0;">SISTEMA CENTRAL PLURIONE - REPORTE DE ESTADO</h2>
                     <p>Se ha registrado un evento crítico. A continuación se presenta el estado consolidado de los tres componentes del sistema:</p>
-                    
+
                     <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background-color: #111217;">
                         <tr style="background-color: #333; color: #fff;">
                             <th style="padding: 10px; text-align: left;">Componente / Métrica</th>
@@ -325,18 +332,39 @@ def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, 
     except Exception as e:
         print(f"Error al enviar correo: {e}")
 
+
 def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float) -> str:
-    prompt = f"Anomalía en {pipeline_name}, Métrica: {metric_type}, Valor: {value}. Explica brevemente por qué representa un riesgo técnico."
-    # CAMBIO FINAL: Nombres exactos actualizados
-    for modelo in ["openai/gpt-oss-20b", "qwen/qwen3-32b"]:
-        try:
-            chat_completion = client.chat.completions.create(messages=[{"role": "user", "content": prompt}], model=modelo)
-            contenido = chat_completion.choices[0].message.content
-            if contenido: return contenido
-        except Exception as e: 
-            print(f"Error IA en simulador ({modelo}): {e}")
-            continue
-    return f"Revisar anomalía en {pipeline_name}."
+    """
+    Genera recomendaciones técnicas locales para la telemetría simulada.
+    No realiza solicitudes a Groq ni consume tokens de IA.
+    """
+
+    if metric_type == "latencia_ms":
+        return (
+            f"Se detectó una latencia de {value:.2f} ms en {pipeline_name}. "
+            "Revisar tiempos de respuesta, consultas lentas, "
+            "saturación de recursos y posibles cuellos de botella."
+        )
+
+    elif metric_type == "datos_corruptos_%":
+        return (
+            f"Se detectó un {value:.2f}% de datos corruptos en {pipeline_name}. "
+            "Verificar validaciones, integridad de registros, "
+            "transformaciones y calidad de los datos de origen."
+        )
+
+    elif metric_type == "tasa_fallos_%":
+        return (
+            f"Se detectó una tasa de fallos del {value:.2f}% en {pipeline_name}. "
+            "Revisar registros de errores, conectividad, "
+            "dependencias del servicio y mecanismos de reintento."
+        )
+
+    return (
+        f"Se detectó una anomalía en {pipeline_name}. "
+        "Revisar los registros del sistema y el comportamiento de la métrica."
+    )
+
 
 # =================================================================
 #                SIMULADOR DE INGESTA AUTOMATICA (NIVEL INGENIERÍA)
@@ -354,11 +382,11 @@ async def generar_telemetria_automatica():
             ("datos_corruptos_%", 0.0, 15.0, "%"),
             ("tasa_fallos_%", 0.0, 25.0, "%")
         ]
-        
+
         pipe = random.choice(pipelines)
         m_tipo, min_v, max_v, unidad = random.choice(metricas)
         valor_generado = round(random.uniform(min_v, max_v), 2)
-        
+
         estado = "Normal"
         if valor_generado > (max_v * 0.75):
             estado = "Critico"
@@ -403,7 +431,12 @@ async def generar_telemetria_automatica():
                 "metric_type": db_anomalia.metric_type,
                 "value": db_anomalia.value,
                 "status": db_anomalia.status,
-                "ai_recommendation": db_anomalia.ai_recommendation
+                "ai_recommendation": db_anomalia.ai_recommendation,
+                "timestamp": (
+                    db_anomalia.timestamp.isoformat() + "Z"
+                    if db_anomalia.timestamp else None
+                )
+
             })
             await manager.send_to_user(user.id, mensaje_ws)
         except Exception as e:
@@ -423,16 +456,16 @@ async def startup_event():
 def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.correo == user.correo).first():
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
-    
+
     codigo_secreto = str(random.randint(100000, 999999))
-    
+
     nuevo_usuario = models.User(
-        nombre_completo=user.nombre_completo, 
-        correo=user.correo, 
-        telefono=user.telefono, 
+        nombre_completo=user.nombre_completo,
+        correo=user.correo,
+        telefono=user.telefono,
         hashed_password=get_password_hash(user.password),
         codigo_verificacion=codigo_secreto,
-        is_active=False 
+        is_active=False
     )
     db.add(nuevo_usuario)
     db.commit()
@@ -450,7 +483,7 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
         return {"status": "El usuario ya estaba verificado"}
     if user.codigo_verificacion != req.codigo:
         raise HTTPException(status_code=400, detail="Código incorrecto")
-    
+
     user.is_active = True
     user.codigo_verificacion = None
     db.commit()
@@ -461,11 +494,11 @@ def solicitar_recuperacion(req: SolicitarCodigoRequest, background_tasks: Backgr
     user = db.query(models.User).filter(models.User.correo == req.correo).first()
     if not user:
         raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
-    
+
     codigo_secreto = str(random.randint(100000, 999999))
     user.codigo_verificacion = codigo_secreto
     db.commit()
-    
+
     background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
     return {"status": "Código de recuperación enviado al correo"}
 
@@ -474,12 +507,12 @@ def recuperar_password(req: RecuperarRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.correo == req.correo).first()
     if not user:
         raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
-    
+
     if not user.codigo_verificacion or user.codigo_verificacion != req.codigo:
         raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
-    
+
     user.hashed_password = get_password_hash(req.nueva_password)
-    user.codigo_verificacion = None 
+    user.codigo_verificacion = None
     db.commit()
     return {"status": "Contraseña actualizada exitosamente"}
 
@@ -488,10 +521,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     user = db.query(models.User).filter(models.User.correo == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    
+
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Tu cuenta aún no está verificada. Revisa tu correo o verifica tu cuenta.")
-        
+
     token = create_access_token(data={"sub": user.correo}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return {"access_token": token, "token_type": "bearer", "nombre": user.nombre_completo, "correo": user.correo}
 
@@ -508,19 +541,212 @@ def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = D
     db.commit()
     return {"status": "Historial borrado exitosamente"}
 
+
 @app.post("/chat/")
-def chat_causa_raiz(chat_req: ChatRequest, current_user: models.User = Depends(get_current_user)):
-    contexto = chat_req.contexto_anomalia if chat_req.contexto_anomalia else "Sin diagnóstico previo."
-    mensajes = [
-        {"role": "system", "content": "Eres J.A.R.V.I.S., experto en observabilidad de datos. Responde en español de forma útil y concisa."},
-        {"role": "user", "content": f"Fallo: {contexto}. Pregunta: {chat_req.pregunta}"}
-    ]
-    # CAMBIO FINAL: Nombres exactos actualizados
-    for modelo in ["openai/gpt-oss-20b", "qwen/qwen3-32b"]:
-        try:
-            respuesta = client.chat.completions.create(messages=mensajes, model=modelo, temperature=0.3)
-            if respuesta.choices[0].message.content: return {"respuesta": respuesta.choices[0].message.content}
-        except Exception as e:
-            print(f"Error IA en chat ({modelo}): {e}")
+def chat_causa_raiz(
+    chat_req: ChatRequest,
+      current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    contexto = (
+        chat_req.contexto_anomalia
+        if chat_req.contexto_anomalia
+        else "Sin diagnóstico previo."
+    )
+
+    # Preparar un historial de conversación seguro y limitado.
+    historial_seguro = []
+
+    for mensaje in chat_req.historial[-10:]:
+        if not isinstance(mensaje, dict):
             continue
-    return {"respuesta": "Analizando... verifique logs de la base de datos."}
+
+        rol = mensaje.get("role")
+        contenido = mensaje.get("content")
+
+        if rol not in ("user", "assistant"):
+            continue
+
+        if not isinstance(contenido, str):
+            continue
+
+        contenido = contenido.strip()
+
+        if contenido:
+            historial_seguro.append({
+                "role": rol,
+                "content": contenido[:1200]
+            })
+
+    # Preparar la conversación para Groq.
+    mensajes = [
+        {
+            "role": "system",
+            "content": (
+                "Eres J.A.R.V.I.S., el asistente inteligente de PluriOne. "
+                "Responde en español de manera clara, útil y concisa. "
+                "Recuerda el contexto de los mensajes anteriores. "
+                "Puedes explicar conceptos de tecnología, programación "
+                "y observabilidad de datos. "
+                "Si te preguntan por anomalías reales del usuario, "
+                "no inventes fechas, cantidades ni valores. "
+                "Utiliza únicamente los datos que el backend "
+                "te proporcione mediante herramientas autorizadas. "
+                "La telemetría actual de PluriOne es simulada. "
+                "Distingue siempre las posibles causas de los "
+                "problemas que realmente se hayan comprobado."
+                                "Nunca presentes hipótesis como causas verificadas. "
+                "Cuando no existan pruebas suficientes, indica que "
+                "las posibles causas requieren comprobación. "
+                "No recomiendes borrar datos, restaurar respaldos, "
+                "detener servicios ni ejecutar acciones destructivas "
+                "basándote solamente en telemetría simulada. "
+                "Propón primero verificaciones y medidas preventivas. "
+                "Actualmente solo puedes consultar anomalías por "
+                "estado: normal, alerta, critico o todos, y obtener "
+                "hasta diez registros recientes por consulta. "
+                "No ofrezcas filtros por fechas, severidad, métricas "
+                "ni otras funciones que no estén implementadas. "
+                "Si el usuario pide un diagnóstico, proporciona "
+                "los datos disponibles, posibles causas y "
+                "recomendaciones relacionadas con la métrica. "
+                "No inventes evidencias ni afirmes haber revisado "
+                "logs, servidores o infraestructura externa."
+            )
+        },
+        *historial_seguro,
+        {
+            "role": "user",
+            "content": chat_req.pregunta.strip()[:2000]
+        }
+    ]
+
+    try:
+        respuesta = client.chat.completions.create(
+            messages=mensajes,
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_tokens=2048,
+             tools=HERRAMIENTAS_JARVIS,
+            tool_choice="auto"
+        )
+
+        contenido = respuesta.choices[0].message.content
+
+        # Revisar si Groq solicitó herramientas de PostgreSQL.
+        mensaje_ia = respuesta.choices[0].message
+        llamadas = mensaje_ia.tool_calls or []
+
+        if llamadas:
+            # Registrar las solicitudes realizadas por la IA.
+            mensajes.append({
+                "role": "assistant",
+                "content": mensaje_ia.content,
+                "tool_calls": [
+                    {
+                        "id": llamada.id,
+                        "type": "function",
+                        "function": {
+                            "name": llamada.function.name,
+                            "arguments": llamada.function.arguments
+                        }
+                    }
+                    for llamada in llamadas
+                ]
+            })
+
+            # Ejecutar solamente herramientas autorizadas.
+            for llamada in llamadas:
+                nombre_funcion = llamada.function.name
+
+                if nombre_funcion != "consultar_anomalias_usuario":
+                    resultado = {
+                        "error": "Herramienta no autorizada."
+                    }
+                else:
+                    try:
+                        argumentos = json.loads(
+                            llamada.function.arguments or "{}"
+                        )
+
+                        if not isinstance(argumentos, dict):
+                            raise ValueError("Argumentos no válidos.")
+
+                        resultado = consultar_anomalias_usuario(
+                            db=db,
+                            user_id=current_user.id,
+                            estado=argumentos.get("estado", "todos"),
+                            limite=argumentos.get("limite", 5)
+                        )
+
+                    except (ValueError, TypeError, AttributeError):
+                        resultado = {
+                            "error": "No se pudieron interpretar los argumentos."
+                        }
+
+                # Entregar a Groq los datos obtenidos.
+                mensajes.append({
+                    "role": "tool",
+                    "tool_call_id": llamada.id,
+                    "name": nombre_funcion,
+                    "content": json.dumps(
+                        resultado,
+                        ensure_ascii=False
+                    )
+                })
+
+            # Solicitar la respuesta final usando los datos consultados.
+            respuesta = client.chat.completions.create(
+                messages=mensajes,
+                model="openai/gpt-oss-20b",
+                temperature=0.3,
+                max_tokens=2048
+            )
+        contenido = respuesta.choices[0].message.content
+        if contenido and contenido.strip():
+            return {"respuesta": contenido.strip()}
+        return {
+            "respuesta": (
+                "No recibí una respuesta del modelo de IA. "
+                "Por favor, intenta reformular tu pregunta."
+            )
+        }
+
+    except Exception as e:
+        codigo = getattr(e, "status_code", None)
+
+        print(
+            f"Error IA en chat: "
+            f"tipo={type(e).__name__}, codigo={codigo}"
+        )
+
+        if codigo == 429:
+            return {
+                "respuesta": (
+                    "J.A.R.V.I.S. alcanzó temporalmente el límite "
+                    "de uso de Groq. Intenta nuevamente más tarde."
+                )
+            }
+
+        if codigo in (401, 403):
+            return {
+                "respuesta": (
+                    "J.A.R.V.I.S. no pudo autenticarse con Groq. "
+                    "Es necesario revisar la configuración del servicio."
+                )
+            }
+
+        if codigo == 404:
+            return {
+                "respuesta": (
+                    "El modelo de inteligencia artificial configurado "
+                    "no está disponible."
+                )
+            }
+
+        return {
+            "respuesta": (
+                "No fue posible obtener una respuesta del servicio "
+                "de inteligencia artificial. Intenta nuevamente más tarde."
+            )
+        }
