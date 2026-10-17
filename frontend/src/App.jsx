@@ -88,7 +88,33 @@ function RecuperarPassword() {
   const [codigo, setCodigo] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false);
   const navigate = useNavigate();
+
+  const solicitarCodigoRecuperacion = async () => {
+    if (!correo.trim() || enviandoCodigo) return;
+
+    setError('');
+    setMensaje('');
+    setEnviandoCodigo(true);
+
+    try {
+      await axios.post(
+        'http://127.0.0.1:8000/solicitar-recuperacion/',
+        { correo: correo.trim() }
+      );
+
+      setMensaje('Solicitud procesada. Revisa tu correo y la carpeta de spam.');
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+        'No se pudo solicitar el código de recuperación.'
+      );
+    } finally {
+      setEnviandoCodigo(false);
+    }
+  };
+
   const manejarRecuperacion = async (e) => {
     e.preventDefault();
     setError(''); setMensaje('');
@@ -108,6 +134,25 @@ function RecuperarPassword() {
         {mensaje && <div style={{ color: '#4BB543', marginBottom: '15px' }}>{mensaje}</div>}
         <form onSubmit={manejarRecuperacion} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo registrado" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+
+          <button
+            type="button"
+            onClick={solicitarCodigoRecuperacion}
+            disabled={!correo.trim() || enviandoCodigo}
+            style={{
+              background: '#E5B80B',
+              color: '#111',
+              border: 'none',
+              padding: '12px',
+              fontWeight: 'bold',
+              borderRadius: '4px',
+              cursor: enviandoCodigo ? 'wait' : 'pointer',
+              opacity: !correo.trim() || enviandoCodigo ? 0.6 : 1
+            }}
+          >
+            {enviandoCodigo ? 'Solicitando código...' : 'Enviar código de recuperación'}
+          </button>
+
           <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} required placeholder="Código de 6 dígitos" maxLength="6" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px', textAlign: 'center', letterSpacing: '3px' }} />
           <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required placeholder="Nueva Contraseña" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
           <button type="submit" style={{ background: '#457B9D', color: '#fff', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Actualizar Contraseña</button>
