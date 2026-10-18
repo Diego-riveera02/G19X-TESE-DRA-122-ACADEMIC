@@ -124,6 +124,31 @@ Advertencia: ninguna métrica presentada permite concluir, por sí sola, que hay
 
 ## 9. Comprobaciones y documentación
 
+### Pruebas automatizadas de integracion
+
+PluriOne incluye la suite permanente
+`backend/tests/test_integracion_http.py`.
+
+Con FastAPI, React y PostgreSQL iniciados mediante Docker Compose,
+ejecutar desde la raiz del repositorio:
+
+```powershell
+python -m unittest discover -s backend/tests -p "test_*.py" -v
+```
+
+La suite contiene nueve pruebas automatizadas que verifican
+la disponibilidad de FastAPI y React, las rutas principales,
+el rechazo de JWT ausentes o invalidos, la configuracion
+CORS y la conexion con PostgreSQL.
+
+En la auditoria de octubre de 2026, las nueve pruebas
+finalizaron satisfactoriamente.
+
+Estas comprobaciones no sustituyen pruebas exhaustivas
+de interfaz, SMTP, Groq, WebSocket, carga o seguridad
+de produccion.
+
+
 ### Pruebas automatizadas disponibles
 
 Con los servicios locales iniciados, ejecutar desde la raíz del repositorio:
