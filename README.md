@@ -306,6 +306,25 @@ La opción para vaciar el historial visible puede ocultar registros en la interf
 
 ## 8. Validación y limitaciones
 
+### Pruebas automatizadas de integracion
+
+Con Docker Compose y los tres servicios iniciados, ejecutar
+desde la carpeta raiz del proyecto:
+
+```powershell id="0kd7b0"
+python -m unittest discover -s backend/tests -p "test_*.py" -v
+```
+
+Las nueve pruebas comprueban disponibilidad de FastAPI y React,
+rutas principales, rechazo de tokens JWT ausentes o invalidos,
+configuracion CORS y conexion con PostgreSQL.
+
+Estas pruebas necesitan los servicios locales en los puertos
+8000 y 5173. No crean usuarios ni modifican registros.
+No sustituyen pruebas funcionales completas del navegador,
+SMTP, Groq o WebSockets.
+
+
 Durante el desarrollo se realizaron pruebas locales de:
 
 Compilación del frontend en React.
