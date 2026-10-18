@@ -31,9 +31,14 @@ from .jarvis_tools import (
     HERRAMIENTAS_JARVIS
 )
 from .database import engine, get_db, SessionLocal
+from .schema_migrations import migrate_legacy_auth_schema
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
+# Actualizar columnas de bases antiguas antes de atender solicitudes.
+# La migracion es transaccional y no borra registros existentes.
+with engine.begin() as conexion_migracion:
+    migrate_legacy_auth_schema(conexion_migracion)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
