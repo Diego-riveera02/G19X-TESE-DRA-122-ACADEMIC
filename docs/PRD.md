@@ -149,6 +149,17 @@ Usuario autenticado -> FastAPI /chat/ -> Groq
                      FastAPI -> consulta autorizada a PostgreSQL
                      FastAPI -> resultado para Groq -> respuesta al usuario
 ## 6. Reglas de seguridad y uso responsable de IA
+
+### Controles de seguridad incorporados en la auditoría
+
+- Los códigos SMTP de verificación y recuperación tienen vencimiento temporal, límite de cinco intentos y un propósito específico.
+- Se implementó el reenvío de códigos de verificación desde la interfaz React y su endpoint de FastAPI.
+- Se incorporó limitación de solicitudes de autenticación respaldada por PostgreSQL.
+- Las rutas privadas y el asistente J.A.R.V.I.S. requieren autenticación JWT.
+- La actualización del esquema de PostgreSQL conserva los registros existentes.
+- La suite `backend/tests/test_integracion_http.py` incluye nueve pruebas automatizadas satisfactorias de disponibilidad, rutas, autenticación, CORS y base de datos.
+- Permanecen pendientes las pruebas exhaustivas de carga, aislamiento entre cuentas y seguridad necesarias antes de un uso productivo.
+
 - Las rutas de anomalías y chat deben requerir autenticación; las consultas deben estar asociadas al usuario autenticado, nunca a un identificador suministrado libremente por el modelo.
 - Las llamadas a herramientas de IA se restringen a funciones expresamente permitidas por FastAPI.
 - Las entradas del modelo y sus parámetros deben validarse; no ejecutar SQL arbitrario generado por la IA.

@@ -86,6 +86,15 @@ Backend FastAPI, PostgreSQL, frontend React/Vite y Docker Compose para los servi
 
 ## 3. Criterios de validación del MVP
 
+### Validación adicional de la versión auditada
+
+La versión actual incorpora reenvío de verificación, vencimiento de códigos, límite de cinco intentos, separación entre verificación y recuperación, y control de solicitudes de autenticación mediante PostgreSQL.
+
+Se comprobó el arranque de una instalación limpia e independiente con Docker Compose, FastAPI, React y PostgreSQL. También se ejecutaron satisfactoriamente las nueve pruebas automatizadas disponibles en `backend/tests/test_integracion_http.py`.
+
+Las pruebas no cubren de manera exhaustiva los flujos del navegador, SMTP, Groq, WebSocket, carga o seguridad de producción. La ingesta de datos empresariales reales continúa fuera del alcance del MVP.
+
+
 **Evidencia de validacion (octubre de 2026):** se comprobo el arranque de una copia limpia con Docker Compose y PostgreSQL. Ademas, se ejecutaron 9 pruebas automatizadas de integracion de API, autenticacion, CORS y base de datos, todas satisfactorias. Suite: `backend/tests/test_integracion_http.py`. Esto no equivale a una auditoria completa de seguridad, carga, SMTP, Groq o WebSocket.
 
 1. Acceso controlado. El flujo de usuario contempla registro, verificación SMTP, inicio de sesión con JWT y recuperación desde React mediante código por correo. Se probó el restablecimiento y nuevo inicio de sesión; también el rechazo HTTP 401 sin JWT y con una cuenta inactiva. El vencimiento del JWT es distinto del vencimiento del código SMTP, que no está implementado todavía.

@@ -306,12 +306,23 @@ La opción para vaciar el historial visible puede ocultar registros en la interf
 
 ## 8. Validación y limitaciones
 
+### Actualización de la auditoría (octubre de 2026)
+
+- Se comprobó la instalación desde una copia limpia del repositorio, con Docker Compose y un volumen PostgreSQL independiente.
+- Se verificó que FastAPI, React y PostgreSQL arrancan correctamente.
+- Se incorporaron nueve pruebas automatizadas de integración en `backend/tests/test_integracion_http.py`; las nueve finalizaron satisfactoriamente.
+- La verificación y recuperación de cuentas incluyen códigos temporales, un máximo de cinco intentos y propósitos separados.
+- El backend incorpora limitación de solicitudes de autenticación respaldada por PostgreSQL y permite reenviar el código de verificación.
+- La migración de esquema contempla instalaciones antiguas sin eliminar los registros existentes.
+- Estas comprobaciones no equivalen a una auditoría exhaustiva de seguridad ni a una certificación para producción.
+
+
 ### Pruebas automatizadas de integracion
 
 Con Docker Compose y los tres servicios iniciados, ejecutar
 desde la carpeta raiz del proyecto:
 
-```powershell id="0kd7b0"
+```powershell
 python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
