@@ -72,6 +72,7 @@ LIMITES_AUTENTICACION = {
     "/registro/": (6, 3600),
     "/login/": (15, 300),
     "/verificar/": (30, 600),
+    "/reenviar-verificacion/": (8, 3600),
     "/solicitar-recuperacion/": (10, 3600),
     "/recuperar-password/": (30, 600),
 }
@@ -603,9 +604,9 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
 
     # Impedir nuevos intentos si ya se alcanzo el limite
     if user.codigo_intentos >= CODIGO_MAX_INTENTOS:
+        # Mantener el vencimiento original para impedir reenvios
+        # inmediatos despues de agotar los cinco intentos.
         user.codigo_verificacion = None
-        user.codigo_expira_en = None
-        user.codigo_proposito = None
         db.commit()
 
         raise HTTPException(
@@ -621,9 +622,9 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
         user.codigo_intentos += 1
 
         if user.codigo_intentos >= CODIGO_MAX_INTENTOS:
+            # Bloquear el codigo, pero conservar el vencimiento
+            # para aplicar la espera por cuenta antes de reenviar.
             user.codigo_verificacion = None
-            user.codigo_expira_en = None
-            user.codigo_proposito = None
 
             db.commit()
 
@@ -649,6 +650,58 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return {"status": "Cuenta verificada con exito"}
+
+
+@app.post("/reenviar-verificacion/")
+def reenviar_verificacion(
+    req: SolicitarCodigoRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Reenvia un codigo solo a cuentas sin activar y con codigo vencido.
+
+    Se devuelve la misma respuesta si el correo no existe, esta activo
+    o aun se encuentra en espera, para no revelar cuentas existentes.
+    """
+    respuesta = {
+        "status": (
+            "Si tu cuenta requiere verificacion y el codigo anterior "
+            "ya vencio, recibiras uno nuevo. Los codigos duran 10 minutos."
+        )
+    }
+
+    user = (
+        db.query(models.User)
+        .filter(models.User.correo == req.correo)
+        .with_for_update()
+        .first()
+    )
+    if user is None or user.is_active:
+        return respuesta
+
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    # Evitar inundar el buzon y preservar el bloqueo de cinco intentos.
+    if (
+        user.codigo_proposito == "verificacion"
+        and user.codigo_expira_en is not None
+        and ahora < user.codigo_expira_en
+    ):
+        return respuesta
+
+    codigo_secreto = generar_codigo_seguro()
+    user.codigo_verificacion = codigo_secreto
+    user.codigo_expira_en = ahora + timedelta(minutes=CODIGO_DURACION_MINUTOS)
+    user.codigo_intentos = 0
+    user.codigo_proposito = "verificacion"
+    db.commit()
+
+    background_tasks.add_task(
+        enviar_correo_verificacion,
+        user.correo,
+        codigo_secreto,
+    )
+    return respuesta
 
 
 @app.post("/solicitar-recuperacion/")
