@@ -1,29 +1,39 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey
 from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
+
 from .database import Base
 
-# --- TABLA DE OBSERVABILIDAD ---
+
+# Tabla de observabilidad
 class AnomalyLog(Base):
     __tablename__ = "anomaly_logs"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     pipeline_name = Column(String, index=True)
-    metric_type = Column(String)  # Ej: latencia, calidad, disponibilidad
+    metric_type = Column(String)
     value = Column(Float)
-    status = Column(String)       # Ej: Normal, Alerta, Crítico
+    status = Column(String)
     ai_recommendation = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
-# --- TABLA DE USUARIOS ---
+
+# Tabla de usuarios
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     nombre_completo = Column(String)
-    correo = Column(String, unique=True, index=True) 
+    correo = Column(String, unique=True, index=True)
     telefono = Column(String, nullable=True)
-    hashed_password = Column(String) 
-    is_active = Column(Boolean, default=False) # Inactivo hasta verificar correo
-    codigo_verificacion = Column(String, nullable=True) # Código de 6 dígitos
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=False)
+    codigo_verificacion = Column(String, nullable=True)
+
+    # Columnas existentes en PostgreSQL para proteger los codigos.
+    codigo_expira_en = Column(DateTime, nullable=True)
+    codigo_intentos = Column(Integer, nullable=False, default=0)
+    codigo_proposito = Column(String, nullable=True)
+
     fecha_registro = Column(DateTime, default=datetime.utcnow)

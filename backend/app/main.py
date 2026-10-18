@@ -7,6 +7,7 @@ import os
 import json
 import smtplib
 import random
+import secrets
 import asyncio
 import time
 from email.mime.text import MIMEText
@@ -56,6 +57,13 @@ if len(SECRET_KEY) < 32:
     )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+# Seguridad de códigos de verificación y recuperación
+CODIGO_DURACION_MINUTOS = 10
+CODIGO_MAX_INTENTOS = 5
+def generar_codigo_seguro():
+    return str(100000 + secrets.randbelow(900000))
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -456,17 +464,21 @@ async def startup_event():
 def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.correo == user.correo).first():
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
-
-    codigo_secreto = str(random.randint(100000, 999999))
-
+    codigo_secreto = generar_codigo_seguro()
     nuevo_usuario = models.User(
         nombre_completo=user.nombre_completo,
         correo=user.correo,
         telefono=user.telefono,
         hashed_password=get_password_hash(user.password),
         codigo_verificacion=codigo_secreto,
+        codigo_expira_en=datetime.utcnow() + timedelta(
+            minutes=CODIGO_DURACION_MINUTOS
+        ),
+        codigo_intentos=0,
+        codigo_proposito="verificacion",
         is_active=False
     )
+
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
@@ -476,45 +488,236 @@ def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTask
 
 @app.post("/verificar/")
 def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.correo == req.correo).first()
+    user = (
+        db.query(models.User)
+        .filter(models.User.correo == req.correo)
+        .with_for_update()
+        .first()
+    )
+
     if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado"
+        )
+
     if user.is_active:
         return {"status": "El usuario ya estaba verificado"}
-    if user.codigo_verificacion != req.codigo:
-        raise HTTPException(status_code=400, detail="Código incorrecto")
 
+    # Verificar que exista un codigo valido para activar la cuenta
+    if (
+        not user.codigo_verificacion
+        or user.codigo_proposito != "verificacion"
+        or user.codigo_expira_en is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="No hay un codigo de verificacion vigente"
+        )
+
+    # Rechazar codigos vencidos
+    if datetime.utcnow() >= user.codigo_expira_en:
+        user.codigo_verificacion = None
+        user.codigo_expira_en = None
+        user.codigo_proposito = None
+        user.codigo_intentos = 0
+        db.commit()
+
+        raise HTTPException(
+            status_code=400,
+            detail="El codigo ha expirado"
+        )
+
+    # Impedir nuevos intentos si ya se alcanzo el limite
+    if user.codigo_intentos >= CODIGO_MAX_INTENTOS:
+        user.codigo_verificacion = None
+        user.codigo_expira_en = None
+        user.codigo_proposito = None
+        db.commit()
+
+        raise HTTPException(
+            status_code=400,
+            detail="Codigo bloqueado por demasiados intentos"
+        )
+
+    # Comparar el codigo de forma segura
+    if not secrets.compare_digest(
+        user.codigo_verificacion,
+        str(req.codigo)
+    ):
+        user.codigo_intentos += 1
+
+        if user.codigo_intentos >= CODIGO_MAX_INTENTOS:
+            user.codigo_verificacion = None
+            user.codigo_expira_en = None
+            user.codigo_proposito = None
+
+            db.commit()
+
+            raise HTTPException(
+                status_code=400,
+                detail="Codigo bloqueado por demasiados intentos"
+            )
+
+        db.commit()
+
+        raise HTTPException(
+            status_code=400,
+            detail="Codigo incorrecto"
+        )
+
+    # Activar la cuenta y eliminar el codigo utilizado
     user.is_active = True
     user.codigo_verificacion = None
+    user.codigo_expira_en = None
+    user.codigo_intentos = 0
+    user.codigo_proposito = None
+
     db.commit()
-    return {"status": "Cuenta verificada con éxito"}
+
+    return {"status": "Cuenta verificada con exito"}
+
 
 @app.post("/solicitar-recuperacion/")
-def solicitar_recuperacion(req: SolicitarCodigoRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.correo == req.correo).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
+def solicitar_recuperacion(
+    req: SolicitarCodigoRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.correo == req.correo)
+        .with_for_update()
+        .first()
+    )
 
-    codigo_secreto = str(random.randint(100000, 999999))
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="No existe una cuenta con este correo"
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Primero debes verificar tu cuenta"
+        )
+
+    ahora = datetime.utcnow()
+
+    # Mantener el periodo de espera de 10 minutos.
+    # No permitir otro codigo aunque se hayan agotado
+    # los cinco intentos del codigo anterior.
+    if (
+        user.codigo_proposito == "recuperacion"
+        and user.codigo_expira_en is not None
+        and ahora < user.codigo_expira_en
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail="Debes esperar antes de solicitar otro codigo"
+        )
+
+    codigo_secreto = generar_codigo_seguro()
+
     user.codigo_verificacion = codigo_secreto
+    user.codigo_expira_en = ahora + timedelta(
+        minutes=CODIGO_DURACION_MINUTOS
+    )
+    user.codigo_intentos = 0
+    user.codigo_proposito = "recuperacion"
+
     db.commit()
 
-    background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
-    return {"status": "Código de recuperación enviado al correo"}
+    background_tasks.add_task(
+        enviar_correo_verificacion,
+        user.correo,
+        codigo_secreto
+    )
+
+    return {
+        "status": "Codigo de recuperacion enviado al correo"
+    }
+
 
 @app.post("/recuperar-password/")
-def recuperar_password(req: RecuperarRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.correo == req.correo).first()
+def recuperar_password(
+    req: RecuperarRequest,
+    db: Session = Depends(get_db)
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.correo == req.correo)
+        .with_for_update()
+        .first()
+    )
+
     if not user:
-        raise HTTPException(status_code=404, detail="No existe una cuenta con este correo")
+        raise HTTPException(
+            status_code=404,
+            detail="No existe una cuenta con este correo"
+        )
 
-    if not user.codigo_verificacion or user.codigo_verificacion != req.codigo:
-        raise HTTPException(status_code=400, detail="Código incorrecto o expirado")
+    # Solo los codigos de recuperacion pueden cambiar contrasenas.
+    if (
+        user.codigo_proposito != "recuperacion"
+        or user.codigo_expira_en is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="No hay una solicitud de recuperacion valida"
+        )
 
+    # Vencimiento de 10 minutos (fecha UTC almacenada en PostgreSQL).
+    if datetime.utcnow() >= user.codigo_expira_en:
+        user.codigo_verificacion = None
+        user.codigo_expira_en = None
+        user.codigo_intentos = 0
+        user.codigo_proposito = None
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="El codigo de recuperacion ha expirado"
+        )
+
+    # Preservar el periodo de espera si se agotaron los intentos.
+    if (
+        user.codigo_intentos >= CODIGO_MAX_INTENTOS
+        or not user.codigo_verificacion
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Codigo bloqueado. Espera antes de solicitar otro."
+        )
+
+    if not secrets.compare_digest(
+        user.codigo_verificacion,
+        str(req.codigo)
+    ):
+        user.codigo_intentos += 1
+        if user.codigo_intentos >= CODIGO_MAX_INTENTOS:
+            # Invalidar el codigo, pero conservar su vencimiento.
+            user.codigo_verificacion = None
+            db.commit()
+            raise HTTPException(
+                status_code=400,
+                detail="Codigo bloqueado por demasiados intentos"
+            )
+
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="Codigo incorrecto"
+        )
+
+    # Aceptar el codigo una sola vez y borrar su estado.
     user.hashed_password = get_password_hash(req.nueva_password)
     user.codigo_verificacion = None
+    user.codigo_expira_en = None
+    user.codigo_intentos = 0
+    user.codigo_proposito = None
     db.commit()
-    return {"status": "Contraseña actualizada exitosamente"}
+    return {"status": "Contrasena actualizada exitosamente"}
 
 @app.post("/login/")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -540,7 +743,6 @@ def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = D
     db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id).delete()
     db.commit()
     return {"status": "Historial borrado exitosamente"}
-
 
 @app.post("/chat/")
 def chat_causa_raiz(
