@@ -37,3 +37,12 @@ class User(Base):
     codigo_proposito = Column(String, nullable=True)
 
     fecha_registro = Column(DateTime, default=datetime.utcnow)
+
+
+# Cuotas por origen y endpoint; persistentes en PostgreSQL.
+class AuthRateLimit(Base):
+    __tablename__ = "auth_rate_limits"
+
+    clave = Column(String(64), primary_key=True)
+    inicio_ventana = Column(DateTime, nullable=False)
+    cantidad = Column(Integer, nullable=False, default=0)

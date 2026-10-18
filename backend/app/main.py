@@ -1,5 +1,8 @@
-from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException, status, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException, status, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import case
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
@@ -8,6 +11,8 @@ import json
 import smtplib
 import random
 import secrets
+import hmac
+import hashlib
 import asyncio
 import time
 from email.mime.text import MIMEText
@@ -18,7 +23,7 @@ from dotenv import load_dotenv
 
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from . import models, schemas
 from .jarvis_tools import (
@@ -32,14 +37,6 @@ load_dotenv(override=True, encoding='utf-8')
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Obligamos a Groq a usar la llave del archivo .env
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -67,6 +64,82 @@ def generar_codigo_seguro():
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Limites de solicitudes por IP de origen y ruta, compartidos por
+# las instancias mediante una tabla PostgreSQL.
+# El formato es ruta: (maximo de solicitudes, segundos de ventana).
+LIMITES_AUTENTICACION = {
+    "/registro/": (6, 3600),
+    "/login/": (15, 300),
+    "/verificar/": (30, 600),
+    "/solicitar-recuperacion/": (10, 3600),
+    "/recuperar-password/": (30, 600),
+}
+
+
+@app.middleware("http")
+async def limitar_solicitudes_autenticacion(request: Request, call_next):
+    # No tocar el resto de rutas ni las conexiones WebSocket.
+    configuracion = LIMITES_AUTENTICACION.get(request.url.path)
+    if request.method != "POST" or configuracion is None:
+        return await call_next(request)
+
+    maximo, ventana_segundos = configuracion
+    origen = request.client.host if request.client else "origen-desconocido"
+    # No guardar direcciones IP en texto claro dentro de la tabla.
+    clave = hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        f"{request.url.path}|{origen}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+    limite_anterior = ahora - timedelta(seconds=ventana_segundos)
+    tabla = models.AuthRateLimit
+    vencida = tabla.inicio_ventana <= limite_anterior
+
+    # ON CONFLICT aplica el contador atomica y persistentemente,
+    # aun si llegan varias peticiones simultaneamente.
+    insercion = pg_insert(tabla).values(
+        clave=clave, inicio_ventana=ahora, cantidad=1
+    )
+    instruccion = insercion.on_conflict_do_update(
+        index_elements=[tabla.clave],
+        set_={
+            "inicio_ventana": case(
+                (vencida, ahora), else_=tabla.inicio_ventana
+            ),
+            "cantidad": case(
+                (vencida, 1), else_=tabla.cantidad + 1
+            ),
+        },
+    ).returning(tabla.cantidad, tabla.inicio_ventana)
+
+    with SessionLocal() as db:
+        cantidad, inicio_ventana = db.execute(instruccion).one()
+        db.commit()
+
+    if cantidad > maximo:
+        espera = max(
+            1,
+            int((inicio_ventana + timedelta(seconds=ventana_segundos) - ahora)
+                .total_seconds()) + 1,
+        )
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Demasiadas solicitudes. Intenta mas tarde."},
+            headers={"Retry-After": str(espera)},
+        )
+
+    return await call_next(request)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # =================================================================
 #                MODELOS EXTRAS PARA REQUESTS
