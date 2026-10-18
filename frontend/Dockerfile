@@ -1,6 +1,5 @@
 # 1. Usamos Node.js para React
-FROM node:18-alpine
-
+FROM node:22-alpine
 # 2. Creamos carpeta de trabajo
 WORKDIR /app
 

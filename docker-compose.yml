@@ -3,6 +3,7 @@ services:
   # 1. Base de datos PostgreSQL
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Debes configurar POSTGRES_PASSWORD}
@@ -11,10 +12,17 @@ services:
       - "127.0.0.1:5433:5432"
     volumes:
       - plurione_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d observabilidad_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   # 2. Backend FastAPI
   api:
     build: ./backend
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
     env_file:
@@ -22,7 +30,8 @@ services:
     environment:
       DATABASE_URL: "postgresql+psycopg2://postgres:${POSTGRES_PASSWORD}@db:5432/observabilidad_db"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # 3. Frontend React
   frontend:

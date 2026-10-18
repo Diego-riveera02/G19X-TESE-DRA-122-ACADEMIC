@@ -1,8 +1,10 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
-# --- ESQUEMAS DE OBSERVABILIDAD (Los que ya tenías) ---
+from pydantic import BaseModel
+
+
+# Esquemas de observabilidad
 class AnomalyLogBase(BaseModel):
     pipeline_name: str
     metric_type: str
@@ -10,8 +12,10 @@ class AnomalyLogBase(BaseModel):
     status: str
     ai_recommendation: Optional[str] = None
 
+
 class AnomalyLogCreate(AnomalyLogBase):
     pass
+
 
 class AnomalyLogResponse(AnomalyLogBase):
     id: int
@@ -20,21 +24,23 @@ class AnomalyLogResponse(AnomalyLogBase):
     class Config:
         from_attributes = True
 
-# --- NUEVOS ESQUEMAS DE USUARIOS ---
+
+# Esquemas de usuarios
 class UserBase(BaseModel):
     nombre_completo: str
     correo: str
     telefono: Optional[str] = None
 
+
 class UserCreate(UserBase):
-    password: str  # Se recibe en texto plano, pero el backend la encriptará antes de guardarla
+    password: str
+
 
 class UserResponse(UserBase):
     id: int
     is_active: bool
     fecha_registro: datetime
-    
-    # Nota: No incluimos 'password' aquí por seguridad. Nunca se devuelve al frontend.
 
+    # No devolver contrasenas, hashes ni codigos al frontend.
     class Config:
         from_attributes = True
