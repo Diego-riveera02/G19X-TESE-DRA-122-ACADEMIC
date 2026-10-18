@@ -1,10 +1,10 @@
-PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
+# PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
 PluriOne es un prototipo académico funcional de observabilidad de datos. Permite visualizar métricas de pipelines, registrar anomalías, consultar su historial y obtener explicaciones técnicas mediante el asistente conversacional J.A.R.V.I.S., integrado con Groq.
 
 Alcance actual: la telemetría procede de un simulador interno del backend. Las métricas no se capturan de infraestructura empresarial real. Las causas propuestas por la IA son hipótesis para investigar, no incidentes ni causas raíz comprobados.
 
-1. Funcionalidades implementadas
+## 1. Funcionalidades implementadas
 
 Telemetría automática simulada: un proceso asíncrono en FastAPI genera registros de prueba aproximadamente cada 5 segundos, sin depender de botones de inyección manual.
 
@@ -28,7 +28,7 @@ Historial y reportes: visualización de anomalías y exportación a PDF de los r
 
 Aclaración: la telemetría del simulador utiliza diagnósticos o recomendaciones locales predefinidas. Groq se utiliza para el asistente conversacional; no se realiza una llamada al modelo por cada métrica generada.
 
-2. Tecnologías
+## 2. Tecnologías
 
 Backend y API: Python, FastAPI y SQLAlchemy.
 
@@ -50,7 +50,7 @@ Contenedores: Docker y Docker Compose.
 
 Imagen del frontend: Node.js 22 Alpine.
 
-3. Requisitos previos
+## 3. Requisitos previos
 
 Para ejecutar PluriOne se recomienda contar con:
 
@@ -68,7 +68,7 @@ Una clave API de Groq para utilizar J.A.R.V.I.S.
 
 El contenedor del backend utiliza Python 3.12.
 
-4. Variables de entorno y seguridad
+## 4. Variables de entorno y seguridad
 
 PluriOne utiliza dos configuraciones de entorno independientes: una para Docker Compose en la raíz y otra para FastAPI dentro de backend.
 
@@ -138,7 +138,39 @@ Durante las pruebas locales, los endpoints /anomalias/ y /chat/ respondieron HTT
 
 Las operaciones sobre anomalías deben respetar el identificador del usuario autenticado para evitar la exposición de registros de otras cuentas.
 
-5. Ejecución local con Docker Compose
+## 5. Ejecución local con Docker Compose
+
+### Descargar el código desde GitHub
+
+Para obtener el proyecto en una computadora nueva:
+
+```powershell
+git clone https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC.git
+cd G19X-TESE-DRA-122-ACADEMIC
+```
+
+Después, crear los archivos `.env` a partir de las plantillas
+`.env.example` y configurar las credenciales necesarias.
+Continuar con las instrucciones de Docker Compose de esta sección.
+
+### Inicialización y migración de PostgreSQL
+
+Al arrancar FastAPI, SQLAlchemy crea las tablas que no existen.
+
+El archivo `backend/app/schema_migrations.py` actualiza las
+instalaciones antiguas que todavía no tienen estas columnas:
+
+- `codigo_expira_en`
+- `codigo_intentos`
+- `codigo_proposito`
+
+La migración se ejecuta al iniciar el backend y conserva los
+registros existentes. Puede ejecutarse nuevamente sin duplicar
+las columnas.
+
+No ejecutar `docker compose down -v` si se necesitan conservar
+los datos de PostgreSQL.
+
 
 5.1. Preparación inicial
 
@@ -219,7 +251,7 @@ docker compose stop
 
 No ejecutar docker compose down -v ni eliminar manualmente el volumen cuando se necesite conservar la base de datos.
 
-6. Ejecución sin Docker
+## 6. Ejecución sin Docker
 
 Se requiere una instancia de PostgreSQL accesible, variables de entorno configuradas y dependencias instaladas.
 
@@ -237,7 +269,7 @@ La configuración de DATABASE_URL debe corresponder a la ubicación real de Post
 
 Las variables SMTP y Groq deben configurarse antes de utilizar las funciones que dependen de esos servicios.
 
-7. Uso básico
+## 7. Uso básico
 
 Registrar una cuenta y completar la verificación enviada al correo configurado.
 
@@ -272,7 +304,7 @@ Los siguientes valores son ilustrativos y no representan un incidente real compr
 
 La opción para vaciar el historial visible puede ocultar registros en la interfaz. Esto no equivale necesariamente a eliminarlos de PostgreSQL.
 
-8. Validación y limitaciones
+## 8. Validación y limitaciones
 
 Durante el desarrollo se realizaron pruebas locales de:
 
@@ -316,7 +348,7 @@ Todavía no se dispone de una batería completa de pruebas automatizadas que acr
 
 No se ha demostrado preparación para operación empresarial productiva, alta disponibilidad o escalabilidad a gran escala.
 
-9. Documentación
+## 9. Documentación
 
 README del frontend: instalación y funcionamiento de la interfaz.
 
@@ -328,7 +360,7 @@ docs/Informe Técnico Plataforma de Observabilidad.pdf: informe técnico del des
 
 docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf: registro de actividades y avances del proyecto.
 
-10. Lista de comprobación de la versión
+## 10. Lista de comprobación de la versión
 
 Esta lista distingue las funciones comprobadas de las actividades pendientes. No equivale a la calificación final del profesor.
 
