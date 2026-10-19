@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException, status, WebSocket, WebSocketDisconnect, Request
+from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import case
@@ -74,7 +75,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 # las instancias mediante una tabla PostgreSQL.
 # El formato es ruta: (maximo de solicitudes, segundos de ventana).
 LIMITES_AUTENTICACION = {
-    "/registro/": (6, 3600),
+    "/registro/": (20, 3600),
     "/login/": (15, 300),
     "/verificar/": (30, 600),
     "/reenviar-verificacion/": (8, 3600),
@@ -457,77 +458,104 @@ def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float)
 #                SIMULADOR DE INGESTA AUTOMATICA (NIVEL INGENIERÍA)
 # =================================================================
 async def generar_telemetria_automatica():
-    """Motor que genera métricas continuas en segundo plano."""
+    """Genera una metrica simulada por usuario activo y ciclo."""
+
+    pipelines = [
+        "API Gateway Core",
+        "Pipeline Ventas MX",
+        "Migración AWS S3",
+        "Sync PostgreSQL",
+    ]
+
+    metricas = [
+        ("latencia_ms", 50.0, 900.0, "ms"),
+        ("datos_corruptos_%", 0.0, 15.0, "%"),
+        ("tasa_fallos_%", 0.0, 25.0, "%"),
+    ]
+
     while True:
-        await asyncio.sleep(5)  # Espera 5 segundos entre cada inyección de datos
+        await asyncio.sleep(5)
 
-        # La telemetria se genera automaticamente,
-        # sin depender de conexiones WebSocket activas.
-        pipelines = ["API Gateway Core", "Pipeline Ventas MX", "Migración AWS S3", "Sync PostgreSQL"]
-        metricas = [
-            ("latencia_ms", 50.0, 900.0, "ms"),
-            ("datos_corruptos_%", 0.0, 15.0, "%"),
-            ("tasa_fallos_%", 0.0, 25.0, "%")
-        ]
-
-        pipe = random.choice(pipelines)
-        m_tipo, min_v, max_v, unidad = random.choice(metricas)
-        valor_generado = round(random.uniform(min_v, max_v), 2)
-
-        estado = "Normal"
-        if valor_generado > (max_v * 0.75):
-            estado = "Critico"
-        elif valor_generado > (max_v * 0.45):
-            estado = "Alerta"
-
-        # Abre una sesión a la BD de forma independiente para la tarea en segundo plano
         db = SessionLocal()
+
         try:
-            # Seleccionar usuarios activos para la telemetria simulada
-            usuarios_activos = db.query(models.User).filter(
-                models.User.is_active.is_(True)
-            ).all()
-
-            if not usuarios_activos:
-                continue
-
-            user = random.choice(usuarios_activos)
-
-
-            # Genera anomalía solo si es Crítico o Alerta
-            recomendacion = "Operación normal."
-            if estado != "Normal":
-                recomendacion = generar_recomendacion_ia(pipe, m_tipo, valor_generado)
-
-            db_anomalia = models.AnomalyLog(
-                pipeline_name=pipe,
-                metric_type=m_tipo,
-                value=valor_generado,
-                status=estado,
-                ai_recommendation=recomendacion,
-                user_id=user.id
+            usuarios_activos = (
+                db.query(models.User)
+                .filter(models.User.is_active.is_(True))
+                .all()
             )
-            db.add(db_anomalia)
-            db.commit()
-            db.refresh(db_anomalia)
 
-            # Envia la anomalia solo al usuario correspondiente
-            mensaje_ws = json.dumps({
-                "id": db_anomalia.id,
-                "pipeline_name": db_anomalia.pipeline_name,
-                "metric_type": db_anomalia.metric_type,
-                "value": db_anomalia.value,
-                "status": db_anomalia.status,
-                "ai_recommendation": db_anomalia.ai_recommendation,
-                "timestamp": (
-                    db_anomalia.timestamp.isoformat() + "Z"
-                    if db_anomalia.timestamp else None
-                )
+            for user in usuarios_activos:
+                try:
+                    pipe = random.choice(pipelines)
+                    m_tipo, min_v, max_v, unidad = (
+                        random.choice(metricas)
+                    )
+                    valor_generado = round(
+                        random.uniform(min_v, max_v), 2
+                    )
 
-            })
-            await manager.send_to_user(user.id, mensaje_ws)
-        except Exception as e:
-            print(f"Error en simulador: {e}")
+                    estado = "Normal"
+
+                    if valor_generado > max_v * 0.75:
+                        estado = "Critico"
+                    elif valor_generado > max_v * 0.45:
+                        estado = "Alerta"
+
+                    recomendacion = "Operación normal."
+
+                    if estado != "Normal":
+                        # Ejecutar la llamada sin bloquear
+                        # el ciclo de eventos de FastAPI.
+                        recomendacion = await asyncio.to_thread(
+                            generar_recomendacion_ia,
+                            pipe,
+                            m_tipo,
+                            valor_generado,
+                        )
+
+                    db_anomalia = models.AnomalyLog(
+                        pipeline_name=pipe,
+                        metric_type=m_tipo,
+                        value=valor_generado,
+                        status=estado,
+                        ai_recommendation=recomendacion,
+                        user_id=user.id,
+                    )
+
+                    db.add(db_anomalia)
+                    db.commit()
+                    db.refresh(db_anomalia)
+
+                    mensaje_ws = json.dumps({
+                        "id": db_anomalia.id,
+                        "pipeline_name": db_anomalia.pipeline_name,
+                        "metric_type": db_anomalia.metric_type,
+                        "value": db_anomalia.value,
+                        "status": db_anomalia.status,
+                        "ai_recommendation":
+                            db_anomalia.ai_recommendation,
+                        "timestamp": (
+                            db_anomalia.timestamp.isoformat() + "Z"
+                            if db_anomalia.timestamp else None
+                        ),
+                    })
+
+                    await manager.send_to_user(
+                        user.id, mensaje_ws
+                    )
+
+                except Exception as error:
+                    db.rollback()
+                    print(
+                        f"Error de simulacion para usuario "
+                        f"{user.id}: {error}"
+                    )
+
+        except Exception as error:
+            db.rollback()
+            print(f"Error general del simulador: {error}")
+
         finally:
             db.close()
 
@@ -866,8 +894,20 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 #                ENDPOINTS DE LECTURA E HISTORIAL
 # =================================================================
 @app.get("/anomalias/", response_model=list[schemas.AnomalyLogResponse])
-def read_anomalies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    return db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id).offset(skip).limit(limit).all()
+def read_anomalies(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return (
+        db.query(models.AnomalyLog)
+        .filter(models.AnomalyLog.user_id == current_user.id)
+        .order_by(models.AnomalyLog.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 @app.delete("/anomalias/")
 def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
