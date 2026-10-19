@@ -72,6 +72,10 @@ def generar_codigo_seguro():
 from .auth_utils import pwd_context, verify_password, get_password_hash
 from .jwt_utils import encode_access_token
 from .auth_dependencies import resolve_current_user
+from .email_utils import (
+    _enviar_correo_verificacion_impl,
+    _enviar_alerta_correo_consolidado_impl,
+)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Limites de solicitudes por IP de origen y ruta, compartidos por
@@ -324,88 +328,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 #                SISTEMA DE CORREOS E IA
 # =================================================================
 def enviar_correo_verificacion(destinatario: str, codigo: str):
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = destinatario
-        msg['Subject'] = "🔒 Código de Verificación - PluriOne"
-
-        body = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; background-color: #0b0c10; color: #c5c6c7; padding: 20px;">
-                <div style="border: 2px solid #E5B80B; border-radius: 8px; padding: 30px; background-color: #1a1a1d; text-align: center;">
-                    <h2 style="color: #E5B80B; margin-top: 0;">VERIFICACIÓN DE CUENTA PLURIONE</h2>
-                    <p style="font-size: 16px;">Para completar tu solicitud, ingresa el siguiente código de 6 dígitos en la plataforma:</p>
-                    <div style="background-color: #0b0c10; padding: 15px; margin: 20px 0; border-radius: 8px; display: inline-block;">
-                        <h1 style="color: #E63946; margin: 0; letter-spacing: 5px;">{codigo}</h1>
-                    </div>
-                    <p style="font-size: 12px; color: #888;">Si tú no solicitaste este acceso, puedes ignorar este mensaje.</p>
-                </div>
-            </body>
-        </html>
-        """
-        msg.attach(MIMEText(body, 'html'))
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-    except Exception as e:
-        print(f"Error al enviar código de verificación: {e}")
+    return _enviar_correo_verificacion_impl(destinatario, codigo, smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT, sender_email=SENDER_EMAIL, sender_password=SENDER_PASSWORD)
 
 def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, cal_v: str, cal_s: str, fal_v: str, fal_s: str, diag_general: str):
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = destinatario
-        msg['Subject'] = "🚨 REPORTE CONSOLIDADO DE INFRAESTRUCTURA - PluriOne"
-
-        body = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; background-color: #0b0c10; color: #c5c6c7; padding: 20px;">
-                <div style="border: 2px solid #8B0000; border-radius: 8px; padding: 20px; background-color: #1a1a1d;">
-                    <h2 style="color: #E63946; margin-top: 0;">SISTEMA CENTRAL PLURIONE - REPORTE DE ESTADO</h2>
-                    <p>Se ha registrado un evento crítico. A continuación se presenta el estado consolidado de los tres componentes del sistema:</p>
-
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background-color: #111217;">
-                        <tr style="background-color: #333; color: #fff;">
-                            <th style="padding: 10px; text-align: left;">Componente / Métrica</th>
-                            <th style="padding: 10px; text-align: left;">Valor</th>
-                            <th style="padding: 10px; text-align: left;">Estado</th>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px; border-bottom: 1px solid #333;">Latencia de Red (API Gateway)</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #333;">{lat_v}</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: {get_color(lat_s)};">{lat_s}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px; border-bottom: 1px solid #333;">Calidad de Datos (Ventas MX)</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #333;">{cal_v}</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: {get_color(cal_s)};">{cal_s}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px; border-bottom: 1px solid #333;">Tasa de Fallos (Migración AWS)</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #333;">{fal_v}</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: {get_color(fal_s)};">{fal_s}</td>
-                        </tr>
-                    </table>
-
-                    <h4 style="color: #E5B80B; margin-top: 25px; margin-bottom: 5px;">DIAGNÓSTICO DE CAUSA RAÍZ (J.A.R.V.I.S.)</h4>
-                    <div style="background-color: rgba(212, 160, 23, 0.1); border-left: 3px solid #E5B80B; padding: 12px; color: #e0e0e0; line-height: 1.5;">
-                        {diag_general}
-                    </div>
-                </div>
-            </body>
-        </html>
-        """
-        msg.attach(MIMEText(body, 'html'))
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-    except Exception as e:
-        print(f"Error al enviar correo: {e}")
+    return _enviar_alerta_correo_consolidado_impl(destinatario, lat_v, lat_s, cal_v, cal_s, fal_v, fal_s, diag_general, smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT, sender_email=SENDER_EMAIL, sender_password=SENDER_PASSWORD)
 
 
 def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float) -> str:
