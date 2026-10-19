@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
+from pydantic import Field
 
 
 # Esquemas de observabilidad
@@ -33,7 +34,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(min_length=8)
 
 
 class UserResponse(UserBase):

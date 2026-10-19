@@ -169,7 +169,7 @@ class SolicitarCodigoRequest(BaseModel):
 class RecuperarRequest(BaseModel):
     correo: str
     codigo: str
-    nueva_password: str
+    nueva_password: str = Field(min_length=8)
 
 # =================================================================
 #                GESTOR DE WEBSOCKETS
@@ -567,10 +567,17 @@ async def startup_event():
 # =================================================================
 #                ENDPOINTS DE AUTENTICACIÓN
 # =================================================================
-@app.post("/registro/", response_model=schemas.UserResponse)
+@app.post("/registro/", response_model=dict[str, str])
 def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    respuesta = {
+        "status": (
+            "Si el correo puede registrarse, recibiras "
+            "un codigo de verificacion. Si ya tienes "
+            "cuenta, inicia sesion o recupera tu acceso."
+        )
+    }
     if db.query(models.User).filter(models.User.correo == user.correo).first():
-        raise HTTPException(status_code=400, detail="El correo ya está registrado")
+        return respuesta
     codigo_secreto = generar_codigo_seguro()
     nuevo_usuario = models.User(
         nombre_completo=user.nombre_completo,
@@ -591,7 +598,7 @@ def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTask
     db.refresh(nuevo_usuario)
 
     background_tasks.add_task(enviar_correo_verificacion, user.correo, codigo_secreto)
-    return nuevo_usuario
+    return respuesta
 
 @app.post("/verificar/")
 def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
@@ -604,12 +611,15 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
 
     if not user:
         raise HTTPException(
-            status_code=404,
-            detail="Usuario no encontrado"
+            status_code=400,
+            detail="Codigo de verificacion invalido o vencido"
         )
 
     if user.is_active:
-        return {"status": "El usuario ya estaba verificado"}
+        raise HTTPException(
+            status_code=400,
+            detail="Codigo de verificacion invalido o vencido"
+        )
 
     # Verificar que exista un codigo valido para activar la cuenta
     if (
@@ -619,7 +629,7 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
     ):
         raise HTTPException(
             status_code=400,
-            detail="No hay un codigo de verificacion vigente"
+            detail="Codigo de verificacion invalido o vencido"
         )
 
     # Rechazar codigos vencidos
@@ -632,7 +642,7 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
 
         raise HTTPException(
             status_code=400,
-            detail="El codigo ha expirado"
+            detail="Codigo de verificacion invalido o vencido"
         )
 
     # Impedir nuevos intentos si ya se alcanzo el limite
@@ -644,7 +654,7 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
 
         raise HTTPException(
             status_code=400,
-            detail="Codigo bloqueado por demasiados intentos"
+            detail="Codigo de verificacion invalido o vencido"
         )
 
     # Comparar el codigo de forma segura
@@ -663,14 +673,14 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
 
             raise HTTPException(
                 status_code=400,
-                detail="Codigo bloqueado por demasiados intentos"
+                detail="Codigo de verificacion invalido o vencido"
             )
 
         db.commit()
 
         raise HTTPException(
             status_code=400,
-            detail="Codigo incorrecto"
+            detail="Codigo de verificacion invalido o vencido"
         )
 
     # Activar la cuenta y eliminar el codigo utilizado
@@ -743,6 +753,14 @@ def solicitar_recuperacion(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
+    respuesta = {
+        "status": (
+            "Si existe una cuenta verificada que puede "
+            "recuperar su acceso, recibiras un codigo "
+            "en el correo indicado."
+        )
+    }
+
     user = (
         db.query(models.User)
         .filter(models.User.correo == req.correo)
@@ -751,16 +769,10 @@ def solicitar_recuperacion(
     )
 
     if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="No existe una cuenta con este correo"
-        )
+        return respuesta
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=400,
-            detail="Primero debes verificar tu cuenta"
-        )
+        return respuesta
 
     ahora = datetime.utcnow()
 
@@ -772,10 +784,7 @@ def solicitar_recuperacion(
         and user.codigo_expira_en is not None
         and ahora < user.codigo_expira_en
     ):
-        raise HTTPException(
-            status_code=429,
-            detail="Debes esperar antes de solicitar otro codigo"
-        )
+        return respuesta
 
     codigo_secreto = generar_codigo_seguro()
 
@@ -794,9 +803,7 @@ def solicitar_recuperacion(
         codigo_secreto
     )
 
-    return {
-        "status": "Codigo de recuperacion enviado al correo"
-    }
+    return respuesta
 
 
 @app.post("/recuperar-password/")
@@ -813,8 +820,8 @@ def recuperar_password(
 
     if not user:
         raise HTTPException(
-            status_code=404,
-            detail="No existe una cuenta con este correo"
+            status_code=400,
+            detail="Codigo de recuperacion invalido o vencido"
         )
 
     # Solo los codigos de recuperacion pueden cambiar contrasenas.
@@ -824,7 +831,7 @@ def recuperar_password(
     ):
         raise HTTPException(
             status_code=400,
-            detail="No hay una solicitud de recuperacion valida"
+            detail="Codigo de recuperacion invalido o vencido"
         )
 
     # Vencimiento de 10 minutos (fecha UTC almacenada en PostgreSQL).
@@ -836,7 +843,7 @@ def recuperar_password(
         db.commit()
         raise HTTPException(
             status_code=400,
-            detail="El codigo de recuperacion ha expirado"
+            detail="Codigo de recuperacion invalido o vencido"
         )
 
     # Preservar el periodo de espera si se agotaron los intentos.
@@ -846,7 +853,7 @@ def recuperar_password(
     ):
         raise HTTPException(
             status_code=400,
-            detail="Codigo bloqueado. Espera antes de solicitar otro."
+            detail="Codigo de recuperacion invalido o vencido"
         )
 
     if not secrets.compare_digest(
@@ -860,13 +867,13 @@ def recuperar_password(
             db.commit()
             raise HTTPException(
                 status_code=400,
-                detail="Codigo bloqueado por demasiados intentos"
+                detail="Codigo de recuperacion invalido o vencido"
             )
 
         db.commit()
         raise HTTPException(
             status_code=400,
-            detail="Codigo incorrecto"
+            detail="Codigo de recuperacion invalido o vencido"
         )
 
     # Aceptar el codigo una sola vez y borrar su estado.
@@ -915,11 +922,84 @@ def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = D
     db.commit()
     return {"status": "Historial borrado exitosamente"}
 
+def limitar_chat_por_usuario(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Limita el chat por usuario autenticado usando PostgreSQL."""
+    maximo = 6
+    ventana_segundos = 60
+
+    identificador = (
+        f"/chat/|usuario:{current_user.id}"
+    ).encode("utf-8")
+
+    clave = hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        identificador,
+        hashlib.sha256,
+    ).hexdigest()
+
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+    limite_anterior = ahora - timedelta(seconds=ventana_segundos)
+
+    tabla = models.AuthRateLimit
+    vencida = tabla.inicio_ventana <= limite_anterior
+
+    insercion = pg_insert(tabla).values(
+        clave=clave,
+        inicio_ventana=ahora,
+        cantidad=1,
+    )
+
+    instruccion = insercion.on_conflict_do_update(
+        index_elements=[tabla.clave],
+        set_={
+            "inicio_ventana": case(
+                (vencida, ahora),
+                else_=tabla.inicio_ventana,
+            ),
+            "cantidad": case(
+                (vencida, 1),
+                else_=tabla.cantidad + 1,
+            ),
+        },
+    ).returning(
+        tabla.cantidad,
+        tabla.inicio_ventana,
+    )
+
+    cantidad, inicio_ventana = db.execute(
+        instruccion
+    ).one()
+
+    db.commit()
+
+    if cantidad > maximo:
+        espera = max(
+            1,
+            int(
+                (
+                    inicio_ventana
+                    + timedelta(seconds=ventana_segundos)
+                    - ahora
+                ).total_seconds()
+            ) + 1,
+        )
+
+        raise HTTPException(
+            status_code=429,
+            detail="Limite del chat alcanzado. Intenta mas tarde.",
+            headers={"Retry-After": str(espera)},
+        )
+
+
 @app.post("/chat/")
 def chat_causa_raiz(
     chat_req: ChatRequest,
       current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _limite_chat: None = Depends(limitar_chat_por_usuario)
 ):
     contexto = (
         chat_req.contexto_anomalia
