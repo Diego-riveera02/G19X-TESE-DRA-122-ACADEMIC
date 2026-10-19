@@ -18,7 +18,7 @@ Chat en español con Groq (modelo openai/gpt-oss-20b), historial limitado de con
 La herramienta consultar_anomalias_usuario recupera información solo del usuario autenticado, permite filtrar por normal, alerta, critico o todos, contar registros coincidentes y presentar hasta 10 registros recientes por consulta. J.A.R.V.I.S. utiliza esa información para explicar métricas, proponer causas no verificadas y recomendar pasos de investigación seguros.
 El frontend muestra respuestas con Markdown y tablas, desplazamiento independiente del chat y botón «↓ Último».
 ### 1.5. Historial, PDF y onboarding
-Consulta de anomalías almacenadas, exportación a PDF de los registros cargados en la interfaz y guía interactiva inicial. La ocultación local del historial visible no debe documentarse como eliminación permanente de registros de la base de datos.
+Consulta de anomalías almacenadas, exportación a PDF y guía interactiva inicial. El botón Archivar historial archiva las anomalías en PostgreSQL y permite restaurarlas posteriormente.
 ### 1.6. Infraestructura de desarrollo
 Backend FastAPI, PostgreSQL, frontend React/Vite y Docker Compose para los servicios configurados en el entorno de pruebas. Credenciales, claves JWT y acceso a Groq/SMTP mediante variables de entorno.
 ## 2. Estado de desarrollo del MVP

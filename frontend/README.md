@@ -30,7 +30,7 @@ No existe en esta etapa una conexión directa del frontend con pipelines empresa
 - Interpretación de respuestas Markdown mediante react-markdown y remark-gfm.
 - Tablas extensas con desplazamiento horizontal dentro del chat, desplazamiento vertical de la conversación y botón «↓ Último».
 - Guía de bienvenida interactiva (onboarding).
-La opción Vaciar Tabla del historial visible no debe confundirse con la eliminación definitiva de registros en PostgreSQL: el frontend puede ocultarlos localmente.
+El botón Archivar historial archiva las anomalías en PostgreSQL sin eliminarlas definitivamente. Se pueden recuperar mediante Restaurar historial.
 
 ## 4. Requisitos previos
 - Node.js y npm compatibles con la versión de Vite definida en package.json.

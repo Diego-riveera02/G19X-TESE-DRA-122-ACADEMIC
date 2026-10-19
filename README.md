@@ -302,7 +302,7 @@ Los siguientes valores son ilustrativos y no representan un incidente real compr
   "timestamp": "2026-10-17T09:00:00Z"
 }
 
-La opción para vaciar el historial visible puede ocultar registros en la interfaz. Esto no equivale necesariamente a eliminarlos de PostgreSQL.
+El botón Archivar historial archiva las anomalías del usuario en PostgreSQL sin eliminarlas. El botón Restaurar historial permite recuperarlas.
 
 ## 8. Validación y limitaciones
 
