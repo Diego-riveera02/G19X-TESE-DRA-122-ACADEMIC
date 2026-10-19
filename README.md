@@ -435,3 +435,71 @@ Proyecto académico: PluriOne — Plataforma de Observabilidad de Datos con Inte
 Documentación: octubre de 2026.
 
 Estado: prototipo académico funcional en proceso de reforzamiento de seguridad y reproducibilidad.
+
+## Actualizacion de la segunda auditoria - octubre de 2026
+
+### Archivado reversible de anomalias
+
+El sistema permite archivar y restaurar el historial de anomalias sin
+eliminar fisicamente los registros de PostgreSQL. El archivado es una
+accion solicitada por el usuario; no es una politica de eliminacion
+automatica por antiguedad.
+
+Las operaciones del backend son:
+
+- `GET /anomalias/`: consulta las anomalias activas del usuario autenticado.
+- `DELETE /anomalias/`: archiva logicamente sus anomalias activas.
+- `GET /anomalias/archivadas/`: consulta sus anomalias archivadas.
+- `POST /anomalias/restaurar/`: restaura sus anomalias archivadas.
+
+Todas las operaciones anteriores requieren autenticacion JWT y filtran
+los registros por usuario. Los listados cuentan con paginacion; de forma
+predeterminada, la API devuelve un maximo de 100 registros por consulta.
+
+En React existen controles para archivar y restaurar el historial.
+El boton de archivado solicita confirmacion previa. La restauracion
+vuelve a mostrar los registros disponibles en la consulta inicial;
+no representa necesariamente la totalidad del historial cuando hay
+mas de 100 registros.
+
+### Migracion y conservacion de datos
+
+La migracion SQL correspondiente se conserva en
+`backend/migrations/001_archivado_logico_anomalias.sql`.
+Agrega los campos `archived` y `archived_at` a `anomaly_logs`.
+
+La migracion fue aplicada al entorno local de desarrollo durante la
+auditoria. En otra instalacion, comprobar primero si dichas columnas
+ya existen y revisar el procedimiento de inicializacion antes de
+aplicar la migracion. No ejecutarla nuevamente sobre un esquema
+que ya contiene las columnas.
+
+El archivado no sustituye los respaldos de PostgreSQL. No ejecutar
+`docker compose down -v` cuando se necesite conservar el volumen.
+
+### Validacion automatizada
+
+En la segunda auditoria se verifico que el frontend compilara con
+Vite y que FastAPI respondiera correctamente. El conjunto automatizado
+incluye 17 pruebas: nueve pruebas de integracion y ocho pruebas de
+seguridad del historial.
+
+Para ejecutar las pruebas con los servicios correspondientes activos:
+
+```bash
+python -m unittest discover -s backend/tests -p "test_*.py" -v
+```
+
+Las ocho pruebas nuevas verifican el rechazo de solicitudes sin
+token y con token invalido, incluidas las operaciones de archivado
+y restauracion. No ejecutan archivado autenticado sobre los datos
+reales de PostgreSQL.
+
+### Alcance y restricciones
+
+La telemetria procede de un simulador interno, no de infraestructura
+productiva. Los resultados de las pruebas no equivalen a una
+certificacion de seguridad, pruebas exhaustivas de carga o validacion
+integral en un ambiente de produccion. Las operaciones completas
+de navegador, correo SMTP y servicios externos requieren verificaciones
+adicionales.

@@ -230,3 +230,47 @@ Estado de validación: se han comprobado localmente compilación, arranque de se
 - [`MVP.md`](MVP.md) — alcance implementado, validaciones y exclusiones.
 Conclusión: PluriOne cumple el propósito de demostrar un flujo integral de observabilidad simulada asistida por IA en un entorno local. Su arquitectura deja abierta la posibilidad de integrar fuentes reales en versiones futuras, sin afirmar que esa capacidad ya existe.
 Versión documental del prototipo académico, octubre de 2026.
+
+## Actualizacion de la segunda auditoria - octubre de 2026
+
+### Requisito funcional: conservacion y restauracion del historial
+
+Como usuario autenticado, necesito archivar las anomalias de mi cuenta
+sin eliminarlas de la base de datos y poder restaurarlas posteriormente,
+para conservar la trazabilidad de los eventos de observabilidad.
+
+Se incorporan las siguientes condiciones de funcionamiento:
+
+- Las consultas habituales muestran solamente anomalias activas.
+- El archivado conserva los registros y su pertenencia al usuario.
+- La restauracion devuelve los registros archivados al estado activo.
+- Las consultas y operaciones de cambio de estado requieren JWT.
+- La paginacion limita la cantidad de registros devueltos por consulta.
+- El dashboard dispone de controles para archivar y restaurar.
+- El archivado no modifica los registros pertenecientes a otros usuarios.
+
+### Criterios de aceptacion adicionales
+
+- CA-H01: el usuario autenticado puede archivar su historial sin
+  ejecutar una eliminacion fisica de registros.
+- CA-H02: el usuario autenticado puede restaurar los registros archivados.
+- CA-H03: las rutas del historial rechazan peticiones sin autenticacion
+  o con un token invalido.
+- CA-H04: las operaciones filtran los registros por el usuario actual.
+- CA-H05: el esquema incluye los campos `archived` y `archived_at`.
+- CA-H06: las consultas activas y archivadas admiten paginacion.
+
+### Evidencia de verificacion y riesgos residuales
+
+La auditoria ejecuto satisfactoriamente 17 pruebas automatizadas
+(nueve de integracion y ocho de seguridad de las rutas del historial).
+Ademas, el frontend completo una compilacion de produccion con Vite.
+
+Se verifico el comportamiento del archivado, restauracion y aislamiento
+entre usuarios mediante pruebas aisladas; no se realizaron operaciones
+autenticadas de archivado sobre la base de datos real.
+
+Siguen pendientes las pruebas exhaustivas de carga, escenarios de
+concurrencia, cobertura completa del navegador y validacion integral
+para un entorno de produccion. El proyecto continua utilizando
+telemetria simulada y no incorpora conectores empresariales reales.

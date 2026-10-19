@@ -125,3 +125,42 @@ Los correos SMTP se utilizan para verificación y recuperación de acceso. El si
 ## 6. Conclusión
 El MVP demuestra la integración de FastAPI + PostgreSQL + WebSockets + React + Groq en un escenario controlado con datos simulados. J.A.R.V.I.S. 2.0 amplía la experiencia mediante conversación contextual y acceso restringido a registros del usuario. El resultado sirve para validación académica y demostración técnica, sin presentar la simulación como monitoreo de producción.
 Documentos relacionados: [`../README.md`](../README.md) · [`PRD.md`](PRD.md) · [`../frontend/README.md`](../frontend/README.md).
+
+## Actualizacion de la segunda auditoria - octubre de 2026
+
+### Funcionalidades incorporadas al MVP
+
+- Archivado logico del historial de anomalias por usuario.
+- Restauracion del historial archivado.
+- Consultas separadas de anomalias activas y archivadas.
+- Acceso protegido por JWT a las operaciones del historial.
+- Controles de React con confirmacion para archivar o restaurar.
+- Migracion versionada de PostgreSQL para los campos de archivado.
+
+El archivado es reversible: no constituye una eliminacion fisica de los
+registros. Las vistas de historial utilizan consultas paginadas.
+
+### Evidencia de pruebas
+
+La segunda auditoria completo una compilacion de React/Vite y
+17 pruebas automatizadas satisfactorias:
+
+- Nueve pruebas de integracion de servicios y rutas principales.
+- Ocho pruebas de autorizacion de rutas del historial, sin token
+  y con token invalido.
+
+Adicionalmente, el comportamiento de archivado y restauracion fue
+verificado con una base de datos aislada, sin archivar registros
+reales de PostgreSQL durante las pruebas.
+
+### Limitaciones y pendientes
+
+- La ingesta sigue siendo simulada, no empresarial real.
+- No existe validacion exhaustiva de carga o de seguridad productiva.
+- Las pruebas no cubren todos los flujos visuales del navegador.
+- Las consultas iniciales pueden mostrar solo una pagina del historial.
+- Falta una verificacion integral de SMTP y de servicios externos
+  en un entorno de despliegue controlado.
+
+Estos puntos deben conservarse como pendientes y no presentarse
+como funcionalidades concluidas del MVP.
