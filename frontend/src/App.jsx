@@ -379,6 +379,8 @@ function PluriOneApp() {
 
   const [anomalias, setAnomalias] = useState([]);
 
+  const [procesandoHistorial, setProcesandoHistorial] = useState(false);
+
   const [idOcultosHasta, setIdOcultosHasta] = useState(() => {
 
     const userId = localStorage.getItem('usuario_nombre');
@@ -625,20 +627,73 @@ const irAlFinalChat = () => {
 
   };
 
-  const limpiarHistorial = () => {
+  const limpiarHistorial = async () => {
+    if (procesandoHistorial) return;
 
-    if (anomalias.length > 0) {
+    const confirmar = window.confirm(
+      'Se archivaran TODAS las anomalias de tu cuenta, incluso las no visibles. Podras restaurarlas. Deseas continuar?'
+    );
+    if (!confirmar) return;
 
-      const maxId = Math.max(...anomalias.map(a => a.id));
-
-      setIdOcultosHasta(maxId);
-
-      localStorage.setItem(`plurione_id_ocultos_${nombreUsuario}`, maxId.toString());
-
+    const tokenActual = localStorage.getItem("token_plurione");
+    if (!tokenActual) {
+      navigate('/login');
+      return;
     }
 
-    setAnomalias([]);
+    setProcesandoHistorial(true);
+    try {
+      await axios.delete("http://127.0.0.1:8000/anomalias/", {
+        headers: { Authorization: `Bearer ${tokenActual}` }
+      });
 
+      localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
+      setIdOcultosHasta(0);
+      setAnomalias([]);
+      window.alert('Historial archivado. Puedes restaurarlo cuando quieras.');
+    } catch (error) {
+      window.alert('No fue posible archivar el historial. Los datos visibles no se modificaron.');
+    } finally {
+      setProcesandoHistorial(false);
+    }
+  };
+
+  const restaurarHistorial = async () => {
+    if (procesandoHistorial) return;
+
+    const confirmar = window.confirm(
+      'Se restauraran las anomalias archivadas de tu cuenta. Deseas continuar?'
+    );
+    if (!confirmar) return;
+
+    const tokenActual = localStorage.getItem("token_plurione");
+    if (!tokenActual) {
+      navigate('/login');
+      return;
+    }
+
+    setProcesandoHistorial(true);
+    try {
+      await axios.post("http://127.0.0.1:8000/anomalias/restaurar/", {}, {
+        headers: { Authorization: `Bearer ${tokenActual}` }
+      });
+
+      localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
+      setIdOcultosHasta(0);
+
+      const respuesta = await axios.get("http://127.0.0.1:8000/anomalias/", {
+        headers: { Authorization: `Bearer ${tokenActual}` }
+      });
+
+      setAnomalias(
+        respuesta.data.sort((a, b) => b.id - a.id)
+      );
+      window.alert('Historial restaurado correctamente.');
+    } catch (error) {
+      window.alert('No se pudo completar la restauracion. Actualiza la pagina para consultar el estado actual.');
+    } finally {
+      setProcesandoHistorial(false);
+    }
   };
 
   const cerrarSesion = () => {
@@ -1079,7 +1134,21 @@ const irAlFinalChat = () => {
 
                 <button onClick={exportarPDF} style={{ background: 'transparent', color: '#457B9D', border: '1px solid #457B9D', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>📄 Descargar PDF</button>
 
-                <button onClick={limpiarHistorial} style={{ background: 'transparent', color: '#E63946', border: '1px solid #E63946', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Vaciar Tabla</button>
+                <button onClick={limpiarHistorial} disabled={procesandoHistorial} title="Archivar sin borrar registros" style={{ background: 'transparent', color: '#E63946', border: '1px solid #E63946', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Vaciar Tabla</button>
+                <button
+                  onClick={restaurarHistorial}
+                  disabled={procesandoHistorial}
+                  style={{
+                    background: 'transparent',
+                    color: '#2A9D8F',
+                    border: '1px solid #2A9D8F',
+                    padding: '5px 15px',
+                    borderRadius: '4px',
+                    cursor: procesandoHistorial ? 'wait' : 'pointer'
+                  }}
+                >
+                  Restaurar historial
+                </button>
 
               </div>
 

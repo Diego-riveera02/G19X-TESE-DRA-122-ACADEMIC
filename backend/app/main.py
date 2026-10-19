@@ -822,7 +822,10 @@ def read_anomalies(
 ):
     return (
         db.query(models.AnomalyLog)
-        .filter(models.AnomalyLog.user_id == current_user.id)
+        .filter(
+            models.AnomalyLog.user_id == current_user.id,
+            models.AnomalyLog.archived.is_(False)
+        )
         .order_by(models.AnomalyLog.id.desc())
         .offset(skip)
         .limit(limit)
@@ -831,9 +834,80 @@ def read_anomalies(
 
 @app.delete("/anomalias/")
 def clear_anomalies(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db.query(models.AnomalyLog).filter(models.AnomalyLog.user_id == current_user.id).delete()
+    from datetime import datetime, timezone
+
+    total = (
+        db.query(models.AnomalyLog)
+        .filter(
+            models.AnomalyLog.user_id == current_user.id,
+            models.AnomalyLog.archived.is_(False)
+        )
+        .update(
+            {
+                models.AnomalyLog.archived: True,
+                models.AnomalyLog.archived_at:
+                    datetime.now(timezone.utc),
+            },
+            synchronize_session=False
+        )
+    )
+
     db.commit()
-    return {"status": "Historial borrado exitosamente"}
+
+    return {
+        "status": "Historial archivado exitosamente",
+        "archivadas": total,
+    }
+
+@app.get(
+    "/anomalias/archivadas/",
+    response_model=list[schemas.AnomalyLogResponse]
+)
+def read_archived_anomalies(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return (
+        db.query(models.AnomalyLog)
+        .filter(
+            models.AnomalyLog.user_id == current_user.id,
+            models.AnomalyLog.archived.is_(True)
+        )
+        .order_by(models.AnomalyLog.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+@app.post("/anomalias/restaurar/")
+def restore_archived_anomalies(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    total = (
+        db.query(models.AnomalyLog)
+        .filter(
+            models.AnomalyLog.user_id == current_user.id,
+            models.AnomalyLog.archived.is_(True)
+        )
+        .update(
+            {
+                models.AnomalyLog.archived: False,
+                models.AnomalyLog.archived_at: None,
+            },
+            synchronize_session=False
+        )
+    )
+
+    db.commit()
+
+    return {
+        "status": "Historial restaurado exitosamente",
+        "restauradas": total,
+    }
 
 def limitar_chat_por_usuario(
     db: Session = Depends(get_db),

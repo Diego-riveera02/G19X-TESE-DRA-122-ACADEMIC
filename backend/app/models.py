@@ -17,6 +17,8 @@ class AnomalyLog(Base):
     status = Column(String)
     ai_recommendation = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    archived = Column(Boolean, nullable=False, server_default="false")
+    archived_at = Column(DateTime(timezone=True), nullable=True)
 
 
 # Tabla de usuarios

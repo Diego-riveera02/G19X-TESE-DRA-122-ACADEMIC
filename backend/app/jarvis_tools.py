@@ -34,7 +34,8 @@ def consultar_anomalias_usuario(
     limite = max(1, min(int(limite), 10))
 
     consulta = db.query(models.AnomalyLog).filter(
-        models.AnomalyLog.user_id == user_id
+        models.AnomalyLog.user_id == user_id,
+        models.AnomalyLog.archived.is_(False)
     )
 
     estado_filtrado = estados_permitidos[estado_normalizado]
