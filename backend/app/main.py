@@ -71,6 +71,7 @@ def generar_codigo_seguro():
 
 from .auth_utils import pwd_context, verify_password, get_password_hash
 from .jwt_utils import encode_access_token
+from .auth_dependencies import resolve_current_user
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Limites de solicitudes por IP de origen y ruta, compartidos por
@@ -311,22 +312,12 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     )
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
-        headers={"WWW-Authenticate": "Bearer"},
+    return resolve_current_user(
+        token,
+        db,
+        secret_key=SECRET_KEY,
+        algorithm=ALGORITHM,
     )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        correo: str = payload.get("sub")
-        if correo is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    user = db.query(models.User).filter(models.User.correo == correo).first()
-    if user is None or not user.is_active:
-        raise credentials_exception
-    return user
 
 
 # =================================================================
