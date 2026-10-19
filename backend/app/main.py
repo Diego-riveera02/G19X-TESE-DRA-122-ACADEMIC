@@ -69,7 +69,7 @@ def generar_codigo_seguro():
     return str(100000 + secrets.randbelow(900000))
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from .auth_utils import pwd_context, verify_password, get_password_hash
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Limites de solicitudes por IP de origen y ruta, compartidos por
@@ -299,11 +299,7 @@ async def websocket_endpoint(websocket: WebSocket):
 # =================================================================
 #                FUNCIONES DE UTILIDAD Y SEGURIDAD
 # =================================================================
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
