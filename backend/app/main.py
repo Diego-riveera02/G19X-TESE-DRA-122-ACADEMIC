@@ -70,6 +70,7 @@ def generar_codigo_seguro():
 
 
 from .auth_utils import pwd_context, verify_password, get_password_hash
+from .jwt_utils import encode_access_token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Limites de solicitudes por IP de origen y ruta, compartidos por
@@ -302,10 +303,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=15))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encode_access_token(
+        data,
+        expires_delta=expires_delta,
+        secret_key=SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
