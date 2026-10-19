@@ -86,6 +86,9 @@ Backend FastAPI, PostgreSQL, frontend React/Vite y Docker Compose para los servi
 
 ## 3. Criterios de validación del MVP
 
+**Cobertura automatizada actual:** las nueve pruebas verifican disponibilidad de FastAPI y React, rutas, rechazo de JWT ausentes o inválidos, CORS y conexión/esquema de PostgreSQL. Aún no incluyen pruebas específicas de expiración de códigos, cinco intentos fallidos, HTTP 429 o aislamiento entre usuarios.
+
+
 ### Validación adicional de la versión auditada
 
 La versión actual incorpora reenvío de verificación, vencimiento de códigos, límite de cinco intentos, separación entre verificación y recuperación, y control de solicitudes de autenticación mediante PostgreSQL.
@@ -95,9 +98,8 @@ Se comprobó el arranque de una instalación limpia e independiente con Docker C
 Las pruebas no cubren de manera exhaustiva los flujos del navegador, SMTP, Groq, WebSocket, carga o seguridad de producción. La ingesta de datos empresariales reales continúa fuera del alcance del MVP.
 
 
-**Evidencia de validacion (octubre de 2026):** se comprobo el arranque de una copia limpia con Docker Compose y PostgreSQL. Ademas, se ejecutaron 9 pruebas automatizadas de integracion de API, autenticacion, CORS y base de datos, todas satisfactorias. Suite: `backend/tests/test_integracion_http.py`. Esto no equivale a una auditoria completa de seguridad, carga, SMTP, Groq o WebSocket.
 
-1. Acceso controlado. El flujo de usuario contempla registro, verificación SMTP, inicio de sesión con JWT y recuperación desde React mediante código por correo. Se probó el restablecimiento y nuevo inicio de sesión; también el rechazo HTTP 401 sin JWT y con una cuenta inactiva. El vencimiento del JWT es distinto del vencimiento del código SMTP, que no está implementado todavía.
+1. Acceso controlado. El MVP contempla registro, verificación SMTP, inicio de sesión JWT y recuperación de contraseña. Los códigos vencen después de 10 minutos, admiten cinco intentos y se invalidan tras su uso. Se comprobó el rechazo HTTP 401 en las rutas protegidas evaluadas.
 2. Automatización demostrable. El backend genera telemetría simulada aproximadamente cada 5 segundos sin intervención manual; la periodicidad es objetivo de la simulación, no garantía estricta de latencia.
 3. Actualización de interfaz. Un usuario autenticado observa las nuevas anomalías por WebSocket sin recargar el dashboard.
 4. Persistencia y trazabilidad. Las anomalías incluyen pipeline, métrica, valor, estado y fecha/hora registrada; el feed utiliza el tiempo proporcionado por el backend.
@@ -106,7 +108,7 @@ Las pruebas no cubren de manera exhaustiva los flujos del navegador, SMTP, Groq,
 7. Entorno reproducible. El proyecto dispone de instrucciones para levantar FastAPI/PostgreSQL y ejecutar/compilar React localmente.
 Validaciones locales observadas en la iteración: compilación exitosa de Vite, arranque de los contenedores API y BD, recepción de telemetría, consultas conversacionales a registros y prueba del desplazamiento del chat. También se comprobó el envío de código SMTP desde la pantalla de React, su uso para restablecer la contraseña, el nuevo acceso al dashboard y respuestas HTTP 401 de rutas protegidas sin autorización. Estos resultados no equivalen a cobertura integral de pruebas automatizadas, auditoría de seguridad completa ni certificación de producción.
 ## 4. Lista de comprobación de entregables
-Estas casillas describen el alcance documentado, no sustituyen las pruebas del profesor.
+Esta lista resume las funcionalidades incluidas en el MVP y las actividades que siguen pendientes.
 - [x] Base de datos PostgreSQL y API FastAPI.
 - [x] Simulación automática y eventos WebSocket por usuario.
 - [x] Dashboard y registro de alertas con marca temporal.
@@ -119,7 +121,7 @@ Estas casillas describen el alcance documentado, no sustituyen las pruebas del p
 - [ ] Pruebas exhaustivas de seguridad y carga (pendientes).
 ## 5. Exclusiones y trabajo posterior
 Quedan fuera del MVP o pendientes de una fase posterior: conectores reales de ingesta (AWS, bases corporativas y otros servicios), evaluación de causas raíz con evidencias externas, filtros complejos de consulta histórica, acciones de remediación automáticas, métricas de fiabilidad de producción, pruebas de carga y pruebas automatizadas de seguridad/aislamiento más exhaustivas.
-Los correos SMTP se reservan al flujo de identidad y recuperación de acceso; el simulador no envía un correo por cada alerta para evitar tráfico masivo. Endurecimiento pendiente: los códigos de seis dígitos de registro/recuperación no cuentan aún con vencimiento temporal ni con máximo de intentos fallidos; los campos y la migración exploratorios para ello no forman parte de esta versión del MVP.
+Los correos SMTP se utilizan para verificación y recuperación de acceso. El simulador no envía un correo por cada anomalía. Los códigos tienen vencimiento temporal y un máximo de cinco intentos. El archivo `backend/app/schema_migrations.py` actualiza instalaciones anteriores sin eliminar los registros existentes.
 ## 6. Conclusión
 El MVP demuestra la integración de FastAPI + PostgreSQL + WebSockets + React + Groq en un escenario controlado con datos simulados. J.A.R.V.I.S. 2.0 amplía la experiencia mediante conversación contextual y acceso restringido a registros del usuario. El resultado sirve para validación académica y demostración técnica, sin presentar la simulación como monitoreo de producción.
 Documentos relacionados: [`../README.md`](../README.md) · [`PRD.md`](PRD.md) · [`../frontend/README.md`](../frontend/README.md).

@@ -72,7 +72,7 @@ El contenedor del backend utiliza Python 3.12.
 
 PluriOne utiliza dos configuraciones de entorno independientes: una para Docker Compose en la raíz y otra para FastAPI dentro de backend.
 
-4.1. Configuración de PostgreSQL en la raíz
+### 4.1. Configuración de PostgreSQL en la raíz
 
 El archivo .env.example ubicado en la raíz del repositorio contiene la siguiente variable:
 
@@ -96,7 +96,7 @@ No sobrescribir un .env existente que ya tenga una configuración funcional.
 
 Si PostgreSQL ya tiene un volumen de datos inicializado, cambiar solamente POSTGRES_PASSWORD en .env no cambia automáticamente la contraseña almacenada en PostgreSQL. Es necesario actualizar ambas configuraciones de manera coordinada.
 
-4.2. Configuración del backend
+### 4.2. Configuración del backend
 
 El archivo backend/.env.example sirve como plantilla para las variables utilizadas por FastAPI.
 
@@ -122,7 +122,7 @@ Cuando FastAPI se ejecuta mediante Docker Compose, DATABASE_URL se establece des
 
 Cuando FastAPI se ejecuta directamente en Windows, debe utilizar una dirección de PostgreSQL accesible desde el equipo local.
 
-4.3. Protección de credenciales
+### 4.3. Protección de credenciales
 
 Los archivos .env son privados y no deben publicarse en GitHub, adjuntarse en entregas ni incluirse en archivos ZIP compartidos.
 
@@ -130,7 +130,7 @@ Los archivos .env.example son plantillas públicas y deben contener únicamente 
 
 Si alguna contraseña o clave API se comparte accidentalmente, debe considerarse potencialmente comprometida y renovarse de forma segura.
 
-4.4. Autenticación y control de acceso
+### 4.4. Autenticación y control de acceso
 
 FastAPI comprueba la firma del JWT, identifica la cuenta correspondiente en PostgreSQL y rechaza el acceso a las rutas protegidas si la cuenta no existe o está inactiva (is_active = False).
 
@@ -172,7 +172,7 @@ No ejecutar `docker compose down -v` si se necesitan conservar
 los datos de PostgreSQL.
 
 
-5.1. Preparación inicial
+### 5.1. Preparación inicial
 
 Antes de iniciar los servicios, comprobar que existan los archivos privados:
 
@@ -184,7 +184,7 @@ Si se trata de un entorno nuevo, generarlos a partir de sus respectivas plantill
 
 No copiar estas plantillas sobre configuraciones existentes sin revisar primero sus valores.
 
-5.2. Iniciar PostgreSQL y FastAPI
+### 5.2. Iniciar PostgreSQL y FastAPI
 
 Desde la raíz del repositorio, ejecutar:
 
@@ -210,7 +210,7 @@ http://127.0.0.1:8000/docs
 
 Durante las pruebas locales realizadas en octubre de 2026, PostgreSQL alcanzó el estado healthy, FastAPI inició correctamente y /docs respondió HTTP 200.
 
-5.3. Ejecutar el frontend
+### 5.3. Ejecutar el frontend
 
 El frontend utiliza React y Vite.
 
@@ -227,7 +227,7 @@ docker compose build frontend
 
 Esta prueba confirma la construcción de la imagen, pero no sustituye una prueba funcional completa del frontend ejecutándose dentro del contenedor.
 
-5.4. Direcciones locales
+### 5.4. Direcciones locales
 
 Frontend: http://127.0.0.1:5173/app
 
@@ -241,7 +241,7 @@ PostgreSQL dentro de Docker: db:5432
 
 Si se modifican los puertos o los nombres de los servicios, también deben actualizarse las variables de conexión correspondientes.
 
-5.5. Conservación de datos
+### 5.5. Conservación de datos
 
 PostgreSQL utiliza un volumen persistente de Docker denominado plurione_postgres_data, asociado al proyecto de Compose.
 
@@ -317,7 +317,7 @@ La opción para vaciar el historial visible puede ocultar registros en la interf
 - Estas comprobaciones no equivalen a una auditoría exhaustiva de seguridad ni a una certificación para producción.
 
 
-### Pruebas automatizadas de integracion
+### Pruebas automatizadas de integración
 
 Con Docker Compose y los tres servicios iniciados, ejecutar
 desde la carpeta raiz del proyecto:
@@ -336,33 +336,33 @@ No sustituyen pruebas funcionales completas del navegador,
 SMTP, Groq o WebSockets.
 
 
-Durante el desarrollo se realizaron pruebas locales de:
+### Validaciones realizadas durante el desarrollo
 
-Compilación del frontend en React.
+- Compilación del frontend en React.
 
-Construcción de la imagen Docker del frontend con Node.js 22.
+- Construcción de la imagen Docker del frontend con Node.js 22.
 
-Arranque de PostgreSQL y comprobación del estado healthy.
+- Arranque de PostgreSQL y comprobación del estado healthy.
 
-Inicio de FastAPI y respuesta HTTP 200 del endpoint /docs.
+- Inicio de FastAPI y respuesta HTTP 200 del endpoint /docs.
 
-Recepción de telemetría simulada mediante WebSocket.
+- Recepción de telemetría simulada mediante WebSocket.
 
-Conversación con Groq y generación de diagnósticos orientativos.
+- Conversación con Groq y generación de diagnósticos orientativos.
 
-Solicitud del código de recuperación desde React.
+- Solicitud del código de recuperación desde React.
 
-Restablecimiento de contraseña e inicio de sesión con la nueva contraseña.
+- Restablecimiento de contraseña e inicio de sesión con la nueva contraseña.
 
-Rechazo de peticiones a rutas protegidas sin JWT.
+- Rechazo de peticiones a rutas protegidas sin JWT.
 
-Rechazo de cuentas inactivas con JWT válido.
+- Rechazo de cuentas inactivas con JWT válido.
 
-Verificación de cambios mediante Git y sincronización del repositorio.
+- Verificación de cambios mediante Git y sincronización del repositorio.
 
 La auditoría de npm reportó cero vulnerabilidades conocidas durante las comprobaciones realizadas en octubre de 2026. Ese resultado puede cambiar cuando se publiquen nuevos avisos de seguridad.
 
-Limitaciones conocidas
+### Limitaciones conocidas
 
 Las métricas proceden de un simulador interno, no de AWS, bases productivas u otros servicios empresariales reales.
 
@@ -372,7 +372,7 @@ La herramienta de J.A.R.V.I.S. consulta estados y registros recientes, pero no i
 
 El asistente depende de la disponibilidad de Groq y de los límites de uso de su API.
 
-Los códigos de recuperación actuales exigen seis dígitos y se invalidan al utilizarse, pero todavía no tienen vencimiento temporal ni límite de intentos fallidos implementados. Esta mejora forma parte de las correcciones de seguridad pendientes.
+Los códigos de verificación y recuperación son de seis dígitos, vencen después de 10 minutos y admiten hasta cinco intentos. Se distinguen por propósito, se comparan de forma segura y se invalidan tras su uso.
 
 Todavía no se dispone de una batería completa de pruebas automatizadas que acredite el funcionamiento integral del sistema.
 
@@ -380,55 +380,55 @@ No se ha demostrado preparación para operación empresarial productiva, alta di
 
 ## 9. Documentación
 
-README del frontend: instalación y funcionamiento de la interfaz.
+- README del frontend: instalación y funcionamiento de la interfaz.
 
-Producto Mínimo Viable: alcance implementado y criterios de validación.
+- Producto Mínimo Viable: alcance implementado y criterios de validación.
 
-Documento de Requisitos del Producto: problemática, objetivos, arquitectura, requisitos y criterios de aceptación.
+- Documento de Requisitos del Producto: problemática, objetivos, arquitectura, requisitos y criterios de aceptación.
 
-docs/Informe Técnico Plataforma de Observabilidad.pdf: informe técnico del desarrollo académico.
+- docs/Informe Técnico Plataforma de Observabilidad.pdf: informe técnico del desarrollo académico.
 
-docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf: registro de actividades y avances del proyecto.
+- docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf: registro de actividades y avances del proyecto.
 
 ## 10. Lista de comprobación de la versión
 
-Esta lista distingue las funciones comprobadas de las actividades pendientes. No equivale a la calificación final del profesor.
+Esta lista resume las funcionalidades implementadas y las comprobaciones que todavía están pendientes.
 
-Ejecutar la simulación automática y registrar anomalías en PostgreSQL.
+- [x] Ejecutar la simulación automática y registrar anomalías en PostgreSQL.
 
-Presentar métricas mediante React y WebSocket autenticado.
+- [x] Presentar métricas mediante React y WebSocket autenticado.
 
-Consultar anomalías por estado mediante J.A.R.V.I.S. 2.0.
+- [x] Consultar anomalías por estado mediante J.A.R.V.I.S. 2.0.
 
-Presentar respuestas Markdown y exportar registros en PDF.
+- [x] Presentar respuestas Markdown y exportar registros en PDF.
 
-Documentar las limitaciones de la simulación y la inteligencia artificial.
+- [x] Documentar las limitaciones de la simulación y la inteligencia artificial.
 
-Solicitar un código SMTP desde React, restablecer la contraseña e iniciar sesión nuevamente.
+- [x] Solicitar un código SMTP desde React, restablecer la contraseña e iniciar sesión nuevamente.
 
-Rechazar solicitudes sin JWT y JWT de cuentas inactivas en las rutas protegidas probadas.
+- [x] Rechazar solicitudes sin JWT y JWT de cuentas inactivas en las rutas protegidas probadas.
 
-Actualizar la imagen Docker del frontend a Node.js 22.
+- [x] Actualizar la imagen Docker del frontend a Node.js 22.
 
-Agregar .dockerignore para reducir los archivos enviados a Docker.
+- [x] Agregar .dockerignore para reducir los archivos enviados a Docker.
 
-Configurar PostgreSQL con healthcheck y comprobar su estado healthy.
+- [x] Configurar PostgreSQL con healthcheck y comprobar su estado healthy.
 
-Comprobar que FastAPI responde HTTP 200 después de iniciar PostgreSQL.
+- [x] Comprobar que FastAPI responde HTTP 200 después de iniciar PostgreSQL.
 
-Crear una plantilla .env.example en la raíz para POSTGRES_PASSWORD.
+- [x] Crear una plantilla .env.example en la raíz para POSTGRES_PASSWORD.
 
-Documentar la configuración de variables de entorno para instalaciones nuevas.
+- [x] Documentar la configuración de variables de entorno para instalaciones nuevas.
 
-Implementar vencimiento de códigos y límite de intentos fallidos.
+- [x] Implementado el vencimiento de códigos y el límite de cinco intentos fallidos.
 
-Incorporar límites de solicitudes a los endpoints sensibles.
+- [x] Incorporada limitación de solicitudes en endpoints sensibles mediante PostgreSQL.
 
-Ejecutar una batería automatizada de pruebas integrales y de seguridad.
+- [ ] Ejecutar una batería automatizada de pruebas integrales y de seguridad.
 
-Comprobar el arranque completo desde un clon limpio del repositorio.
+- [ ] Comprobar el arranque completo desde un clon limpio del repositorio.
 
-Integrar fuentes de datos reales, fuera del alcance del MVP actual.
+- [ ] Integrar fuentes de datos reales, fuera del alcance del MVP actual.
 
 Proyecto académico: PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 

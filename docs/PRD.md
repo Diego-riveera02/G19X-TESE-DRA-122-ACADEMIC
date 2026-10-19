@@ -192,7 +192,9 @@ Usuario autenticado -> FastAPI /chat/ -> Groq
 
 ## 8. Criterios de aceptación
 
-**Evidencia de validacion (octubre de 2026):** se comprobo el arranque de una copia limpia con Docker Compose y PostgreSQL. Ademas, se ejecutaron 9 pruebas automatizadas de integracion de API, autenticacion, CORS y base de datos, todas satisfactorias. Suite: `backend/tests/test_integracion_http.py`. Esto no equivale a una auditoria completa de seguridad, carga, SMTP, Groq o WebSocket.
+**Cobertura automatizada actual:** las nueve pruebas verifican disponibilidad de FastAPI y React, rutas, rechazo de JWT ausentes o inválidos, CORS y conexión/esquema de PostgreSQL. Aún no incluyen pruebas específicas de expiración de códigos, cinco intentos fallidos, HTTP 429 o aislamiento entre usuarios.
+
+
 
 - CA-01: FastAPI inicia correctamente y el simulador genera registros sin intervención manual.
 - CA-02: el usuario autenticado recibe y visualiza sus anomalías en el dashboard mediante WebSocket.
@@ -212,7 +214,7 @@ Estado de validación: se han comprobado localmente compilación, arranque de se
 - El rendimiento observado en una computadora local no equivale a la capacidad en producción.
 - La memoria de chat enviada desde React es temporal y limitada.
 - El sistema SMTP depende de credenciales y conectividad externas y no se emplea como canal de alerta masiva.
-- Limitación de los códigos: el flujo implementado requiere el código enviado por correo y lo invalida al usarlo, pero todavía no aplica expiración temporal ni límite de intentos fallidos. No se considera un sistema de recuperación endurecido para producción.
+- **Riesgo residual de autenticación:** los códigos ya vencen a los 10 minutos y permiten un máximo de cinco intentos. Quedan pendientes pruebas automatizadas específicas de expiración, intentos fallidos, respuestas HTTP 429 y otros controles de seguridad.
 ## 10. Lista de verificación de los requisitos
 - [x] Registro, verificación de cuentas, JWT y recuperación de acceso implementados.
 - [x] Solicitud del código SMTP desde React, actualización de contraseña y nuevo inicio de sesión probados manualmente.
