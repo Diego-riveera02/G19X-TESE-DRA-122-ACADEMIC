@@ -33,6 +33,7 @@ from .jarvis_tools import (
 )
 from .database import engine, get_db, SessionLocal
 from .schema_migrations import migrate_legacy_auth_schema
+from .color_utils import get_color
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -328,10 +329,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     return user
 
-def get_color(estado):
-    if estado == "Critico": return "#E63946"
-    if estado == "Alerta": return "#D4A017"
-    return "#4BB543"
 
 # =================================================================
 #                SISTEMA DE CORREOS E IA
