@@ -379,6 +379,8 @@ function PluriOneApp() {
 
   const [anomalias, setAnomalias] = useState([]);
 
+  const [metricasEnVivo, setMetricasEnVivo] = useState({});
+
   const [procesandoHistorial, setProcesandoHistorial] = useState(false);
 
   const [idOcultosHasta, setIdOcultosHasta] = useState(() => {
@@ -433,6 +435,39 @@ function PluriOneApp() {
 
     // Recibir solamente las anomalias del usuario autenticado
 
+    // Mantener lecturas recientes fuera del historial persistente.
+    const actualizarMetricaEnVivo = (nueva) => {
+      if (
+        !nueva ||
+        typeof nueva !== 'object' ||
+        !['latencia_ms', 'datos_corruptos_%', 'tasa_fallos_%'].includes(nueva.metric_type) ||
+        !['Normal', 'Alerta', 'Critico'].includes(nueva.status) ||
+        !Number.isFinite(nueva.value) ||
+        typeof nueva.timestamp !== 'string'
+      ) {
+        return;
+      }
+
+      const instante = Date.parse(nueva.timestamp);
+      if (!Number.isFinite(instante)) return;
+
+      setMetricasEnVivo(prev => {
+        const anterior = prev[nueva.metric_type];
+
+        if (
+          anterior &&
+          Date.parse(anterior.timestamp) > instante
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [nueva.metric_type]: nueva
+        };
+      });
+    };
+
     ws.onmessage = (event) => {
 
       try {
@@ -447,6 +482,18 @@ function PluriOneApp() {
 
           return;
 
+        }
+
+        // Lectura temporal: actualiza indicadores sin crear historial.
+        if (nueva.type === 'metrica_normal') {
+          if (
+            nueva.id === null &&
+            nueva.registrada === false &&
+            nueva.status === 'Normal'
+          ) {
+            actualizarMetricaEnVivo(nueva);
+          }
+          return;
         }
 
         // Ignorar mensajes que no sean anomalias validas
@@ -464,6 +511,9 @@ function PluriOneApp() {
           return;
 
         }
+
+        // Una alerta guardada tambien actualiza el estado actual.
+        actualizarMetricaEnVivo(nueva);
 
         setAnomalias(prev => {
 
@@ -650,6 +700,7 @@ const irAlFinalChat = () => {
       localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
       setIdOcultosHasta(0);
       setAnomalias([]);
+      setMetricasEnVivo({});
       window.alert('Historial archivado. Puedes restaurarlo cuando quieras.');
     } catch (error) {
       window.alert('No fue posible archivar el historial. Los datos visibles no se modificaron.');
@@ -688,6 +739,7 @@ const irAlFinalChat = () => {
       setAnomalias(
         respuesta.data.sort((a, b) => b.id - a.id)
       );
+      setMetricasEnVivo({});
       window.alert('Historial restaurado correctamente.');
     } catch (error) {
       window.alert('No se pudo completar la restauracion. Actualiza la pagina para consultar el estado actual.');
@@ -770,9 +822,17 @@ const irAlFinalChat = () => {
 
   };
 
-  const latencias = [...anomalias].reverse().filter(a => a.metric_type === "latencia_ms").slice(-10);
+  const latenciasHistoricas = [...anomalias].reverse().filter(a => a.metric_type === "latencia_ms").slice(-10);
 
-  const calidad = [...anomalias].reverse().filter(a => a.metric_type === "datos_corruptos_%").slice(-10);
+  const latencias = metricasEnVivo.latencia_ms?.type === 'metrica_normal'
+    ? [...latenciasHistoricas.slice(-9), metricasEnVivo.latencia_ms]
+    : latenciasHistoricas;
+
+  const calidadHistoricas = [...anomalias].reverse().filter(a => a.metric_type === "datos_corruptos_%").slice(-10);
+
+  const calidad = metricasEnVivo["datos_corruptos_%"]?.type === 'metrica_normal'
+    ? [...calidadHistoricas.slice(-9), metricasEnVivo["datos_corruptos_%"]]
+    : calidadHistoricas;
 
   const fallosTotal = anomalias.filter(a => a.metric_type === "tasa_fallos_%").length;
 
@@ -788,11 +848,11 @@ const irAlFinalChat = () => {
 
   const coloresDona = ['#457B9D', '#E63946'];
 
-  const ultimoLatencia = anomalias.find(a => a.metric_type === "latencia_ms");
+  const ultimoLatencia = metricasEnVivo.latencia_ms || anomalias.find(a => a.metric_type === "latencia_ms");
 
-  const ultimoCalidad = anomalias.find(a => a.metric_type === "datos_corruptos_%");
+  const ultimoCalidad = metricasEnVivo["datos_corruptos_%"] || anomalias.find(a => a.metric_type === "datos_corruptos_%");
 
-  const ultimoFallo = anomalias.find(a => a.metric_type === "tasa_fallos_%");
+  const ultimoFallo = metricasEnVivo["tasa_fallos_%"] || anomalias.find(a => a.metric_type === "tasa_fallos_%");
 
   return (
 

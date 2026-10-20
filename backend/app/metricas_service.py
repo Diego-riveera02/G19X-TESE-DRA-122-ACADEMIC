@@ -1,8 +1,11 @@
 
 """Validacion y registro compartido de metricas."""
 
+import asyncio
 import json
 import math
+import random
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -56,16 +59,28 @@ async def registrar_metrica(
         raise ValueError("Pipeline invalido")
 
     if not guardar_normales and estado == "Normal":
-        return {
+        resultado = {
+            "type": "metrica_normal",
             "id": None,
             "pipeline_name": pipeline,
             "metric_type": metrica,
             "value": valor,
             "status": estado,
             "ai_recommendation": "Operacion normal.",
-            "timestamp": None,
+            "timestamp": (
+                datetime.now(timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z")
+            ),
             "registrada": False,
         }
+
+        await enviar_ws(
+            user_id,
+            json.dumps(resultado, ensure_ascii=False),
+        )
+
+        return resultado
 
     if recomendacion is None:
         recomendacion = (
@@ -112,3 +127,58 @@ async def registrar_metrica(
     )
 
     return resultado
+
+
+async def simular_metrica_usuario(
+    db: Session,
+    user_id: int,
+    enviar_ws,
+    generar_recomendacion,
+) -> dict:
+    """Simula una metrica sin almacenar registros normales."""
+
+    pipelines = [
+        "API Gateway Core",
+        "Pipeline Ventas MX",
+        "Migracion AWS S3",
+        "Sync PostgreSQL",
+    ]
+
+    metricas = [
+        ("latencia_ms", 50.0, 900.0, "ms"),
+        ("datos_corruptos_%", 0.0, 15.0, "%"),
+        ("tasa_fallos_%", 0.0, 25.0, "%"),
+    ]
+
+    pipeline = random.choice(pipelines)
+    tipo, minimo, maximo, unidad = random.choice(
+        metricas
+    )
+
+    valor = round(
+        random.uniform(minimo, maximo),
+        2
+    )
+
+    estado = clasificar_metrica(tipo, valor)
+
+    recomendacion = None
+
+    if estado != "Normal":
+        recomendacion = await asyncio.to_thread(
+            generar_recomendacion,
+            pipeline,
+            tipo,
+            valor,
+        )
+
+    return await registrar_metrica(
+        db=db,
+        user_id=user_id,
+        pipeline=pipeline,
+        metrica=tipo,
+        valor=valor,
+        enviar_ws=enviar_ws,
+        recomendacion=recomendacion,
+        guardar_normales=False,
+    )

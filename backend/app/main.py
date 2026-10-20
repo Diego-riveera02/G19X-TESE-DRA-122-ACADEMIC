@@ -35,7 +35,7 @@ from .jarvis_tools import (
 from .database import engine, get_db, SessionLocal
 from .schema_migrations import migrate_legacy_auth_schema
 from .color_utils import get_color
-from .metricas_service import registrar_metrica
+from .metricas_service import registrar_metrica, simular_metrica_usuario
 from .pipeline_keys import emitir_clave, calcular_hash, autenticar_clave
 
 # Fuerza a Python a leer la llave nueva
@@ -374,23 +374,10 @@ def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float)
 #                SIMULADOR DE INGESTA AUTOMATICA (NIVEL INGENIERÍA)
 # =================================================================
 async def generar_telemetria_automatica():
-    """Genera una metrica simulada por usuario activo y ciclo."""
-
-    pipelines = [
-        "API Gateway Core",
-        "Pipeline Ventas MX",
-        "Migración AWS S3",
-        "Sync PostgreSQL",
-    ]
-
-    metricas = [
-        ("latencia_ms", 50.0, 900.0, "ms"),
-        ("datos_corruptos_%", 0.0, 15.0, "%"),
-        ("tasa_fallos_%", 0.0, 25.0, "%"),
-    ]
+    """Simula metricas con un ciclo de 30 segundos."""
 
     while True:
-        await asyncio.sleep(5)
+        await asyncio.sleep(30)
 
         db = SessionLocal()
 
@@ -403,74 +390,23 @@ async def generar_telemetria_automatica():
 
             for user in usuarios_activos:
                 try:
-                    pipe = random.choice(pipelines)
-                    m_tipo, min_v, max_v, unidad = (
-                        random.choice(metricas)
-                    )
-                    valor_generado = round(
-                        random.uniform(min_v, max_v), 2
-                    )
-
-                    estado = "Normal"
-
-                    if valor_generado > max_v * 0.75:
-                        estado = "Critico"
-                    elif valor_generado > max_v * 0.45:
-                        estado = "Alerta"
-
-                    recomendacion = "Operación normal."
-
-                    if estado != "Normal":
-                        # Ejecutar la llamada sin bloquear
-                        # el ciclo de eventos de FastAPI.
-                        recomendacion = await asyncio.to_thread(
-                            generar_recomendacion_ia,
-                            pipe,
-                            m_tipo,
-                            valor_generado,
-                        )
-
-                    db_anomalia = models.AnomalyLog(
-                        pipeline_name=pipe,
-                        metric_type=m_tipo,
-                        value=valor_generado,
-                        status=estado,
-                        ai_recommendation=recomendacion,
+                    await simular_metrica_usuario(
+                        db=db,
                         user_id=user.id,
-                    )
-
-                    db.add(db_anomalia)
-                    db.commit()
-                    db.refresh(db_anomalia)
-
-                    mensaje_ws = json.dumps({
-                        "id": db_anomalia.id,
-                        "pipeline_name": db_anomalia.pipeline_name,
-                        "metric_type": db_anomalia.metric_type,
-                        "value": db_anomalia.value,
-                        "status": db_anomalia.status,
-                        "ai_recommendation":
-                            db_anomalia.ai_recommendation,
-                        "timestamp": (
-                            db_anomalia.timestamp.isoformat() + "Z"
-                            if db_anomalia.timestamp else None
-                        ),
-                    })
-
-                    await manager.send_to_user(
-                        user.id, mensaje_ws
+                        enviar_ws=manager.send_to_user,
+                        generar_recomendacion=generar_recomendacion_ia,
                     )
 
                 except Exception as error:
                     db.rollback()
                     print(
-                        f"Error de simulacion para usuario "
-                        f"{user.id}: {error}"
+                        "Error de simulacion para usuario "
+                        + str(user.id) + ": " + str(error)
                     )
 
         except Exception as error:
             db.rollback()
-            print(f"Error general del simulador: {error}")
+            print("Error general del simulador: " + str(error))
 
         finally:
             db.close()

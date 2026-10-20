@@ -1126,5 +1126,232 @@ class PruebasFlujosAislados(unittest.TestCase):
             self.assertTrue(pipeline.revocado)
 
 
+
+    def test_23_normal_temporal_sin_guardar(self):
+        import asyncio
+        import json
+        from unittest.mock import AsyncMock
+
+        correo = "simulador23@example.invalid"
+        self.activar(correo)
+        uid = self.usuario(correo)["id"]
+
+        enviar = AsyncMock()
+
+        with self.Session() as db:
+            resultado = asyncio.run(
+                self.main.registrar_metrica(
+                    db=db,
+                    user_id=uid,
+                    pipeline="Pipeline Normal",
+                    metrica="latencia_ms",
+                    valor=100,
+                    enviar_ws=enviar,
+                    guardar_normales=False,
+                )
+            )
+
+            self.assertEqual(
+                db.query(self.models.AnomalyLog).count(),
+                0
+            )
+
+        self.assertEqual(resultado["status"], "Normal")
+        self.assertFalse(resultado["registrada"])
+        self.assertIsNone(resultado["id"])
+        self.assertTrue(resultado["timestamp"])
+
+        enviar.assert_awaited_once()
+
+        receptor, mensaje = enviar.await_args.args
+        self.assertEqual(receptor, uid)
+
+        evento = json.loads(mensaje)
+        self.assertEqual(
+            evento["type"], "metrica_normal"
+        )
+        self.assertFalse(evento["registrada"])
+
+    def test_24_critica_se_guarda_y_notifica(self):
+        import asyncio
+        import json
+        from unittest.mock import AsyncMock
+
+        correo = "simulador24@example.invalid"
+        self.activar(correo)
+        uid = self.usuario(correo)["id"]
+
+        enviar = AsyncMock()
+
+        with self.Session() as db:
+            resultado = asyncio.run(
+                self.main.registrar_metrica(
+                    db=db,
+                    user_id=uid,
+                    pipeline="Pipeline Critico",
+                    metrica="latencia_ms",
+                    valor=800,
+                    enviar_ws=enviar,
+                    recomendacion="Revisar servicio",
+                    guardar_normales=False,
+                )
+            )
+
+            registros = db.query(
+                self.models.AnomalyLog
+            ).all()
+
+            self.assertEqual(len(registros), 1)
+            self.assertEqual(registros[0].user_id, uid)
+            self.assertEqual(
+                registros[0].status, "Critico"
+            )
+            self.assertEqual(
+                registros[0].ai_recommendation,
+                "Revisar servicio"
+            )
+
+        self.assertTrue(resultado["registrada"])
+        self.assertIsInstance(resultado["id"], int)
+
+        enviar.assert_awaited_once()
+        receptor, mensaje = enviar.await_args.args
+
+        self.assertEqual(receptor, uid)
+        evento = json.loads(mensaje)
+        self.assertEqual(evento["status"], "Critico")
+
+    def test_25_simulador_normal_no_llama_ia(self):
+        import asyncio
+        import json
+        from unittest.mock import AsyncMock, Mock
+
+        from app import metricas_service
+
+        correo = "simulador25@example.invalid"
+        self.activar(correo)
+        uid = self.usuario(correo)["id"]
+
+        enviar = AsyncMock()
+        ia = Mock(return_value="No deberia utilizarse")
+
+        with patch.object(
+            metricas_service.random,
+            "choice",
+            side_effect=[
+                "Pipeline Ventas MX",
+                ("latencia_ms", 50.0, 900.0, "ms"),
+            ],
+        ):
+            with patch.object(
+                metricas_service.random,
+                "uniform",
+                return_value=100.0
+            ):
+                with self.Session() as db:
+                    resultado = asyncio.run(
+                        metricas_service.simular_metrica_usuario(
+                            db=db,
+                            user_id=uid,
+                            enviar_ws=enviar,
+                            generar_recomendacion=ia,
+                        )
+                    )
+
+                    self.assertEqual(
+                        db.query(
+                            self.models.AnomalyLog
+                        ).count(),
+                        0
+                    )
+
+        ia.assert_not_called()
+        enviar.assert_awaited_once()
+
+        self.assertFalse(resultado["registrada"])
+        self.assertEqual(resultado["status"], "Normal")
+
+        evento = json.loads(
+            enviar.await_args.args[1]
+        )
+
+        self.assertEqual(
+            evento["type"], "metrica_normal"
+        )
+        self.assertEqual(
+            enviar.await_args.args[0], uid
+        )
+
+    def test_26_simulador_alerta_usa_ia(self):
+        import asyncio
+        import json
+        from unittest.mock import AsyncMock, Mock
+
+        from app import metricas_service
+
+        correo = "simulador26@example.invalid"
+        self.activar(correo)
+        uid = self.usuario(correo)["id"]
+
+        enviar = AsyncMock()
+        ia = Mock(return_value="Revisar latencia")
+
+        with patch.object(
+            metricas_service.random,
+            "choice",
+            side_effect=[
+                "Pipeline Ventas MX",
+                ("latencia_ms", 50.0, 900.0, "ms"),
+            ],
+        ):
+            with patch.object(
+                metricas_service.random,
+                "uniform",
+                return_value=500.0
+            ):
+                with self.Session() as db:
+                    resultado = asyncio.run(
+                        metricas_service.simular_metrica_usuario(
+                            db=db,
+                            user_id=uid,
+                            enviar_ws=enviar,
+                            generar_recomendacion=ia,
+                        )
+                    )
+
+                    registros = db.query(
+                        self.models.AnomalyLog
+                    ).all()
+
+                    self.assertEqual(len(registros), 1)
+                    self.assertEqual(
+                        registros[0].status,
+                        "Alerta"
+                    )
+                    self.assertEqual(
+                        registros[0].user_id, uid
+                    )
+
+        ia.assert_called_once_with(
+            "Pipeline Ventas MX",
+            "latencia_ms",
+            500.0
+        )
+
+        self.assertTrue(resultado["registrada"])
+        self.assertEqual(resultado["status"], "Alerta")
+
+        enviar.assert_awaited_once()
+
+        evento = json.loads(
+            enviar.await_args.args[1]
+        )
+
+        self.assertEqual(
+            evento["ai_recommendation"],
+            "Revisar latencia"
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
