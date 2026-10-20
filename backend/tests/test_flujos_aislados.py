@@ -633,5 +633,188 @@ class PruebasFlujosAislados(unittest.TestCase):
             )
 
 
+
+    def test_13_websocket_rechaza_token_invalido(self):
+        from starlette.websockets import WebSocketDisconnect
+
+        with self.client.websocket_connect(
+            "/ws/anomalias",
+            headers={"origin": "http://localhost:5173"}
+        ) as ws:
+            ws.send_json({
+                "type": "auth",
+                "token": "token-invalido"
+            })
+
+            with self.assertRaises(
+                WebSocketDisconnect
+            ) as resultado:
+                ws.receive_json()
+
+            self.assertEqual(
+                resultado.exception.code, 1008
+            )
+
+    def test_14_websocket_rechaza_origen(self):
+        from starlette.websockets import WebSocketDisconnect
+
+        with self.assertRaises(
+            WebSocketDisconnect
+        ) as resultado:
+            with self.client.websocket_connect(
+                "/ws/anomalias",
+                headers={
+                    "origin": "https://origen-no-autorizado.invalid"
+                }
+            ) as ws:
+                ws.send_json({
+                    "type": "auth",
+                    "token": "invalido"
+                })
+
+        self.assertEqual(
+            resultado.exception.code, 1008
+        )
+
+    def test_15_websocket_autenticacion_correcta(self):
+        correo = "websocket@example.invalid"
+        self.activar(correo)
+
+        token = self.token(correo)
+        usuario_id = self.usuario(correo)["id"]
+
+        with self.client.websocket_connect(
+            "/ws/anomalias",
+            headers={"origin": "http://localhost:5173"}
+        ) as ws:
+            ws.send_json({
+                "type": "auth",
+                "token": token
+            })
+
+            self.assertEqual(
+                ws.receive_json(),
+                {"type": "auth_ok"}
+            )
+
+            self.assertIn(
+                usuario_id,
+                self.main.manager.active_connections
+            )
+
+        self.assertNotIn(
+            usuario_id,
+            self.main.manager.active_connections
+        )
+
+    def test_16_websocket_aislamiento_dos_usuarios(self):
+        correo_a = "websocketa@example.invalid"
+        correo_b = "websocketb@example.invalid"
+
+        self.activar(correo_a)
+        self.activar(correo_b)
+
+        token_a = self.token(correo_a)
+        token_b = self.token(correo_b)
+
+        id_a = self.usuario(correo_a)["id"]
+        id_b = self.usuario(correo_b)["id"]
+
+        self.assertNotEqual(id_a, id_b)
+
+        with self.client.websocket_connect(
+            "/ws/anomalias",
+            headers={"origin": "http://localhost:5173"}
+        ) as ws_a:
+
+            ws_a.send_json({
+                "type": "auth",
+                "token": token_a
+            })
+
+            self.assertEqual(
+                ws_a.receive_json(),
+                {"type": "auth_ok"}
+            )
+
+            with self.client.websocket_connect(
+                "/ws/anomalias",
+                headers={
+                    "origin": "http://localhost:5173"
+                }
+            ) as ws_b:
+
+                ws_b.send_json({
+                    "type": "auth",
+                    "token": token_b
+                })
+
+                self.assertEqual(
+                    ws_b.receive_json(),
+                    {"type": "auth_ok"}
+                )
+
+                self.assertIn(
+                    id_a,
+                    self.main.manager.active_connections
+                )
+
+                self.assertIn(
+                    id_b,
+                    self.main.manager.active_connections
+                )
+
+                for token, nombre in (
+                    (token_a, "Evento exclusivo A"),
+                    (token_b, "Evento exclusivo B"),
+                ):
+                    respuesta = self.client.post(
+                        "/metricas/",
+                        headers={
+                            "Authorization": "Bearer " + token
+                        },
+                        json={
+                            "pipeline": nombre,
+                            "metrica": "latencia_ms",
+                            "valor": 500
+                        }
+                    )
+
+                    self.assertEqual(
+                        respuesta.status_code,
+                        201,
+                        respuesta.text
+                    )
+
+                evento_a = ws_a.receive_json()
+                evento_b = ws_b.receive_json()
+
+                self.assertEqual(
+                    evento_a["pipeline_name"],
+                    "Evento exclusivo A"
+                )
+
+                self.assertEqual(
+                    evento_b["pipeline_name"],
+                    "Evento exclusivo B"
+                )
+
+                self.assertNotEqual(
+                    evento_a["id"],
+                    evento_b["id"]
+                )
+
+        with self.Session() as db:
+            registros = db.query(
+                self.models.AnomalyLog
+            ).all()
+
+            self.assertEqual(len(registros), 2)
+            self.assertEqual(
+                {r.user_id for r in registros},
+                {id_a, id_b}
+            )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
