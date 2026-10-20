@@ -440,5 +440,198 @@ class PruebasFlujosAislados(unittest.TestCase):
         )
 
 
+
+    def test_09_ingesta_sin_token(self):
+        respuesta = self.client.post(
+            "/metricas/",
+            json={
+                "pipeline": "Pipeline Seguro",
+                "metrica": "latencia_ms",
+                "valor": 500
+            }
+        )
+
+        self.assertEqual(respuesta.status_code, 401)
+
+        with self.Session() as db:
+            self.assertEqual(
+                db.query(self.models.AnomalyLog).count(), 0
+            )
+
+    def test_10_ingesta_autenticada_y_websocket(self):
+        from unittest.mock import AsyncMock
+        import json
+
+        correo = "ingesta@example.invalid"
+        self.activar(correo)
+
+        token = self.token(correo)
+        uid = self.usuario(correo)["id"]
+
+        with patch.object(
+            self.main.manager,
+            "send_to_user",
+            new_callable=AsyncMock
+        ) as enviar:
+
+            respuesta = self.client.post(
+                "/metricas/",
+                headers={
+                    "Authorization": "Bearer " + token
+                },
+                json={
+                    "pipeline": "Pipeline Medicion",
+                    "metrica": "latencia_ms",
+                    "valor": 500
+                }
+            )
+
+            self.assertEqual(
+                respuesta.status_code, 201,
+                respuesta.text
+            )
+
+            self.assertEqual(
+                respuesta.json()["status"],
+                "Alerta"
+            )
+
+            self.assertTrue(
+                respuesta.json()["registrada"]
+            )
+
+            enviar.assert_awaited_once()
+
+            uid_destino, mensaje = enviar.await_args.args
+
+            self.assertEqual(uid_destino, uid)
+
+            evento = json.loads(mensaje)
+
+            self.assertEqual(
+                evento["pipeline_name"],
+                "Pipeline Medicion"
+            )
+
+        with self.Session() as db:
+            registros = db.query(
+                self.models.AnomalyLog
+            ).all()
+
+            self.assertEqual(len(registros), 1)
+            self.assertEqual(registros[0].user_id, uid)
+            self.assertFalse(registros[0].archived)
+
+    def test_11_ingesta_valores_invalidos(self):
+        correo = "validacion@example.invalid"
+        self.activar(correo)
+
+        token = self.token(correo)
+
+        casos = [
+            {
+                "pipeline": "Pipeline Test",
+                "metrica": "latencia_ms",
+                "valor": -1
+            },
+            {
+                "pipeline": "Pipeline Test",
+                "metrica": "datos_corruptos_%",
+                "valor": 101
+            },
+            {
+                "pipeline": "Pipeline Test",
+                "metrica": "metrica_desconocida",
+                "valor": 50
+            },
+            {
+                "pipeline": "",
+                "metrica": "latencia_ms",
+                "valor": 50
+            },
+        ]
+
+        for caso in casos:
+            respuesta = self.client.post(
+                "/metricas/",
+                headers={
+                    "Authorization": "Bearer " + token
+                },
+                json=caso
+            )
+
+            self.assertEqual(
+                respuesta.status_code, 422,
+                respuesta.text
+            )
+
+        with self.Session() as db:
+            self.assertEqual(
+                db.query(self.models.AnomalyLog).count(),
+                0
+            )
+
+    def test_12_ingesta_aislada_dos_usuarios(self):
+        correo_a = "fuentea@example.invalid"
+        correo_b = "fuenteb@example.invalid"
+
+        self.activar(correo_a)
+        self.activar(correo_b)
+
+        token_a = self.token(correo_a)
+        token_b = self.token(correo_b)
+
+        for token, nombre in (
+            (token_a, "Origen A"),
+            (token_b, "Origen B"),
+        ):
+            respuesta = self.client.post(
+                "/metricas/",
+                headers={
+                    "Authorization": "Bearer " + token
+                },
+                json={
+                    "pipeline": nombre,
+                    "metrica": "tasa_fallos_%",
+                    "valor": 20
+                }
+            )
+
+            self.assertEqual(
+                respuesta.status_code, 201,
+                respuesta.text
+            )
+
+        for token, esperado in (
+            (token_a, "Origen A"),
+            (token_b, "Origen B"),
+        ):
+            respuesta = self.client.get(
+                "/anomalias/",
+                headers={
+                    "Authorization": "Bearer " + token
+                }
+            )
+
+            self.assertEqual(
+                respuesta.status_code, 200
+            )
+
+            self.assertEqual(
+                len(respuesta.json()), 1
+            )
+
+            self.assertEqual(
+                respuesta.json()[0]["pipeline_name"],
+                esperado
+            )
+
+        with self.Session() as db:
+            self.assertEqual(
+                db.query(self.models.AnomalyLog).count(),
+                2
+            )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

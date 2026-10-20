@@ -34,6 +34,7 @@ from .jarvis_tools import (
 from .database import engine, get_db, SessionLocal
 from .schema_migrations import migrate_legacy_auth_schema
 from .color_utils import get_color
+from .metricas_service import registrar_metrica
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -813,6 +814,24 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 # =================================================================
 #                ENDPOINTS DE LECTURA E HISTORIAL
 # =================================================================
+
+@app.post("/metricas/", status_code=201)
+async def ingestar_metrica(
+    metrica: schemas.MetricaEntrada,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Registra telemetria de la cuenta autenticada."""
+    return await registrar_metrica(
+        db=db,
+        user_id=current_user.id,
+        pipeline=metrica.pipeline,
+        metrica=metrica.metrica,
+        valor=metrica.valor,
+        enviar_ws=manager.send_to_user,
+    )
+
+
 @app.get("/anomalias/", response_model=list[schemas.AnomalyLogResponse])
 def read_anomalies(
     skip: int = Query(0, ge=0),
