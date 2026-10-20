@@ -1353,5 +1353,200 @@ class PruebasFlujosAislados(unittest.TestCase):
         )
 
 
+
+    def test_27_registro_no_guarda_codigo_plano(self):
+        correo = "codigo27@example.invalid"
+        self.registrar(correo)
+
+        estado = self.usuario(correo)
+
+        self.assertFalse(estado["activo"])
+        self.assertNotEqual(estado["codigo"], "135791")
+        self.assertTrue(
+            estado["codigo"].startswith("hmac-sha256$v1$")
+        )
+        self.assertEqual(len(estado["codigo"]), 79)
+
+    def test_28_codigo_hmac_activa_una_sola_vez(self):
+        correo = "codigo28@example.invalid"
+        self.registrar(correo)
+
+        respuesta = self.verificar(correo)
+        self.assertEqual(respuesta.status_code, 200)
+
+        estado = self.usuario(correo)
+        self.assertTrue(estado["activo"])
+        self.assertIsNone(estado["codigo"])
+
+        otra_vez = self.verificar(correo)
+        self.assertEqual(otra_vez.status_code, 400)
+
+    def test_29_codigo_legado_vigente_se_acepta(self):
+        correo = "codigo29@example.invalid"
+        self.registrar(correo)
+
+        with self.Session() as db:
+            usuario = db.query(
+                self.models.User
+            ).filter_by(correo=correo).one()
+
+            usuario.codigo_verificacion = "135791"
+            db.commit()
+
+        respuesta = self.verificar(correo)
+        self.assertEqual(
+            respuesta.status_code,
+            200,
+            respuesta.text,
+        )
+
+        estado = self.usuario(correo)
+        self.assertTrue(estado["activo"])
+        self.assertIsNone(estado["codigo"])
+
+    def test_30_hmac_aislado_por_usuario_y_proposito(self):
+        from app.verification_codes import (
+            crear_hash_codigo,
+            verificar_codigo_guardado,
+        )
+
+        clave = self.main.SECRET_KEY
+        correo = "codigo30@example.invalid"
+
+        guardado = crear_hash_codigo(
+            "135791",
+            correo,
+            "verificacion",
+            clave,
+        )
+
+        self.assertTrue(
+            verificar_codigo_guardado(
+                guardado,
+                "135791",
+                correo,
+                "verificacion",
+                clave,
+            )
+        )
+
+        for codigo, cuenta, proposito, secreto in (
+            ("135792", correo, "verificacion", clave),
+            ("135791", "otra@example.invalid", "verificacion", clave),
+            ("135791", correo, "recuperacion", clave),
+            ("135791", correo, "verificacion", clave + "-otra"),
+        ):
+            self.assertFalse(
+                verificar_codigo_guardado(
+                    guardado,
+                    codigo,
+                    cuenta,
+                    proposito,
+                    secreto,
+                )
+            )
+
+        self.assertFalse(
+            verificar_codigo_guardado(
+                "hmac-sha256$v1$invalido",
+                "135791",
+                correo,
+                "verificacion",
+                clave,
+            )
+        )
+
+    def test_31_recuperacion_usa_hmac_y_lo_elimina(self):
+        correo = "codigo31@example.invalid"
+        self.activar(correo)
+
+        solicitud = self.client.post(
+            "/solicitar-recuperacion/",
+            json={"correo": correo},
+        )
+        self.assertEqual(solicitud.status_code, 200)
+
+        estado = self.usuario(correo)
+
+        self.assertTrue(
+            estado["codigo"].startswith("hmac-sha256$v1$")
+        )
+
+        respuesta = self.client.post(
+            "/recuperar-password/",
+            json={
+                "correo": correo,
+                "codigo": "135791",
+                "nueva_password": "NuevaClave31!",
+            },
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            200,
+            respuesta.text,
+        )
+
+        self.assertIsNone(
+            self.usuario(correo)["codigo"]
+        )
+
+        self.assertTrue(
+            self.token(correo, "NuevaClave31!")
+        )
+
+        repeticion = self.client.post(
+            "/recuperar-password/",
+            json={
+                "correo": correo,
+                "codigo": "135791",
+                "nueva_password": "OtraClave31!",
+            },
+        )
+
+        self.assertEqual(repeticion.status_code, 400)
+
+    def test_32_recuperacion_legacy_compatible(self):
+        correo = "codigo32@example.invalid"
+        self.activar(correo)
+
+        solicitud = self.client.post(
+            "/solicitar-recuperacion/",
+            json={"correo": correo},
+        )
+        self.assertEqual(solicitud.status_code, 200)
+
+        with self.Session() as db:
+            usuario = db.query(
+                self.models.User
+            ).filter_by(correo=correo).one()
+
+            usuario.codigo_verificacion = "135791"
+            db.commit()
+
+        respuesta = self.client.post(
+            "/recuperar-password/",
+            json={
+                "correo": correo,
+                "codigo": "135791",
+                "nueva_password": "Legado32Seguro!",
+            },
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            200,
+            respuesta.text,
+        )
+
+        self.assertIsNone(
+            self.usuario(correo)["codigo"]
+        )
+
+        self.assertTrue(
+            self.token(correo, "Legado32Seguro!")
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

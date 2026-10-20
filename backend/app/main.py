@@ -37,6 +37,7 @@ from .schema_migrations import migrate_legacy_auth_schema
 from .color_utils import get_color
 from .metricas_service import registrar_metrica, simular_metrica_usuario
 from .pipeline_keys import emitir_clave, calcular_hash, autenticar_clave
+from .verification_codes import crear_hash_codigo, verificar_codigo_guardado
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -436,7 +437,9 @@ def registrar_usuario(user: schemas.UserCreate, background_tasks: BackgroundTask
         correo=user.correo,
         telefono=user.telefono,
         hashed_password=get_password_hash(user.password),
-        codigo_verificacion=codigo_secreto,
+        codigo_verificacion=crear_hash_codigo(
+            codigo_secreto, user.correo, "verificacion", SECRET_KEY
+        ),
         codigo_expira_en=datetime.utcnow() + timedelta(
             minutes=CODIGO_DURACION_MINUTOS
         ),
@@ -510,9 +513,12 @@ def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
         )
 
     # Comparar el codigo de forma segura
-    if not secrets.compare_digest(
+    if not verificar_codigo_guardado(
         user.codigo_verificacion,
-        str(req.codigo)
+        req.codigo,
+        user.correo,
+        "verificacion",
+        SECRET_KEY,
     ):
         user.codigo_intentos += 1
 
@@ -585,7 +591,9 @@ def reenviar_verificacion(
         return respuesta
 
     codigo_secreto = generar_codigo_seguro()
-    user.codigo_verificacion = codigo_secreto
+    user.codigo_verificacion = crear_hash_codigo(
+        codigo_secreto, user.correo, "verificacion", SECRET_KEY
+    )
     user.codigo_expira_en = ahora + timedelta(minutes=CODIGO_DURACION_MINUTOS)
     user.codigo_intentos = 0
     user.codigo_proposito = "verificacion"
@@ -640,7 +648,9 @@ def solicitar_recuperacion(
 
     codigo_secreto = generar_codigo_seguro()
 
-    user.codigo_verificacion = codigo_secreto
+    user.codigo_verificacion = crear_hash_codigo(
+        codigo_secreto, user.correo, "recuperacion", SECRET_KEY
+    )
     user.codigo_expira_en = ahora + timedelta(
         minutes=CODIGO_DURACION_MINUTOS
     )
@@ -708,9 +718,12 @@ def recuperar_password(
             detail="Codigo de recuperacion invalido o vencido"
         )
 
-    if not secrets.compare_digest(
+    if not verificar_codigo_guardado(
         user.codigo_verificacion,
-        str(req.codigo)
+        req.codigo,
+        user.correo,
+        "recuperacion",
+        SECRET_KEY,
     ):
         user.codigo_intentos += 1
         if user.codigo_intentos >= CODIGO_MAX_INTENTOS:
