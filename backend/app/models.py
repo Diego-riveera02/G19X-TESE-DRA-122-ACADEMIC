@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 
 from .database import Base
 
@@ -48,3 +48,36 @@ class AuthRateLimit(Base):
     clave = Column(String(64), primary_key=True)
     inicio_ventana = Column(DateTime, nullable=False)
     cantidad = Column(Integer, nullable=False, default=0)
+
+
+class Pipeline(Base):
+    __tablename__ = "pipelines"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "nombre",
+            name="uq_pipeline_user_name"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True
+    )
+    nombre = Column(String(100), nullable=False)
+    clave_hash = Column(String(64), nullable=False)
+    revocado = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false"
+    )
+    creado_en = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )

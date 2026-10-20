@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException, status, WebSocket, WebSocketDisconnect, Request
-from fastapi import Query
+from fastapi import Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import case
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -35,6 +36,7 @@ from .database import engine, get_db, SessionLocal
 from .schema_migrations import migrate_legacy_auth_schema
 from .color_utils import get_color
 from .metricas_service import registrar_metrica
+from .pipeline_keys import emitir_clave, calcular_hash, autenticar_clave
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -814,6 +816,175 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 # =================================================================
 #                ENDPOINTS DE LECTURA E HISTORIAL
 # =================================================================
+
+
+@app.post("/pipelines/", status_code=201)
+def crear_pipeline(
+    entrada: schemas.PipelineNuevo,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    pipeline = models.Pipeline(
+        user_id=current_user.id,
+        nombre=entrada.nombre,
+        clave_hash="0" * 64,
+        revocado=False
+    )
+
+    try:
+        db.add(pipeline)
+        db.flush()
+
+        clave = emitir_clave(pipeline.id)
+        pipeline.clave_hash = calcular_hash(clave)
+
+        db.commit()
+        db.refresh(pipeline)
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Ya existe un pipeline con ese nombre"
+        )
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "id": pipeline.id,
+        "nombre": pipeline.nombre,
+        "clave_api": clave,
+        "mensaje": "Guarda la clave ahora; no se mostrara otra vez"
+    }
+
+
+@app.get("/pipelines/")
+def listar_pipelines(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    pipelines = db.query(models.Pipeline).filter(
+        models.Pipeline.user_id == current_user.id
+    ).order_by(models.Pipeline.id.desc()).all()
+
+    return [
+        {
+            "id": p.id,
+            "nombre": p.nombre,
+            "revocado": p.revocado
+        }
+        for p in pipelines
+    ]
+
+
+@app.post("/pipelines/{pipeline_id}/rotar/")
+def rotar_clave_pipeline(
+    pipeline_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    pipeline = db.query(models.Pipeline).filter(
+        models.Pipeline.id == pipeline_id,
+        models.Pipeline.user_id == current_user.id,
+        models.Pipeline.revocado.is_(False)
+    ).first()
+
+    if pipeline is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Pipeline no encontrado"
+        )
+
+    clave = emitir_clave(pipeline.id)
+    pipeline.clave_hash = calcular_hash(clave)
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "id": pipeline.id,
+        "clave_api": clave,
+        "mensaje": "La clave anterior ya no es valida"
+    }
+
+
+@app.post("/pipelines/{pipeline_id}/revocar/")
+def revocar_pipeline(
+    pipeline_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    pipeline = db.query(models.Pipeline).filter(
+        models.Pipeline.id == pipeline_id,
+        models.Pipeline.user_id == current_user.id,
+        models.Pipeline.revocado.is_(False)
+    ).first()
+
+    if pipeline is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Pipeline no encontrado"
+        )
+
+    pipeline.revocado = True
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "id": pipeline.id,
+        "revocado": True
+    }
+
+
+@app.post("/metricas/externas/", status_code=201)
+async def ingestar_metrica_externa(
+    metrica: schemas.MetricaExternaEntrada,
+    x_pipeline_key: str | None = Header(
+        default=None,
+        alias="X-Pipeline-Key"
+    ),
+    db: Session = Depends(get_db),
+):
+    pipeline = autenticar_clave(
+        db,
+        x_pipeline_key
+    )
+
+    if pipeline is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Clave de pipeline invalida"
+        )
+
+    usuario = db.query(models.User).filter(
+        models.User.id == pipeline.user_id,
+        models.User.is_active.is_(True)
+    ).first()
+
+    if usuario is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Clave de pipeline invalida"
+        )
+
+    return await registrar_metrica(
+        db=db,
+        user_id=usuario.id,
+        pipeline=pipeline.nombre,
+        metrica=metrica.metrica,
+        valor=metrica.valor,
+        enviar_ws=manager.send_to_user,
+    )
+
 
 @app.post("/metricas/", status_code=201)
 async def ingestar_metrica(

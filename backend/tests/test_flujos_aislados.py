@@ -816,5 +816,315 @@ class PruebasFlujosAislados(unittest.TestCase):
             )
 
 
+
+    def test_17_pipeline_clave_hasheada_y_listado(self):
+        import hashlib
+
+        correo = "pipeline17@example.invalid"
+        self.activar(correo)
+        token = self.token(correo)
+
+        respuesta = self.client.post(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token},
+            json={"nombre": "Fuente Ventas"}
+        )
+
+        self.assertEqual(
+            respuesta.status_code, 201, respuesta.text
+        )
+
+        datos = respuesta.json()
+        clave = datos["clave_api"]
+
+        self.assertTrue(clave.startswith("plr_"))
+        self.assertGreater(len(clave), 35)
+
+        with self.Session() as db:
+            p = db.query(self.models.Pipeline).one()
+            self.assertEqual(p.nombre, "Fuente Ventas")
+            self.assertNotEqual(p.clave_hash, clave)
+            self.assertEqual(
+                p.clave_hash,
+                hashlib.sha256(
+                    clave.encode("utf-8")
+                ).hexdigest()
+            )
+
+        listado = self.client.get(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token}
+        )
+
+        self.assertEqual(listado.status_code, 200)
+        self.assertEqual(len(listado.json()), 1)
+        self.assertNotIn("clave_api", str(listado.json()))
+        self.assertNotIn("clave_hash", str(listado.json()))
+
+    def test_18_pipeline_sin_jwt_y_duplicado(self):
+        datos = {"nombre": "Pipeline Duplicado"}
+
+        sin_token = self.client.post(
+            "/pipelines/", json=datos
+        )
+        self.assertEqual(sin_token.status_code, 401)
+
+        correo = "pipeline18@example.invalid"
+        self.activar(correo)
+        token = self.token(correo)
+        headers = {"Authorization": "Bearer " + token}
+
+        primera = self.client.post(
+            "/pipelines/", headers=headers, json=datos
+        )
+        segunda = self.client.post(
+            "/pipelines/", headers=headers, json=datos
+        )
+
+        self.assertEqual(primera.status_code, 201)
+        self.assertEqual(segunda.status_code, 409)
+
+        with self.Session() as db:
+            self.assertEqual(
+                db.query(self.models.Pipeline).count(), 1
+            )
+
+    def test_19_ingesta_externa_con_clave(self):
+        correo = "pipeline19@example.invalid"
+        self.activar(correo)
+        token = self.token(correo)
+
+        creado = self.client.post(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token},
+            json={"nombre": "Fuente Externa"}
+        )
+        self.assertEqual(creado.status_code, 201)
+        clave = creado.json()["clave_api"]
+
+        cuerpo = {
+            "metrica": "latencia_ms",
+            "valor": 500
+        }
+
+        sin_clave = self.client.post(
+            "/metricas/externas/", json=cuerpo
+        )
+        self.assertEqual(sin_clave.status_code, 401)
+
+        invalida = self.client.post(
+            "/metricas/externas/",
+            headers={"X-Pipeline-Key": "clave-invalida"},
+            json=cuerpo
+        )
+        self.assertEqual(invalida.status_code, 401)
+
+        valido = self.client.post(
+            "/metricas/externas/",
+            headers={"X-Pipeline-Key": clave},
+            json=cuerpo
+        )
+        self.assertEqual(
+            valido.status_code, 201, valido.text
+        )
+        self.assertEqual(
+            valido.json()["pipeline_name"],
+            "Fuente Externa"
+        )
+        self.assertEqual(
+            valido.json()["status"], "Alerta"
+        )
+
+        porcentaje_invalido = self.client.post(
+            "/metricas/externas/",
+            headers={"X-Pipeline-Key": clave},
+            json={
+                "metrica": "tasa_fallos_%",
+                "valor": 101
+            }
+        )
+        self.assertEqual(
+            porcentaje_invalido.status_code, 422
+        )
+
+        with self.Session() as db:
+            registros = db.query(
+                self.models.AnomalyLog
+            ).all()
+            self.assertEqual(len(registros), 1)
+
+    def test_20_pipelines_aislamiento_usuarios(self):
+        from unittest.mock import AsyncMock
+
+        correo_a = "pipeline20a@example.invalid"
+        correo_b = "pipeline20b@example.invalid"
+
+        self.activar(correo_a)
+        self.activar(correo_b)
+
+        token_a = self.token(correo_a)
+        token_b = self.token(correo_b)
+        id_b = self.usuario(correo_b)["id"]
+
+        a = self.client.post(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token_a},
+            json={"nombre": "Fuente de A"}
+        )
+        b = self.client.post(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token_b},
+            json={"nombre": "Fuente de B"}
+        )
+
+        self.assertEqual(a.status_code, 201)
+        self.assertEqual(b.status_code, 201)
+
+        ajeno = self.client.post(
+            "/pipelines/" + str(a.json()["id"]) + "/rotar/",
+            headers={"Authorization": "Bearer " + token_b}
+        )
+        self.assertEqual(ajeno.status_code, 404)
+
+        listado_b = self.client.get(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token_b}
+        )
+        self.assertEqual(listado_b.status_code, 200)
+        self.assertEqual(len(listado_b.json()), 1)
+        self.assertEqual(
+            listado_b.json()[0]["nombre"],
+            "Fuente de B"
+        )
+
+        with patch.object(
+            self.main.manager,
+            "send_to_user",
+            new_callable=AsyncMock
+        ) as enviar:
+            respuesta = self.client.post(
+                "/metricas/externas/",
+                headers={
+                    "X-Pipeline-Key": b.json()["clave_api"]
+                },
+                json={
+                    "metrica": "latencia_ms",
+                    "valor": 600
+                }
+            )
+
+            self.assertEqual(
+                respuesta.status_code, 201, respuesta.text
+            )
+            enviar.assert_awaited_once()
+            self.assertEqual(
+                enviar.await_args.args[0], id_b
+            )
+
+        consulta_a = self.client.get(
+            "/anomalias/",
+            headers={"Authorization": "Bearer " + token_a}
+        )
+        consulta_b = self.client.get(
+            "/anomalias/",
+            headers={"Authorization": "Bearer " + token_b}
+        )
+
+        self.assertEqual(consulta_a.json(), [])
+        self.assertEqual(len(consulta_b.json()), 1)
+
+    def test_21_rotacion_invalida_clave_anterior(self):
+        correo = "pipeline21@example.invalid"
+        self.activar(correo)
+        token = self.token(correo)
+
+        creado = self.client.post(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token},
+            json={"nombre": "Fuente Rotacion"}
+        )
+
+        self.assertEqual(creado.status_code, 201)
+
+        antiguo = creado.json()["clave_api"]
+        identificador = creado.json()["id"]
+
+        rotado = self.client.post(
+            "/pipelines/" + str(identificador) + "/rotar/",
+            headers={"Authorization": "Bearer " + token}
+        )
+
+        self.assertEqual(rotado.status_code, 200)
+        nuevo = rotado.json()["clave_api"]
+        self.assertNotEqual(antiguo, nuevo)
+
+        cuerpo = {
+            "metrica": "latencia_ms",
+            "valor": 700
+        }
+
+        anterior = self.client.post(
+            "/metricas/externas/",
+            headers={"X-Pipeline-Key": antiguo},
+            json=cuerpo
+        )
+        vigente = self.client.post(
+            "/metricas/externas/",
+            headers={"X-Pipeline-Key": nuevo},
+            json=cuerpo
+        )
+
+        self.assertEqual(anterior.status_code, 401)
+        self.assertEqual(vigente.status_code, 201)
+
+    def test_22_revocacion_invalida_pipeline(self):
+        correo = "pipeline22@example.invalid"
+        self.activar(correo)
+        token = self.token(correo)
+
+        creado = self.client.post(
+            "/pipelines/",
+            headers={"Authorization": "Bearer " + token},
+            json={"nombre": "Fuente Revocada"}
+        )
+
+        self.assertEqual(creado.status_code, 201)
+        clave = creado.json()["clave_api"]
+        identificador = creado.json()["id"]
+
+        revocado = self.client.post(
+            "/pipelines/" + str(identificador) + "/revocar/",
+            headers={"Authorization": "Bearer " + token}
+        )
+        self.assertEqual(revocado.status_code, 200)
+        self.assertTrue(revocado.json()["revocado"])
+
+        denegado = self.client.post(
+            "/metricas/externas/",
+            headers={"X-Pipeline-Key": clave},
+            json={
+                "metrica": "latencia_ms",
+                "valor": 800
+            }
+        )
+        self.assertEqual(denegado.status_code, 401)
+
+        rotacion = self.client.post(
+            "/pipelines/" + str(identificador) + "/rotar/",
+            headers={"Authorization": "Bearer " + token}
+        )
+        self.assertEqual(rotacion.status_code, 404)
+
+        with self.Session() as db:
+            self.assertEqual(
+                db.query(self.models.AnomalyLog).count(),
+                0
+            )
+            pipeline = db.query(
+                self.models.Pipeline
+            ).one()
+            self.assertTrue(pipeline.revocado)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
