@@ -1,0 +1,80 @@
+name: PluriOne CI
+
+on:
+  push:
+    branches:
+      - fix/segunda-auditoria-plurione
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: Backend - isolated tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      DATABASE_URL: "sqlite://"
+      SECRET_KEY: "ci-only-test-key-not-for-production"
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Check isolated environment
+        run: |
+          test ! -f .env
+          test ! -f ../.env
+          python -c "import os; assert os.environ['DATABASE_URL'] == 'sqlite://'; print('Isolated SQLite environment confirmed')"
+
+      - name: Run isolated backend tests
+        run: |
+          python -m unittest discover -s tests -p "test_flujos_aislados.py" -v
+
+  frontend-build:
+    name: Frontend - production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
