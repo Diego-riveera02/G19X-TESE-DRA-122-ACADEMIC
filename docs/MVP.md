@@ -164,3 +164,21 @@ reales de PostgreSQL durante las pruebas.
 
 Estos puntos deben conservarse como pendientes y no presentarse
 como funcionalidades concluidas del MVP.
+
+### Evidencia de integración continua
+
+El MVP dispone de un workflow de GitHub Actions ubicado en
+`.github/workflows/ci.yml`, incorporado durante la segunda
+auditoría del proyecto.
+
+El trabajo del backend ejecuta las pruebas aisladas existentes
+mediante `unittest` y SQLite. El trabajo del frontend instala
+dependencias con `npm ci` y compila React mediante Vite.
+Ambos trabajos finalizaron correctamente en la ejecución
+inicial correspondiente al commit `7de6a10`.
+
+La validación automatizada se limita a estas comprobaciones.
+No acredita la ejecución de todas las pruebas HTTP, las
+pruebas independientes de archivado, el lint del frontend
+ni un despliegue de producción. Las funcionalidades futuras
+y limitaciones documentadas en el MVP siguen vigentes.

@@ -274,3 +274,19 @@ Siguen pendientes las pruebas exhaustivas de carga, escenarios de
 concurrencia, cobertura completa del navegador y validacion integral
 para un entorno de produccion. El proyecto continua utilizando
 telemetria simulada y no incorpora conectores empresariales reales.
+
+### Verificación automática en GitHub Actions
+
+Durante la segunda auditoría se incorporó el workflow
+`.github/workflows/ci.yml`. Su finalidad es detectar regresiones
+mediante pruebas aisladas del backend y compilación de React.
+
+La primera ejecución en GitHub terminó satisfactoriamente
+para ambos trabajos. La evidencia corresponde al commit
+`7de6a10` de la rama `fix/segunda-auditoria-plurione`.
+
+La automatización no sustituye las pruebas HTTP adicionales,
+las comprobaciones exhaustivas de seguridad, las pruebas de
+carga ni la validación de un despliegue de producción.
+Los trabajos futuros descritos en este PRD conservan su
+estado pendiente cuando corresponda.

@@ -503,3 +503,24 @@ certificacion de seguridad, pruebas exhaustivas de carga o validacion
 integral en un ambiente de produccion. Las operaciones completas
 de navegador, correo SMTP y servicios externos requieren verificaciones
 adicionales.
+
+### Integración continua con GitHub Actions
+
+El proyecto dispone de integración continua mediante
+`.github/workflows/ci.yml`. El workflow se ejecuta al publicar
+cambios en `fix/segunda-auditoria-plurione`, al crear una solicitud
+de integración hacia `main` y mediante ejecución manual.
+
+- **Backend:** Python 3.12, dependencias de `requirements.txt`
+  y pruebas aisladas de `test_flujos_aislados.py` con `unittest`.
+  El archivo contiene 32 pruebas y utiliza SQLite aislado.
+- **Frontend:** Node.js 24, instalación reproducible mediante
+  `npm ci` y compilación de producción con `npm run build`.
+
+La ejecución inicial de GitHub Actions correspondiente al
+commit `7de6a10` finalizó correctamente en ambos trabajos.
+Esta verificación no representa un despliegue a producción.
+
+El workflow actual no ejecuta `test_integracion_http.py`,
+`test_seguridad_archivado.py`, `npm run lint` ni pruebas de carga.
+Estas comprobaciones permanecen fuera de su cobertura automática.
