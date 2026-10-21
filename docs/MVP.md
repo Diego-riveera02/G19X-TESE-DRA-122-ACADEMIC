@@ -9,7 +9,7 @@ Se trata de una implementación funcional de demostración. No realiza ingesta d
 ### 1.1. Autenticación y seguridad
 Registro de usuarios, hash de contraseñas mediante bcrypt, verificación de cuentas con código de 6 dígitos enviado por SMTP, activación de cuenta e inicio de sesión con JWT. El formulario React de recuperación permite solicitar el código al correo registrado, introducirlo junto con una nueva contraseña y volver a iniciar sesión. El backend rechaza JWT de cuentas inexistentes o inactivas; restringe la lectura de anomalías al usuario autenticado. Las conexiones WebSocket también deben autenticarse antes de recibir eventos.
 ### 1.2. Motor de telemetría automática simulada
-Proceso asíncrono en segundo plano (asyncio) integrado con FastAPI. Genera datos simulados de latencia (latencia_ms), integridad o calidad (datos_corruptos_%) y tasa de fallos (tasa_fallos_%) aproximadamente cada 5 segundos, sin interacción manual. Guarda los registros en PostgreSQL y transmite nuevas anomalías por WebSocket.
+Proceso asíncrono en segundo plano (asyncio) integrado con FastAPI. Genera datos simulados de latencia (latencia_ms), integridad o calidad (datos_corruptos_%) y tasa de fallos (tasa_fallos_%) aproximadamente cada 30 segundos, sin interacción manual. Guarda los registros en PostgreSQL y transmite nuevas anomalías por WebSocket.
 Las recomendaciones que acompañan la telemetría simulada se producen localmente mediante reglas o textos orientativos. No se invoca el modelo de Groq por cada evento generado.
 ### 1.3. Dashboard y alertas
 Interfaz React con Recharts para visualizar métricas y estados (Normal, Alerta, Critico). Feed de anomalías recientes con valores, pipeline y fecha/hora enviada por el backend. Actualización de eventos sin recargar la página.
@@ -100,7 +100,7 @@ Las pruebas no cubren de manera exhaustiva los flujos del navegador, SMTP, Groq,
 
 
 1. Acceso controlado. El MVP contempla registro, verificación SMTP, inicio de sesión JWT y recuperación de contraseña. Los códigos vencen después de 10 minutos, admiten cinco intentos y se invalidan tras su uso. Se comprobó el rechazo HTTP 401 en las rutas protegidas evaluadas.
-2. Automatización demostrable. El backend genera telemetría simulada aproximadamente cada 5 segundos sin intervención manual; la periodicidad es objetivo de la simulación, no garantía estricta de latencia.
+2. Automatización demostrable. El backend genera telemetría simulada aproximadamente cada 30 segundos sin intervención manual; la periodicidad es objetivo de la simulación, no garantía estricta de latencia.
 3. Actualización de interfaz. Un usuario autenticado observa las nuevas anomalías por WebSocket sin recargar el dashboard.
 4. Persistencia y trazabilidad. Las anomalías incluyen pipeline, métrica, valor, estado y fecha/hora registrada; el feed utiliza el tiempo proporcionado por el backend.
 5. Diagnóstico contextualizado. J.A.R.V.I.S. puede recuperar anomalías del usuario por estado, indicar cantidades y elaborar hipótesis y recomendaciones sin afirmar que verificó logs o infraestructura externa.
@@ -182,3 +182,20 @@ No acredita la ejecución de todas las pruebas HTTP, las
 pruebas independientes de archivado, el lint del frontend
 ni un despliegue de producción. Las funcionalidades futuras
 y limitaciones documentadas en el MVP siguen vigentes.
+
+### Ingesta de métricas disponible en el MVP
+
+El backend implementa el registro autenticado de métricas
+mediante `POST /metricas/` y la recepción externa mediante
+`POST /metricas/externas/` con cabecera `X-Pipeline-Key`.
+
+También ofrece creación y listado de pipelines a través de
+`POST /pipelines/` y `GET /pipelines/`, además de rotación
+y revocación mediante las rutas correspondientes al
+identificador del pipeline. Estas operaciones de administración
+utilizan autenticación JWT.
+
+La presencia de estas rutas no implica que ya existan conectores
+específicos para AWS o plataformas corporativas. Dichos
+conectores, las pruebas de carga y el fortalecimiento de
+límites de uso continúan pendientes.

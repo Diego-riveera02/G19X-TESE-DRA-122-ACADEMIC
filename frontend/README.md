@@ -119,7 +119,7 @@ No se han implementado en esa herramienta filtros arbitrarios por fechas, severi
 Las respuestas se muestran con formato Markdown y tablas desplazables dentro del panel. El botón «↓ Último» lleva al mensaje más reciente sin desplazar toda la página. La memoria conversacional es limitada y no constituye un historial persistente entre sesiones.
 
 ## 8. Origen de los datos
-FastAPI ejecuta un simulador automático de telemetría que genera registros de prueba aproximadamente cada 5 segundos y los guarda en PostgreSQL. WebSocket distribuye esos eventos a las sesiones autorizadas. Las recomendaciones automáticas de la simulación se generan localmente; el uso de Groq corresponde al chat de J.A.R.V.I.S.
+FastAPI ejecuta un simulador automático de telemetría que genera registros de prueba aproximadamente cada 30 segundos y los guarda en PostgreSQL. WebSocket distribuye esos eventos a las sesiones autorizadas. Las recomendaciones automáticas de la simulación se generan localmente; el uso de Groq corresponde al chat de J.A.R.V.I.S.
 Advertencia: ninguna métrica presentada permite concluir, por sí sola, que hay un incidente real en infraestructura empresarial.
 
 ## 9. Comprobaciones y documentación
@@ -181,3 +181,15 @@ Documentos relacionados:
 - [x] Compilación local y auditoría de paquetes realizadas en octubre de 2026.
 - [ ] Pruebas automatizadas de interfaz y accesibilidad exhaustivas (pendientes).
 Proyecto académico: PluriOne. Documentación revisada en octubre de 2026.
+
+### Alcance actual de la ingesta
+
+El backend de PluriOne cuenta con rutas de ingesta de métricas
+y administración de pipelines. La ingesta autenticada utiliza
+`POST /metricas/` y la ingesta externa utiliza
+`POST /metricas/externas/` con `X-Pipeline-Key`.
+
+La documentación de estas rutas no implica que el frontend
+ya disponga de una pantalla de administración de pipelines.
+Esta funcionalidad de interfaz debe verificarse o desarrollarse
+por separado.

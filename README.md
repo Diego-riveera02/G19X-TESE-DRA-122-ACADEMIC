@@ -6,7 +6,7 @@ Alcance actual: la telemetría procede de un simulador interno del backend. Las 
 
 ## 1. Funcionalidades implementadas
 
-Telemetría automática simulada: un proceso asíncrono en FastAPI genera registros de prueba aproximadamente cada 5 segundos, sin depender de botones de inyección manual.
+Telemetría automática simulada: un proceso asíncrono en FastAPI genera registros de prueba aproximadamente cada 30 segundos, sin depender de botones de inyección manual.
 
 Persistencia: PostgreSQL almacena usuarios y anomalías con identificador, pipeline, métrica, valor, estado, recomendación y fecha de registro.
 
@@ -524,3 +524,29 @@ Esta verificación no representa un despliegue a producción.
 El workflow actual no ejecuta `test_integracion_http.py`,
 `test_seguridad_archivado.py`, `npm run lint` ni pruebas de carga.
 Estas comprobaciones permanecen fuera de su cobertura automática.
+
+## Ingesta de métricas y pipelines
+
+El backend ofrece rutas para registrar métricas mediante JWT y
+para recibir datos externos mediante una clave de pipeline.
+
+| Método | Endpoint | Autenticación |
+| --- | --- | --- |
+| POST | `/metricas/` | JWT del usuario |
+| POST | `/metricas/externas/` | Cabecera `X-Pipeline-Key` |
+| POST | `/pipelines/` | JWT del usuario |
+| GET | `/pipelines/` | JWT del usuario |
+| POST | `/pipelines/{pipeline_id}/rotar/` | JWT del usuario |
+| POST | `/pipelines/{pipeline_id}/revocar/` | JWT del usuario |
+
+Los endpoints permiten crear y consultar pipelines, rotar o revocar
+sus claves y registrar métricas. La existencia de la API no implica
+que ya existan conectores completos para sistemas empresariales.
+
+**Límites de uso:** en esta revisión documental aún no se ha
+acreditado un límite específico para la ingesta ni un máximo de
+pipelines por usuario. Su verificación y fortalecimiento quedan
+pendientes de la etapa de seguridad.
+
+Nunca publiques JWT ni claves de pipeline reales en ejemplos,
+capturas, documentación o repositorios.

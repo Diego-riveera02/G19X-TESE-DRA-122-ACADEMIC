@@ -24,7 +24,7 @@ Objetivos específicos
 ## 3. Alcance del proyecto
 Dentro del alcance del prototipo actual
 - Alta y validación de cuentas, autenticación con bloqueo de cuentas inactivas y recuperación de acceso solicitando el código SMTP desde React.
-- Simulador asíncrono de telemetría con registros de latencia, calidad e incidencias de fallos cada ~5 segundos.
+- Simulador asíncrono de telemetría con registros de latencia, calidad e incidencias de fallos cada 30 segundos.
 - Persistencia y consulta de anomalías en PostgreSQL con marca de tiempo.
 - Distribución en tiempo real por WebSocket con autenticación JWT y segmentación por usuario.
 - Dashboard React/Vite con Recharts, estados y feed de alertas.
@@ -98,7 +98,7 @@ Fuera del alcance de esta versión
 ### Requisitos no funcionales
 - RNF-01 — Seguridad: contraseñas mediante hash, JWT, verificación de cuentas, credenciales en variables de entorno y control de acceso en los endpoints y WebSockets. El backend debe rechazar JWT de cuentas inexistentes o inactivas. Ninguna clave secreta debe almacenarse en el repositorio.
 - RNF-02 — Aislamiento: las consultas de anomalías y la transmisión de eventos deben limitarse al usuario autenticado.
-- RNF-03 — Tiempo real: la simulación busca generar eventos aproximadamente cada 5 segundos y propagarlos sin recarga manual. No se promete una latencia estricta garantizada.
+- RNF-03 — Tiempo real: la simulación busca generar eventos aproximadamente cada 30 segundos y propagarlos sin recarga manual. No se promete una latencia estricta garantizada.
 - RNF-04 — Persistencia: almacenar usuarios y anomalías con marca de tiempo en PostgreSQL.
 - RNF-05 — Usabilidad: conservar legibilidad de gráficas, estados, tablas extensas y chat; el desplazamiento de una tabla no debe ensanchar todo el dashboard.
 - RNF-06 — Trazabilidad de IA: indicar que los datos son simulados, distinguir valores de base de datos de hipótesis y no ofrecer capacidades inexistentes.
@@ -290,3 +290,24 @@ las comprobaciones exhaustivas de seguridad, las pruebas de
 carga ni la validación de un despliegue de producción.
 Los trabajos futuros descritos en este PRD conservan su
 estado pendiente cuando corresponda.
+
+### Ingesta de métricas y administración de pipelines
+
+La versión auditada incorpora seis endpoints relacionados con
+la ingesta de métricas y la administración de pipelines:
+
+- `POST /metricas/`: ingreso de métricas con JWT.
+- `POST /metricas/externas/`: ingreso externo mediante
+  la cabecera `X-Pipeline-Key`.
+- `POST /pipelines/`: creación de pipelines con JWT.
+- `GET /pipelines/`: consulta de pipelines con JWT.
+- `POST /pipelines/{pipeline_id}/rotar/`: rotación
+  de la clave de un pipeline con JWT.
+- `POST /pipelines/{pipeline_id}/revocar/`: revocación
+  de un pipeline con JWT.
+
+Estos endpoints forman parte del backend implementado.
+La integración completa con servicios empresariales externos
+continúa como trabajo posterior. Los controles específicos de
+frecuencia de ingesta y cantidad de pipelines requieren revisión
+adicional antes de considerarse validados.
