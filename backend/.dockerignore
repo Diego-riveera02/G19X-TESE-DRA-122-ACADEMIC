@@ -1,0 +1,62 @@
+# Private configuration and credentials
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.p12
+**/*.p12
+
+# Version control
+.git
+.git/**
+.gitignore
+**/.git
+
+# Python caches
+__pycache__
+**/__pycache__
+*.pyc
+**/*.pyc
+*.pyo
+**/*.pyo
+.pytest_cache
+**/.pytest_cache
+.mypy_cache
+**/.mypy_cache
+.ruff_cache
+**/.ruff_cache
+
+# Local environments and dependencies
+.venv
+**/.venv
+venv
+**/venv
+node_modules
+**/node_modules
+
+# Tests and local reports
+tests
+tests/**
+.coverage
+htmlcov
+**/htmlcov
+
+# Local databases
+*.db
+**/*.db
+*.sqlite
+**/*.sqlite
+*.sqlite3
+**/*.sqlite3
+
+# Logs and backups
+*.log
+**/*.log
+*.bak
+**/*.bak
+*.backup
+**/*.backup
