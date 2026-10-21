@@ -199,3 +199,41 @@ La presencia de estas rutas no implica que ya existan conectores
 específicos para AWS o plataformas corporativas. Dichos
 conectores, las pruebas de carga y el fortalecimiento de
 límites de uso continúan pendientes.
+
+### Cobertura de pruebas verificada en la auditor?a
+
+El repositorio incluye 49 funciones de prueba distribuidas
+en tres archivos: 32 aisladas, 9 HTTP y 8 de seguridad
+y archivado.
+
+GitHub Actions ejecuta actualmente las 32 pruebas aisladas
+con SQLite en memoria y tambi?n compila el frontend.
+La ejecuci?n correspondiente al commit `da374ac` fue
+satisfactoria.
+
+Las 17 pruebas restantes est?n disponibles en el c?digo,
+pero no forman parte del workflow actual. Su existencia
+no debe interpretarse como una ejecuci?n reciente.
+Tambi?n quedan pendientes pruebas exhaustivas de
+seguridad, carga y despliegue.
+
+### Seguridad y uso responsable de IA
+
+La implementacion incorpora proteccion HMAC en los
+codigos temporales de verificacion. Las claves de
+pipelines utilizan SHA-256 y comparacion segura mediante
+`hmac.compare_digest`. Ambos mecanismos responden
+a necesidades diferentes.
+
+La integracion de inteligencia artificial identificada
+en el backend utiliza Groq. Aunque la auditoria menciona
+Azure como tecnologia prevista, no se identifico una
+implementacion de Azure en el codigo examinado.
+La aceptacion formal de la alternativa debe confirmarse
+con los responsables academicos y empresariales.
+
+En el desarrollo y la auditoria se utilizo asistencia
+de IA generativa para apoyar el analisis y la
+documentacion. Su uso no reemplaza la validacion del
+codigo, la comprobacion de las pruebas ni la revision
+humana de los resultados.

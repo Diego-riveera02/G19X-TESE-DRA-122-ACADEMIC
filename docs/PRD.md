@@ -311,3 +311,47 @@ La integración completa con servicios empresariales externos
 continúa como trabajo posterior. Los controles específicos de
 frecuencia de ingesta y cantidad de pipelines requieren revisión
 adicional antes de considerarse validados.
+
+### Estado actualizado de las pruebas
+
+La segunda auditor?a identific? 49 funciones de prueba:
+32 pruebas aisladas, 9 pruebas HTTP y 8 pruebas de
+seguridad y archivado.
+
+La integraci?n continua ejecuta las 32 pruebas aisladas
+del archivo `test_flujos_aislados.py` mediante SQLite en
+memoria. La ejecuci?n correspondiente al commit `da374ac`
+finaliz? correctamente.
+
+Los otros dos archivos de pruebas no est?n incluidos en
+el workflow actual. Su ejecuci?n automatizada, la cobertura
+adicional sobre PostgreSQL y las pruebas exhaustivas de
+carga y seguridad permanecen como trabajo posterior.
+
+### Proteccion de codigos y claves
+
+El backend emplea HMAC para los codigos temporales de
+verificacion. Su modulo de verificacion incorpora
+`hmac.new` y `hmac.compare_digest`.
+
+Las claves de pipelines utilizan SHA-256 y comparacion
+mediante `hmac.compare_digest`. Son mecanismos distintos
+que deben revisarse conforme a sus respectivos requisitos
+de autenticacion, almacenamiento y seguridad.
+
+### Declaracion de IA y desviacion tecnologica
+
+El backend auditado utiliza Groq en funciones de
+inteligencia artificial. No se identifico Azure como
+integracion implementada en los archivos examinados.
+
+La observacion academica indica que Azure figuraba
+como tecnologia prevista. La implementacion actual
+representa una desviacion que debe justificarse y
+confirmarse con el profesor o la empresa. Esta
+documentacion no equivale a una autorizacion formal.
+
+Se utilizo asistencia de IA generativa durante el
+trabajo de revision tecnica y documental. Las sugerencias
+se contrastan con el codigo y las pruebas, y el equipo
+mantiene la responsabilidad sobre el proyecto.

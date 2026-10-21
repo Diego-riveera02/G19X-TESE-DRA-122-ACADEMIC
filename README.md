@@ -550,3 +550,60 @@ pendientes de la etapa de seguridad.
 
 Nunca publiques JWT ni claves de pipeline reales en ejemplos,
 capturas, documentación o repositorios.
+
+### Cobertura de pruebas de la segunda auditor?a
+
+Actualmente existen 49 funciones de prueba distribuidas en tres
+archivos del backend:
+
+- `backend/tests/test_flujos_aislados.py`: 32 pruebas aisladas.
+- `backend/tests/test_integracion_http.py`: 9 pruebas HTTP.
+- `backend/tests/test_seguridad_archivado.py`: 8 pruebas de
+  seguridad y archivado.
+
+La integraci?n continua de GitHub Actions ejecuta las 32 pruebas
+aisladas utilizando SQLite en memoria. Las otras 17 funciones
+existen en el repositorio, pero no se ejecutan en el workflow
+actual. Su presencia no acredita una ejecuci?n reciente.
+
+La ejecuci?n de CI correspondiente al commit `da374ac` finaliz?
+correctamente. Permanecen pendientes la ampliaci?n de cobertura
+automatizada con PostgreSQL, pruebas de carga y otras
+verificaciones necesarias para un despliegue de producci?n.
+
+### Seguridad HMAC y claves de pipelines
+
+Los codigos temporales de verificacion utilizan funciones
+basadas en HMAC, con verificaciones mediante
+`hmac.compare_digest`, segun la implementacion de
+`backend/app/verification_codes.py`.
+
+Las claves de pipelines siguen un mecanismo distinto:
+`backend/app/pipeline_keys.py` incorpora SHA-256 y
+`hmac.compare_digest`. No deben confundirse el HMAC
+de los codigos temporales y el hash SHA-256 de las
+claves de pipelines.
+
+Estos mecanismos forman parte de los controles de
+seguridad del backend, pero no sustituyen las pruebas
+exhaustivas de seguridad ni la gestion segura de secretos.
+
+### Uso de IA generativa y decision tecnologica
+
+PluriOne integra Groq para funciones de inteligencia
+artificial del backend. No se identifico una integracion
+con Azure en el codigo examinado durante esta auditoria.
+
+El informe de auditoria menciona Azure como referencia
+tecnologica prevista. Por ello se documenta la diferencia
+entre la propuesta y la implementacion actual. La
+aprobacion formal de esta decision por la empresa o el
+profesor no esta acreditada en esta revision y debe
+confirmarse con los responsables del proyecto.
+
+Durante el desarrollo y la segunda auditoria se utilizo
+asistencia de IA generativa como apoyo para analizar
+problemas, proponer mejoras y revisar documentacion.
+Las propuestas requieren verificacion humana y pruebas;
+no se considera que una respuesta de IA, por si sola,
+demuestre que una funcionalidad esta implementada.

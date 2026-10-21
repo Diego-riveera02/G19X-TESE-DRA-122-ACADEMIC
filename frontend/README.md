@@ -193,3 +193,36 @@ La documentación de estas rutas no implica que el frontend
 ya disponga de una pantalla de administración de pipelines.
 Esta funcionalidad de interfaz debe verificarse o desarrollarse
 por separado.
+
+### Cobertura automatizada actual
+
+El repositorio de PluriOne incluye 49 funciones de prueba
+en el backend: 32 aisladas, 9 HTTP y 8 de seguridad y
+archivado.
+
+El workflow de GitHub Actions ejecuta las 32 pruebas
+aisladas y realiza la compilaci?n de producci?n del frontend.
+Ambos trabajos finalizaron correctamente para el commit
+`da374ac`.
+
+Las otras 17 funciones de prueba no est?n incorporadas
+al workflow. Las pruebas exhaustivas de interfaz,
+accesibilidad y carga permanecen pendientes.
+
+### Seguridad e inteligencia artificial del proyecto
+
+Los codigos temporales del backend utilizan HMAC.
+Las claves de pipelines utilizan SHA-256 y
+`hmac.compare_digest`. Estos mecanismos no equivalen
+a almacenar secretos directamente en el frontend.
+
+La integracion de inteligencia artificial identificada
+en el backend utiliza Groq. La auditoria menciona Azure
+como tecnologia prevista, pero no se identifico como
+integracion implementada. Esta diferencia requiere
+justificacion y confirmacion por los responsables.
+
+Durante el desarrollo y la auditoria se utilizo
+asistencia de IA generativa para apoyo tecnico y
+documental. Las propuestas deben verificarse con el
+codigo real y las pruebas correspondientes.
