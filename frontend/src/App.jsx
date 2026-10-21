@@ -14,9 +14,7 @@ import Login from './Login';
 
 import Registro from './Registro';
 
-import jsPDF from 'jspdf';
 
-import autoTable from 'jspdf-autotable';
 
 import ReactMarkdown from 'react-markdown';
 
@@ -758,7 +756,7 @@ const irAlFinalChat = () => {
 
   };
 
-  const exportarPDF = () => {
+  const exportarPDF = async () => {
 
     if (anomalias.length === 0) {
 
@@ -766,6 +764,31 @@ const irAlFinalChat = () => {
 
       return;
 
+    }
+
+
+    let jsPDF;
+    let autoTable;
+
+    try {
+      const [pdfModule, tableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+
+      jsPDF = pdfModule.default;
+      autoTable = tableModule.default;
+
+      if (
+        typeof jsPDF !== 'function' ||
+        typeof autoTable !== 'function'
+      ) {
+        throw new Error('Modulos PDF invalidos');
+      }
+    } catch (error) {
+      console.error('Error al cargar bibliotecas PDF:', error);
+      alert('No se pudo preparar el PDF. Intenta nuevamente.');
+      return;
     }
 
     const doc = new jsPDF();
