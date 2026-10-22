@@ -5,7 +5,7 @@
 - Versión documentada: Prototipo académico con J.A.R.V.I.S. 2.0
 ## 1. Alcance del MVP
 El MVP de PluriOne busca validar localmente un ciclo básico de observabilidad: generación automática de métricas simuladas, almacenamiento de anomalías, visualización del estado de pipelines y obtención de diagnósticos orientativos con apoyo de inteligencia artificial.
-Se trata de una implementación funcional de demostración. No realiza ingesta desde sistemas productivos, monitoreo real de AWS o intervención automática sobre infraestructura externa.
+Se trata de una implementación funcional de demostración. Dispone de ingesta de métricas por API autenticada, pero no se acredita una conexión permanente con sistemas productivos, monitoreo real de AWS ni intervención automática externa.
 ### 1.1. Autenticación y seguridad
 Registro de usuarios, hash de contraseñas mediante bcrypt, verificación de cuentas con código de 6 dígitos enviado por SMTP, activación de cuenta e inicio de sesión con JWT. El formulario React de recuperación permite solicitar el código al correo registrado, introducirlo junto con una nueva contraseña y volver a iniciar sesión. El backend rechaza JWT de cuentas inexistentes o inactivas; restringe la lectura de anomalías al usuario autenticado. Las conexiones WebSocket también deben autenticarse antes de recibir eventos.
 ### 1.2. Motor de telemetría automática simulada
@@ -86,14 +86,14 @@ Backend FastAPI, PostgreSQL, frontend React/Vite y Docker Compose para los servi
 
 ## 3. Criterios de validación del MVP
 
-**Cobertura automatizada actual:** las nueve pruebas verifican disponibilidad de FastAPI y React, rutas, rechazo de JWT ausentes o inválidos, CORS y conexión/esquema de PostgreSQL. Aún no incluyen pruebas específicas de expiración de códigos, cinco intentos fallidos, HTTP 429 o aislamiento entre usuarios.
+**Cobertura automatizada:** el repositorio incluye 49 funciones de prueba: 32 aisladas, 9 HTTP y 8 de seguridad y archivado. GitHub Actions ejecuta las 32 aisladas con SQLite en memoria. Estas comprueban, entre otros casos, expiración, límites de intentos, HTTP 429 y aislamiento de usuarios. Persisten pruebas integrales y de carga pendientes.
 
 
 ### Validación adicional de la versión auditada
 
 La versión actual incorpora reenvío de verificación, vencimiento de códigos, límite de cinco intentos, separación entre verificación y recuperación, y control de solicitudes de autenticación mediante PostgreSQL.
 
-Se comprobó el arranque de una instalación limpia e independiente con Docker Compose, FastAPI, React y PostgreSQL. También se ejecutaron satisfactoriamente las nueve pruebas automatizadas disponibles en `backend/tests/test_integracion_http.py`.
+Se comprobó el arranque de una instalación limpia e independiente con Docker Compose, FastAPI, React y PostgreSQL. También se ejecutaron satisfactoriamente las nueve pruebas HTTP del archivo `backend/tests/test_integracion_http.py`.
 
 Las pruebas no cubren de manera exhaustiva los flujos del navegador, SMTP, Groq, WebSocket, carga o seguridad de producción. La ingesta de datos empresariales reales continúa fuera del alcance del MVP.
 
@@ -143,7 +143,7 @@ registros. Las vistas de historial utilizan consultas paginadas.
 ### Evidencia de pruebas
 
 La segunda auditoria completo una compilacion de React/Vite y
-17 pruebas automatizadas satisfactorias:
+17 pruebas automatizadas en aquella revisión:
 
 - Nueve pruebas de integracion de servicios y rutas principales.
 - Ocho pruebas de autorizacion de rutas del historial, sin token
@@ -200,21 +200,21 @@ específicos para AWS o plataformas corporativas. Dichos
 conectores, las pruebas de carga y el fortalecimiento de
 límites de uso continúan pendientes.
 
-### Cobertura de pruebas verificada en la auditor?a
+### Cobertura de pruebas verificada en la auditoría
 
 El repositorio incluye 49 funciones de prueba distribuidas
 en tres archivos: 32 aisladas, 9 HTTP y 8 de seguridad
 y archivado.
 
 GitHub Actions ejecuta actualmente las 32 pruebas aisladas
-con SQLite en memoria y tambi?n compila el frontend.
-La ejecuci?n correspondiente al commit `da374ac` fue
+con SQLite en memoria y también compila el frontend.
+La ejecución correspondiente al commit `da374ac` fue
 satisfactoria.
 
-Las 17 pruebas restantes est?n disponibles en el c?digo,
+Las 17 pruebas restantes están disponibles en el código,
 pero no forman parte del workflow actual. Su existencia
-no debe interpretarse como una ejecuci?n reciente.
-Tambi?n quedan pendientes pruebas exhaustivas de
+no debe interpretarse como una ejecución reciente.
+También quedan pendientes pruebas exhaustivas de
 seguridad, carga y despliegue.
 
 ### Seguridad y uso responsable de IA

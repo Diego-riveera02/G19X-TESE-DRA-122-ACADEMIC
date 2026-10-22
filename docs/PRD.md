@@ -158,7 +158,7 @@ Usuario autenticado -> FastAPI /chat/ -> Groq
 - Las rutas privadas y el asistente J.A.R.V.I.S. requieren autenticación JWT.
 - La actualización del esquema de PostgreSQL conserva los registros existentes.
 - La suite `backend/tests/test_integracion_http.py` incluye nueve pruebas automatizadas satisfactorias de disponibilidad, rutas, autenticación, CORS y base de datos.
-- Permanecen pendientes las pruebas exhaustivas de carga, aislamiento entre cuentas y seguridad necesarias antes de un uso productivo.
+- Existen pruebas aisladas de separación entre usuarios. Permanecen pendientes las evaluaciones exhaustivas de carga, seguridad y despliegue productivo.
 
 - Las rutas de anomalías y chat deben requerir autenticación; las consultas deben estar asociadas al usuario autenticado, nunca a un identificador suministrado libremente por el modelo.
 - Las llamadas a herramientas de IA se restringen a funciones expresamente permitidas por FastAPI.
@@ -192,7 +192,7 @@ Usuario autenticado -> FastAPI /chat/ -> Groq
 
 ## 8. Criterios de aceptación
 
-**Cobertura automatizada actual:** las nueve pruebas verifican disponibilidad de FastAPI y React, rutas, rechazo de JWT ausentes o inválidos, CORS y conexión/esquema de PostgreSQL. Aún no incluyen pruebas específicas de expiración de códigos, cinco intentos fallidos, HTTP 429 o aislamiento entre usuarios.
+**Cobertura automatizada:** hay 49 funciones de prueba: 32 aisladas, 9 HTTP y 8 de seguridad y archivado. El CI actual ejecuta las 32 aisladas con SQLite en memoria. Entre ellas se incluyen comprobaciones de expiración de códigos, intentos fallidos, HTTP 429 y aislamiento. Las otras 17 no forman parte del workflow actual.
 
 
 
@@ -262,7 +262,7 @@ Se incorporan las siguientes condiciones de funcionamiento:
 
 ### Evidencia de verificacion y riesgos residuales
 
-La auditoria ejecuto satisfactoriamente 17 pruebas automatizadas
+Una revision anterior ejecuto satisfactoriamente 17 pruebas automatizadas
 (nueve de integracion y ocho de seguridad de las rutas del historial).
 Ademas, el frontend completo una compilacion de produccion con Vite.
 
@@ -314,17 +314,17 @@ adicional antes de considerarse validados.
 
 ### Estado actualizado de las pruebas
 
-La segunda auditor?a identific? 49 funciones de prueba:
+La segunda auditoría identificó 49 funciones de prueba:
 32 pruebas aisladas, 9 pruebas HTTP y 8 pruebas de
 seguridad y archivado.
 
-La integraci?n continua ejecuta las 32 pruebas aisladas
+La integración continua ejecuta las 32 pruebas aisladas
 del archivo `test_flujos_aislados.py` mediante SQLite en
-memoria. La ejecuci?n correspondiente al commit `da374ac`
-finaliz? correctamente.
+memoria. La ejecución correspondiente al commit `da374ac`
+finalizó correctamente.
 
-Los otros dos archivos de pruebas no est?n incluidos en
-el workflow actual. Su ejecuci?n automatizada, la cobertura
+Los otros dos archivos de pruebas no están incluidos en
+el workflow actual. Su ejecución automatizada, la cobertura
 adicional sobre PostgreSQL y las pruebas exhaustivas de
 carga y seguridad permanecen como trabajo posterior.
 

@@ -2,7 +2,7 @@
 
 PluriOne es un prototipo académico funcional de observabilidad de datos. Permite visualizar métricas de pipelines, registrar anomalías, consultar su historial y obtener explicaciones técnicas mediante el asistente conversacional J.A.R.V.I.S., integrado con Groq.
 
-Alcance actual: la telemetría procede de un simulador interno del backend. Las métricas no se capturan de infraestructura empresarial real. Las causas propuestas por la IA son hipótesis para investigar, no incidentes ni causas raíz comprobados.
+Alcance actual: PluriOne cuenta con un simulador de demostración y con ingesta de métricas mediante API autenticada por JWT o clave de pipeline. No se acredita una conexión permanente con infraestructura empresarial productiva. Los diagnósticos de IA son hipótesis por verificar.
 
 ## 1. Funcionalidades implementadas
 
@@ -326,7 +326,7 @@ desde la carpeta raiz del proyecto:
 python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
-Las nueve pruebas comprueban disponibilidad de FastAPI y React,
+Las nueve pruebas HTTP comprueban disponibilidad de FastAPI y React,
 rutas principales, rechazo de tokens JWT ausentes o invalidos,
 configuracion CORS y conexion con PostgreSQL.
 
@@ -374,7 +374,7 @@ El asistente depende de la disponibilidad de Groq y de los límites de uso de su
 
 Los códigos de verificación y recuperación son de seis dígitos, vencen después de 10 minutos y admiten hasta cinco intentos. Se distinguen por propósito, se comparan de forma segura y se invalidan tras su uso.
 
-Todavía no se dispone de una batería completa de pruebas automatizadas que acredite el funcionamiento integral del sistema.
+El repositorio contiene 49 funciones de prueba: 32 aisladas, 9 HTTP y 8 de seguridad y archivado. GitHub Actions ejecuta las 32 aisladas con SQLite en memoria. Sigue pendiente una cobertura exhaustiva de integración, carga y despliegue.
 
 No se ha demostrado preparación para operación empresarial productiva, alta disponibilidad o escalabilidad a gran escala.
 
@@ -424,11 +424,11 @@ Esta lista resume las funcionalidades implementadas y las comprobaciones que tod
 
 - [x] Incorporada limitación de solicitudes en endpoints sensibles mediante PostgreSQL.
 
-- [ ] Ejecutar una batería automatizada de pruebas integrales y de seguridad.
+- [x] Ejecutar 32 pruebas aisladas automatizadas en GitHub Actions. Esto no equivale a una validación integral de producción.
 
 - [ ] Comprobar el arranque completo desde un clon limpio del repositorio.
 
-- [ ] Integrar fuentes de datos reales, fuera del alcance del MVP actual.
+- [ ] Integrar conectores permanentes con sistemas productivos externos. La API de ingesta autenticada ya existe.
 
 Proyecto académico: PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 
@@ -481,7 +481,7 @@ El archivado no sustituye los respaldos de PostgreSQL. No ejecutar
 
 En la segunda auditoria se verifico que el frontend compilara con
 Vite y que FastAPI respondiera correctamente. El conjunto automatizado
-incluye 17 pruebas: nueve pruebas de integracion y ocho pruebas de
+incluia entonces 17 pruebas: nueve pruebas de integracion y ocho pruebas de
 seguridad del historial.
 
 Para ejecutar las pruebas con los servicios correspondientes activos:
@@ -497,7 +497,7 @@ reales de PostgreSQL.
 
 ### Alcance y restricciones
 
-La telemetria procede de un simulador interno, no de infraestructura
+La telemetria generada por el simulador no procede de infraestructura
 productiva. Los resultados de las pruebas no equivalen a una
 certificacion de seguridad, pruebas exhaustivas de carga o validacion
 integral en un ambiente de produccion. Las operaciones completas
@@ -551,7 +551,7 @@ pendientes de la etapa de seguridad.
 Nunca publiques JWT ni claves de pipeline reales en ejemplos,
 capturas, documentación o repositorios.
 
-### Cobertura de pruebas de la segunda auditor?a
+### Cobertura de pruebas de la segunda auditoría
 
 Actualmente existen 49 funciones de prueba distribuidas en tres
 archivos del backend:
@@ -561,15 +561,15 @@ archivos del backend:
 - `backend/tests/test_seguridad_archivado.py`: 8 pruebas de
   seguridad y archivado.
 
-La integraci?n continua de GitHub Actions ejecuta las 32 pruebas
+La integración continua de GitHub Actions ejecuta las 32 pruebas
 aisladas utilizando SQLite en memoria. Las otras 17 funciones
 existen en el repositorio, pero no se ejecutan en el workflow
-actual. Su presencia no acredita una ejecuci?n reciente.
+actual. Su presencia no acredita una ejecución reciente.
 
-La ejecuci?n de CI correspondiente al commit `da374ac` finaliz?
-correctamente. Permanecen pendientes la ampliaci?n de cobertura
+La ejecución de CI correspondiente al commit `da374ac` finalizó
+correctamente. Permanecen pendientes la ampliación de cobertura
 automatizada con PostgreSQL, pruebas de carga y otras
-verificaciones necesarias para un despliegue de producci?n.
+verificaciones necesarias para un despliegue de producción.
 
 ### Seguridad HMAC y claves de pipelines
 

@@ -136,7 +136,7 @@ ejecutar desde la raiz del repositorio:
 python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
-La suite contiene nueve pruebas automatizadas que verifican
+La suite HTTP contiene nueve pruebas automatizadas que verifican
 la disponibilidad de FastAPI y React, las rutas principales,
 el rechazo de JWT ausentes o invalidos, la configuracion
 CORS y la conexion con PostgreSQL.
@@ -157,7 +157,7 @@ Con los servicios locales iniciados, ejecutar desde la raíz del repositorio:
 python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
-La suite contiene nueve pruebas de integración que comprobaron FastAPI, React, rutas registradas, rechazo de JWT ausentes o inválidos, CORS y PostgreSQL. Las nueve finalizaron correctamente en la revisión de octubre de 2026.
+El archivo de integración HTTP contiene nueve pruebas que comprobaron FastAPI, React, rutas registradas, rechazo de JWT ausentes o inválidos, CORS y PostgreSQL. Las nueve finalizaron correctamente en la revisión de octubre de 2026.
 
 Para revisar el frontend también están disponibles `npm run build`, `npm run lint` y `npm audit`. La existencia de estos comandos no implica que todas las verificaciones se hayan ejecutado en esta misma revisión.
 
@@ -201,11 +201,11 @@ en el backend: 32 aisladas, 9 HTTP y 8 de seguridad y
 archivado.
 
 El workflow de GitHub Actions ejecuta las 32 pruebas
-aisladas y realiza la compilaci?n de producci?n del frontend.
+aisladas y realiza la compilación de producción del frontend.
 Ambos trabajos finalizaron correctamente para el commit
 `da374ac`.
 
-Las otras 17 funciones de prueba no est?n incorporadas
+Las otras 17 funciones de prueba no están incorporadas
 al workflow. Las pruebas exhaustivas de interfaz,
 accesibilidad y carga permanecen pendientes.
 
