@@ -1,228 +1,156 @@
 # Frontend de PluriOne
 
-## 1. Descripción
-El frontend es la interfaz web del prototipo académico PluriOne: Plataforma de Observabilidad de Datos con Inteligencia Artificial. Permite a usuarios autenticados consultar métricas simuladas de pipelines, observar alertas, revisar registros y conversar con el asistente J.A.R.V.I.S. 2.0.
-No existe en esta etapa una conexión directa del frontend con pipelines empresariales productivos. Los datos provienen del backend de FastAPI y se almacenan en PostgreSQL.
+**Documento consolidado para el tercer corte académico (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
-## 2. Tecnologías utilizadas
-- React y Vite: componentes, entorno de desarrollo y compilación.
-- React Router: navegación entre acceso, registro, verificación, recuperación y dashboard.
-- Axios: solicitudes a la API de FastAPI.
-- Recharts: gráficas de latencia, calidad de datos y fallos.
-- WebSocket: recepción de anomalías en tiempo real después de autenticar la conexión mediante JWT.
-- react-markdown y remark-gfm: visualización de respuestas del asistente con títulos, listas, negritas y tablas.
-- jsPDF y jspdf-autotable: exportación a PDF de la bitácora cargada en la interfaz.
+El backend también dispone de ingesta autenticada y gestión de pipelines, pero **la pantalla React para crear, listar, rotar y revocar pipelines aún está pendiente**. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
-## 3. Funcionalidades implementadas
+## 1. Tecnologías y componentes
 
-### Reenvío de verificación
+- **React y Vite:** interfaz y entorno de desarrollo.
+- **React Router:** navegación entre inicio de sesión, registro, verificación, recuperación y dashboard.
+- **Axios:** comunicación con FastAPI.
+- **Recharts:** indicadores y gráficas de telemetría.
+- **WebSocket:** notificaciones de anomalías después de autenticar la sesión.
+- **react-markdown y remark-gfm:** respuestas del asistente con títulos, listas y tablas.
+- **jsPDF y jspdf-autotable:** exportación de la bitácora cargada.
 
-- Desde la pantalla de verificación, el usuario puede solicitar otro código si no recibió el anterior.
-- React utiliza `POST /reenviar-verificacion/` del backend.
-- El reenvío y la validación están sujetos a los controles de seguridad del servidor.
-- Registro de usuarios, verificación de cuenta mediante código e inicio de sesión. La pantalla Recuperar Acceso incluye el botón Enviar código de recuperación, que solicita un código por SMTP al backend; después permite validar ese código y establecer la nueva contraseña.
-- Dashboard con tres visualizaciones de métricas y distintivos de estado Normal, Alerta y Critico.
-- Feed de alertas recientes con hora del registro enviada por el backend, en vez de usar la hora actual del navegador.
-- Actualización de anomalías mediante WebSocket autenticado y filtrado por usuario desde el servidor; controles para evitar duplicados en la interfaz.
-- Historial de anomalías y generación de PDF de los registros disponibles en la vista.
-- Chat con J.A.R.V.I.S., integrado con el endpoint autenticado /chat/.
-- Envío de hasta 10 mensajes previos recientes para conservar el contexto conversacional durante la sesión del frontend.
-- Interpretación de respuestas Markdown mediante react-markdown y remark-gfm.
-- Tablas extensas con desplazamiento horizontal dentro del chat, desplazamiento vertical de la conversación y botón «↓ Último».
-- Guía de bienvenida interactiva (onboarding).
-El botón Archivar historial archiva las anomalías en PostgreSQL sin eliminarlas definitivamente. Se pueden recuperar mediante Restaurar historial.
+## 2. Funcionalidades implementadas
 
-## 4. Requisitos previos
-- Node.js y npm compatibles con la versión de Vite definida en package.json.
-- Backend FastAPI ejecutándose en el entorno local configurado.
-- PostgreSQL disponible para el backend; el navegador no se conecta directamente a la base de datos.
-- Sesión de usuario válida para consultar información protegida.
+- **Identidad:** registro, verificación con código SMTP, reenvío mediante `POST /reenviar-verificacion/`, inicio de sesión y recuperación de acceso.
+- **Dashboard:** indicadores de latencia, calidad de datos y fallos con estados Normal, Alerta y Crítico.
+- **Alertas:** feed con hora del registro enviada por FastAPI y recepción WebSocket autenticada y segmentada por usuario. La autorización real depende del backend, no solo de filtros React.
+- **Historial:** consulta de anomalías activas, archivado lógico con confirmación y restauración; las listas son paginadas y el PDF representa los registros cargados en la interfaz.
+- **J.A.R.V.I.S. 2.0:** preguntas a `/chat/` con JWT, hasta 10 mensajes anteriores enviados como contexto durante la sesión, visualización Markdown y tablas desplazables.
+- **Navegación del chat:** desplazamiento de la conversación, desplazamiento horizontal dentro de tablas y botón «↓ Último».
+- **Onboarding:** guía de bienvenida para nuevos usuarios.
 
-## 5. Instalación y ejecución
+El simulador de FastAPI genera métricas sintéticas aproximadamente cada 30 segundos; el backend puede recibir además métricas por JWT o por clave de pipeline. Una medición clasificada como normal no necesariamente se almacena como anomalía. La interfaz muestra los datos disponibles desde las consultas y eventos que el servidor entrega.
 
-### Ejecución del proyecto con Docker Compose
+## 3. Requisitos e instalación
 
-Desde la raíz del repositorio, configurar los archivos `.env` a partir de sus ejemplos y ejecutar:
+Se necesitan Node.js y npm compatibles con las dependencias declaradas, un backend FastAPI configurado y PostgreSQL disponible para ese backend. El navegador **no** debe conectarse directamente a la base de datos.
 
-```powershell
-docker compose up -d --build
-```
-
-En la configuración local probada, React utiliza el puerto 5173 y FastAPI el puerto 8000.
-
-No utilizar `docker compose down -v` cuando sea necesario conservar los datos del volumen PostgreSQL.
-
-Desde la carpeta frontend/:
+Desde la carpeta `frontend/`:
 
 ```powershell
 npm install
 npm run dev
 ```
 
-En el entorno local probado, abrir:
-http://127.0.0.1:5173/app
-Desde la raíz del repositorio, se puede hacer lo mismo sin cambiar de carpeta:
+O desde la raíz del repositorio:
 
 ```powershell
 npm --prefix ./frontend install
 npm --prefix ./frontend run dev
 ```
 
-Compilación de producción:
-
-```powershell
-npm run build
-```
-
-O, desde la raíz:
+En el entorno local descrito se utilizó `http://127.0.0.1:5173/app`. Para compilar:
 
 ```powershell
 npm --prefix ./frontend run build
 ```
 
-Si aparece un aviso de tamaño de chunks superior a 500 kB, se trata de una advertencia de optimización y no necesariamente de un error de compilación.
-
-## 6. Comunicación con el backend
-En la configuración local utilizada durante el desarrollo:
-- API HTTP: http://127.0.0.1:8000
-- WebSocket: ws://127.0.0.1:8000/ws/anomalias
-- Interfaz: http://127.0.0.1:5173
-El frontend envía el token JWT en las solicitudes autenticadas a FastAPI. Al abrir WebSocket transmite un mensaje de autenticación y recibe eventos de anomalías destinados al usuario correspondiente. La seguridad y separación entre cuentas deben aplicarse en el backend, no depender exclusivamente de filtros de React. En las rutas protegidas comprobadas, FastAPI también rechaza las cuentas inactivas aunque presenten un JWT válido.
-La vista del feed utiliza el campo timestamp de cada anomalía. Para los eventos nuevos, el backend envía una fecha UTC serializada, que el navegador presenta en formato de hora local.
-Ejemplo del primer mensaje de autenticación del WebSocket, sin incluir un token real:
-{
-  "type": "auth",
-  "token": "TOKEN_JWT_DE_EJEMPLO"
-}
-El backend valida el token y solamente después permite recibir los eventos del usuario autenticado.
-
-### Interfaces de comunicación utilizadas
-- GET /anomalias/	Recuperar anomalías del usuario.	JWT en la solicitud HTTP.
-- POST /chat/	Enviar preguntas al asistente.	JWT; herramientas restringidas en FastAPI.
-- POST /solicitar-recuperacion/	Solicitar un código SMTP para el correo registrado desde el formulario de recuperación.	Solicitud pública de recuperación; no requiere JWT.
-- POST /recuperar-password/	Enviar correo, código recibido y nueva contraseña para restablecer el acceso.	Requiere la coincidencia del código guardado para esa cuenta.
-- ws://127.0.0.1:8000/ws/anomalias	Recibir anomalías nuevas.	Mensaje de autenticación JWT.
-
-
-### Recuperación de acceso desde la interfaz
-1. Desde Login, elegir ¿Olvidaste tu contraseña? para abrir /recuperar.
-2. Escribir el correo registrado y pulsar Enviar código de recuperación. El botón se deshabilita durante la solicitud para evitar clics simultáneos.
-3. Consultar el correo más reciente, introducir el código de seis dígitos y la nueva contraseña y pulsar Actualizar Contraseña.
-4. Volver al inicio de sesión y autenticarse con la contraseña actualizada.
-En la prueba manual local de octubre de 2026 se recibió el correo SMTP, se actualizó la contraseña y se pudo acceder nuevamente al dashboard.
-
-La versión auditada incorpora códigos con vencimiento temporal, un máximo de cinco intentos y propósitos separados para verificación y recuperación. El backend también limita solicitudes de autenticación mediante PostgreSQL.
-
-## 7. J.A.R.V.I.S. 2.0: capacidades y límites
-El chat permite preguntas generales sobre observabilidad, seguimiento de la conversación reciente y consultas acerca de las anomalías del usuario. Cuando necesita registros concretos, el backend puede invocar la herramienta autorizada consultar_anomalias_usuario, que filtra por estado (normal, alerta, critico, todos) y devuelve el total y hasta 10 registros recientes.
-No se han implementado en esa herramienta filtros arbitrarios por fechas, severidad, palabras clave o métricas. Las explicaciones sobre posibles causas no sustituyen una investigación técnica de sistemas reales.
-Las respuestas se muestran con formato Markdown y tablas desplazables dentro del panel. El botón «↓ Último» lleva al mensaje más reciente sin desplazar toda la página. La memoria conversacional es limitada y no constituye un historial persistente entre sesiones.
-
-## 8. Origen de los datos
-FastAPI ejecuta un simulador automático de telemetría que genera registros de prueba aproximadamente cada 30 segundos y los guarda en PostgreSQL. WebSocket distribuye esos eventos a las sesiones autorizadas. Las recomendaciones automáticas de la simulación se generan localmente; el uso de Groq corresponde al chat de J.A.R.V.I.S.
-Advertencia: ninguna métrica presentada permite concluir, por sí sola, que hay un incidente real en infraestructura empresarial.
-
-## 9. Comprobaciones y documentación
-
-### Pruebas automatizadas de integracion
-
-PluriOne incluye la suite permanente
-`backend/tests/test_integracion_http.py`.
-
-Con FastAPI, React y PostgreSQL iniciados mediante Docker Compose,
-ejecutar desde la raiz del repositorio:
+Docker Compose también permite construir/ejecutar los servicios configurados desde la raíz:
 
 ```powershell
-python -m unittest discover -s backend/tests -p "test_*.py" -v
+docker compose up -d --build
 ```
 
-La suite HTTP contiene nueve pruebas automatizadas que verifican
-la disponibilidad de FastAPI y React, las rutas principales,
-el rechazo de JWT ausentes o invalidos, la configuracion
-CORS y la conexion con PostgreSQL.
+Esta configuración utiliza contenedores de **desarrollo/demostración**. La imagen frontend se describe con Node.js 22 Alpine y arranque de desarrollo; su construcción no demuestra una implementación productiva. No ejecutar `docker compose down -v` si se necesita conservar el volumen de PostgreSQL.
 
-En la auditoria de octubre de 2026, las nueve pruebas
-finalizaron satisfactoriamente.
+Si Vite muestra una advertencia de chunks grandes, eso no significa automáticamente que la compilación haya fallado, aunque puede señalar oportunidades de optimización.
 
-Estas comprobaciones no sustituyen pruebas exhaustivas
-de interfaz, SMTP, Groq, WebSocket, carga o seguridad
-de produccion.
+## 4. Comunicación con el backend
 
+En la configuración local utilizada:
 
-### Pruebas automatizadas disponibles
+- HTTP: `http://127.0.0.1:8000`
+- WebSocket: `ws://127.0.0.1:8000/ws/anomalias`
+- Frontend: `http://127.0.0.1:5173`
 
-Con los servicios locales iniciados, ejecutar desde la raíz del repositorio:
+**Pendiente:** centralizar las URL de API y WebSocket en `frontend/src/api.js` utilizando `import.meta.env.VITE_API_URL` y añadir `frontend/.env.example`. En la versión revisada se identificaron URL locales repetidas en `App.jsx`, `Login.jsx` y `Registro.jsx`. No se afirma que la refactorización ya exista.
+
+### Rutas relevantes para la interfaz
+
+- `GET /anomalias/`, `GET /anomalias/archivadas/`: consultas de historial protegidas con JWT.
+- `DELETE /anomalias/`, `POST /anomalias/restaurar/`: archivado y restauración.
+- `POST /chat/`: conversación autenticada con herramientas restringidas por FastAPI.
+- `POST /solicitar-recuperacion/`: solicitud pública de código para recuperar acceso; la respuesta del backend no debe revelar si el correo existe.
+- `POST /recuperar-password/`: comprobación del código y actualización de contraseña.
+- `POST /reenviar-verificacion/`: reenvío del código de activación.
+- `ws://127.0.0.1:8000/ws/anomalias`: eventos tras autenticación por mensaje JWT.
+
+Ejemplo **estructural** del primer mensaje WebSocket (token deliberadamente ficticio):
+
+```json
+{"type":"auth","token":"TOKEN_JWT_DE_EJEMPLO"}
+```
+
+El backend valida el JWT antes de distribuir anomalías asociadas al usuario. El feed muestra el campo `timestamp` de cada registro en hora local del navegador cuando corresponde.
+
+### Recuperación de acceso
+
+1. Desde Login, abrir «¿Olvidaste tu contraseña?».
+2. Introducir el correo y solicitar un código; evitar solicitudes duplicadas mientras la operación está en curso.
+3. Consultar el mensaje SMTP más reciente y enviar el código de seis dígitos con la nueva contraseña.
+4. Volver a iniciar sesión con la contraseña actualizada.
+
+El flujo fue probado manualmente en un entorno local durante revisiones anteriores. Los códigos tienen vencimiento, máximo de cinco intentos y separación por propósito, implementados en FastAPI.
+
+## 5. Dashboard, IA y alcance de pipelines
+
+J.A.R.V.I.S. 2.0 permite preguntas generales sobre observabilidad y consultas autorizadas de anomalías del usuario. Su herramienta devuelve totales y hasta 10 registros recientes, filtrados por estado. No dispone de consultas arbitrarias por fecha o métrica ni de memoria permanente entre sesiones. Las explicaciones sobre posibles causas son orientativas.
+
+La administración de pipelines **sí existe en el backend** (`POST /pipelines/`, `GET /pipelines/`, rotación y revocación con JWT), igual que la ingesta mediante `/metricas/` y `/metricas/externas/`. **No se encontró una pantalla de pipelines en React** en el corte revisado. La futura pantalla debe permitir crear, listar, rotar y revocar, mostrar la clave solo al emitirla o rotarla y ofrecer un botón seguro para copiarla, sin guardarla permanentemente en el frontend.
+
+Los códigos de verificación usan HMAC en el backend; las claves de pipeline usan SHA-256 y comparación segura. **Estas funciones de seguridad pertenecen al servidor** y no autorizan almacenar secretos en el código o en el repositorio del frontend.
+
+## 6. Comprobaciones y cobertura de pruebas
+
+El repositorio contiene 49 funciones de prueba en backend:
+
+- **32 aisladas** en `test_flujos_aislados.py`, con SQLite en memoria: se ejecutan en el CI actual.
+- **9 HTTP** en `test_integracion_http.py`: necesitan los servicios correspondientes y no se ejecutan en el workflow actual.
+- **8 de seguridad/archivado** en `test_seguridad_archivado.py`: fuera del workflow actual.
+
+La ejecución de GitHub Actions del commit `f6a6ab9` terminó correctamente en la rama de correcciones: el backend ejecutó las 32 pruebas aisladas y el frontend instaló dependencias con `npm ci` y compiló con `npm run build`. Esta confirmación no equivale a pruebas automatizadas exhaustivas de interfaz, accesibilidad, SMTP o carga. Las 9 pruebas HTTP y 8 de archivado se habían ejecutado en auditorías anteriores; no corresponde describirlas como ejecutadas por ese workflow.
+
+Comandos útiles desde la raíz:
 
 ```powershell
-python -m unittest discover -s backend/tests -p "test_*.py" -v
+npm --prefix ./frontend run build
+npm --prefix ./frontend run lint
+npm --prefix ./frontend audit
 ```
 
-El archivo de integración HTTP contiene nueve pruebas que comprobaron FastAPI, React, rutas registradas, rechazo de JWT ausentes o inválidos, CORS y PostgreSQL. Las nueve finalizaron correctamente en la revisión de octubre de 2026.
+La existencia del comando `lint` no significa que el CI ya lo ejecute; incorporarlo es un pendiente del tercer corte. Se registró una auditoría npm con cero vulnerabilidades conocidas en un entorno local de octubre de 2026, resultado que puede cambiar con nuevos avisos.
 
-Para revisar el frontend también están disponibles `npm run build`, `npm run lint` y `npm audit`. La existencia de estos comandos no implica que todas las verificaciones se hayan ejecutado en esta misma revisión.
+La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las pruebas mediante descubrimiento global puede requerir preparar previamente entornos diferentes. Para pasos reproducibles de instalación y detalles de CI, consultar el README raíz.
 
-Para verificar los cambios del frontend:
+## 7. Seguridad, limitaciones y trabajo pendiente
 
-```powershell
-npm run build
-npm audit
-```
+- Las URL del backend aún están repetidas y deben centralizarse con `VITE_API_URL`; falta `frontend/.env.example`.
+- No hay pantalla de pipelines, aunque las rutas del backend están implementadas.
+- El archivo `App.jsx` es grande; está pendiente extraer pantallas de verificación, recuperación y respuesta de J.A.R.V.I.S. sin modificar su comportamiento.
+- Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error, además de incorporar lint al CI.
+- El historial PDF puede reflejar solo una página de registros.
+- La interfaz no confirma incidentes productivos ni ejecuta acciones correctivas en sistemas externos.
+- La seguridad real de JWT, WebSocket, claves y aislamiento se valida en FastAPI y no debe depender de controles visuales.
 
-La auditoría de seguridad realizada en octubre de 2026 terminó con 0 vulnerabilidades reportadas en el entorno de pruebas, después de actualizar una dependencia afectada. Esto no garantiza ausencia permanente de vulnerabilidades.
-Documentos relacionados:
-- [`../README.md`](../README.md) — descripción general e instrucciones del proyecto.
-- [`../docs/MVP.md`](../docs/MVP.md) — alcance del prototipo.
-- [`../docs/PRD.md`](../docs/PRD.md) — requisitos del producto.
+El proveedor de IA identificado es **Groq**. La auditoría menciona Azure como referencia prevista, pero no se acreditó una integración activa con Azure ni una aprobación formal del cambio. Durante el desarrollo y la revisión se utilizó asistencia de IA generativa como apoyo documental/técnico; los resultados deben validarse con código y pruebas.
 
-## 10. Lista de verificación del frontend
-- [x] Navegación y pantallas de autenticación.
-- [x] Gráficas, feed de alertas y WebSocket autenticado.
-- [x] Chat con Markdown, tablas desplazables y botón «↓ Último».
-- [x] Compilación local y auditoría de paquetes realizadas en octubre de 2026.
-- [ ] Pruebas automatizadas de interfaz y accesibilidad exhaustivas (pendientes).
-Proyecto académico: PluriOne. Documentación revisada en octubre de 2026.
+## 8. Referencias y lista de verificación
 
-### Alcance actual de la ingesta
+- [`../README.md`](../README.md): descripción general, variables, instalación y API.
+- [`../docs/PRD.md`](../docs/PRD.md): requisitos y criterios de aceptación.
+- [`../docs/MVP.md`](../docs/MVP.md): alcance y evidencia del prototipo.
 
-El backend de PluriOne cuenta con rutas de ingesta de métricas
-y administración de pipelines. La ingesta autenticada utiliza
-`POST /metricas/` y la ingesta externa utiliza
-`POST /metricas/externas/` con `X-Pipeline-Key`.
+- [x] Registro, verificación, recuperación y acceso JWT.
+- [x] Dashboard, alertas, WebSocket por usuario y chat Markdown.
+- [x] Historial reversible, exportación PDF y onboarding.
+- [x] Compilación de producción del frontend confirmada en GitHub Actions.
+- [ ] Pantalla de administración de pipelines.
+- [ ] Centralizar API/WebSocket y crear `frontend/.env.example`.
+- [ ] Dividir componentes grandes y ampliar pruebas de interfaz, accesibilidad y lint en CI.
 
-La documentación de estas rutas no implica que el frontend
-ya disponga de una pantalla de administración de pipelines.
-Esta funcionalidad de interfaz debe verificarse o desarrollarse
-por separado.
-
-### Cobertura automatizada actual
-
-El repositorio de PluriOne incluye 49 funciones de prueba
-en el backend: 32 aisladas, 9 HTTP y 8 de seguridad y
-archivado.
-
-El workflow de GitHub Actions ejecuta las 32 pruebas
-aisladas y realiza la compilación de producción del frontend.
-Ambos trabajos finalizaron correctamente para el commit
-`da374ac`.
-
-Las otras 17 funciones de prueba no están incorporadas
-al workflow. Las pruebas exhaustivas de interfaz,
-accesibilidad y carga permanecen pendientes.
-
-### Seguridad e inteligencia artificial del proyecto
-
-Los codigos temporales del backend utilizan HMAC.
-Las claves de pipelines utilizan SHA-256 y
-`hmac.compare_digest`. Estos mecanismos no equivalen
-a almacenar secretos directamente en el frontend.
-
-La integracion de inteligencia artificial identificada
-en el backend utiliza Groq. La auditoria menciona Azure
-como tecnologia prevista, pero no se identifico como
-integracion implementada. Esta diferencia requiere
-justificacion y confirmacion por los responsables.
-
-Durante el desarrollo y la auditoria se utilizo
-asistencia de IA generativa para apoyo tecnico y
-documental. Las propuestas deben verificarse con el
-codigo real y las pruebas correspondientes.
+**Estado:** documentación consolidada; no se ha modificado ni ejecutado la aplicación frontend durante la preparación de este archivo.

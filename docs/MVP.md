@@ -1,239 +1,110 @@
 # Producto Mínimo Viable (MVP) — PluriOne
-- Proyecto: Plataforma de Observabilidad de Datos con Inteligencia Artificial (PluriOne)
-- Autor: Diego Rivera Aguilar
-- Fecha: Octubre de 2026
-- Versión documentada: Prototipo académico con J.A.R.V.I.S. 2.0
+
+- **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
+- **Autor señalado en el documento original:** Diego Rivera Aguilar.
+- **Periodo:** octubre de 2026.
+- **Versión:** prototipo académico con J.A.R.V.I.S. 2.0; consolidación documental del Corte 3 basada en `b5957d4`.
+
 ## 1. Alcance del MVP
-El MVP de PluriOne busca validar localmente un ciclo básico de observabilidad: generación automática de métricas simuladas, almacenamiento de anomalías, visualización del estado de pipelines y obtención de diagnósticos orientativos con apoyo de inteligencia artificial.
-Se trata de una implementación funcional de demostración. Dispone de ingesta de métricas por API autenticada, pero no se acredita una conexión permanente con sistemas productivos, monitoreo real de AWS ni intervención automática externa.
+
+PluriOne demuestra un ciclo de observabilidad: **simulación o ingesta autenticada de métricas → clasificación → registro de anomalías relevantes → visualización y alertas → consulta orientativa con inteligencia artificial**.
+
+La API recibe métricas con JWT o clave de pipeline; esto es distinto de afirmar que ya existe una conexión automática con AWS o sistemas empresariales de producción. No se ha demostrado tal integración ni una remediación automática sobre infraestructura externa.
+
 ### 1.1. Autenticación y seguridad
-Registro de usuarios, hash de contraseñas mediante bcrypt, verificación de cuentas con código de 6 dígitos enviado por SMTP, activación de cuenta e inicio de sesión con JWT. El formulario React de recuperación permite solicitar el código al correo registrado, introducirlo junto con una nueva contraseña y volver a iniciar sesión. El backend rechaza JWT de cuentas inexistentes o inactivas; restringe la lectura de anomalías al usuario autenticado. Las conexiones WebSocket también deben autenticarse antes de recibir eventos.
-### 1.2. Motor de telemetría automática simulada
-Proceso asíncrono en segundo plano (asyncio) integrado con FastAPI. Genera datos simulados de latencia (latencia_ms), integridad o calidad (datos_corruptos_%) y tasa de fallos (tasa_fallos_%) aproximadamente cada 30 segundos, sin interacción manual. Guarda los registros en PostgreSQL y transmite nuevas anomalías por WebSocket.
-Las recomendaciones que acompañan la telemetría simulada se producen localmente mediante reglas o textos orientativos. No se invoca el modelo de Groq por cada evento generado.
-### 1.3. Dashboard y alertas
-Interfaz React con Recharts para visualizar métricas y estados (Normal, Alerta, Critico). Feed de anomalías recientes con valores, pipeline y fecha/hora enviada por el backend. Actualización de eventos sin recargar la página.
-### 1.4. Asistente inteligente J.A.R.V.I.S. 2.0
-Chat en español con Groq (modelo openai/gpt-oss-20b), historial limitado de conversación durante la sesión y function calling controlado por FastAPI.
-La herramienta consultar_anomalias_usuario recupera información solo del usuario autenticado, permite filtrar por normal, alerta, critico o todos, contar registros coincidentes y presentar hasta 10 registros recientes por consulta. J.A.R.V.I.S. utiliza esa información para explicar métricas, proponer causas no verificadas y recomendar pasos de investigación seguros.
-El frontend muestra respuestas con Markdown y tablas, desplazamiento independiente del chat y botón «↓ Último».
-### 1.5. Historial, PDF y onboarding
-Consulta de anomalías almacenadas, exportación a PDF y guía interactiva inicial. El botón Archivar historial archiva las anomalías en PostgreSQL y permite restaurarlas posteriormente.
-### 1.6. Infraestructura de desarrollo
-Backend FastAPI, PostgreSQL, frontend React/Vite y Docker Compose para los servicios configurados en el entorno de pruebas. Credenciales, claves JWT y acceso a Groq/SMTP mediante variables de entorno.
-## 2. Estado de desarrollo del MVP
-- **Modelos y persistencia en PostgreSQL**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Registros de usuarios y anomalías; marcas de tiempo.
 
-- **API y seguridad de acceso**
-  - **Estado a octubre de 2026:** Implementado y comprobado localmente
-  - **Evidencia o límite:** JWT, control de usuario y rechazo de cuentas inactivas; respuesta HTTP 401 sin token y con cuenta inactiva en las pruebas correspondientes. Requiere pruebas más amplias antes de producción.
+Registro con contraseñas protegidas mediante hash, verificación de seis dígitos por SMTP, reenvío de códigos, activación de cuentas, inicio de sesión JWT y recuperación de contraseña desde React. Los códigos vencen después de 10 minutos, permiten hasta cinco intentos y se protegen con HMAC. El backend rechaza cuentas inexistentes o inactivas y comprueba el acceso a rutas y eventos WebSocket por usuario.
 
-- **Recuperación de contraseña desde React**
-  - **Estado a octubre de 2026:** Implementado y probado manualmente
-  - **Evidencia o límite:** El formulario solicita código SMTP, acepta el código para el restablecimiento y permite iniciar sesión con la nueva contraseña.
+Las claves de pipeline tienen un mecanismo diferente: se muestran al emitirlas/rotarlas, se almacenan como hash SHA-256 y se verifican usando comparación segura. Su administración en el backend requiere autenticación JWT.
 
-- **Telemetría automática**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Datos simulados generados periódicamente en FastAPI.
+### 1.2. Simulador e ingesta de métricas
 
-- **WebSocket por usuario**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Autenticación con JWT y recepción de eventos en la interfaz.
+El simulador asíncrono de FastAPI genera métricas sintéticas aproximadamente cada 30 segundos para los usuarios activos, sin un botón de inyección manual. Utiliza el mismo servicio de clasificación que la ingesta autenticada. Las anomalías relevantes se guardan en PostgreSQL; las mediciones normales no se persisten como anomalías en el flujo actual.
 
-- **Dashboard y feed**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Gráficas, estados, alertas y horas de los registros.
+La API dispone de `POST /metricas/` con JWT y `POST /metricas/externas/` con `X-Pipeline-Key`. La gestión de pipelines ofrece `POST /pipelines/`, `GET /pipelines/`, rotación y revocación de claves. Estas rutas existen en el backend, pero todavía falta una pantalla React para administrarlas.
 
-- **Chat J.A.R.V.I.S. con Groq**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Preguntas generales y diagnósticos orientativos. Sujeto a límites y disponibilidad de Groq.
+### 1.3. Dashboard, historial y alertas
 
-- **Herramienta de consulta SQL controlada**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Conteo y últimos registros por estado del usuario autenticado.
+React y Recharts presentan latencia, calidad de datos y fallos, con estados Normal, Alerta y Crítico. Los eventos se distribuyen mediante WebSocket autenticado por usuario y el feed muestra la fecha/hora recibida del backend.
 
-- **Memoria conversacional**
-  - **Estado a octubre de 2026:** Implementado de forma limitada
-  - **Evidencia o límite:** Hasta 10 mensajes anteriores enviados desde el frontend; no persiste entre sesiones.
+El historial puede consultarse, archivarse lógicamente y restaurarse sin eliminación física. Las consultas están protegidas con JWT, filtradas por usuario y paginadas. El PDF exporta los registros cargados en la interfaz; no necesariamente el historial completo de PostgreSQL. También existe una guía de bienvenida.
 
-- **Markdown y navegación del chat**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Tablas con desplazamiento y botón «↓ Último».
+### 1.4. J.A.R.V.I.S. 2.0
 
-- **Historial, exportación PDF y onboarding**
-  - **Estado a octubre de 2026:** Implementado
-  - **Evidencia o límite:** Exportación de los datos cargados en la interfaz.
+El chat utiliza Groq y el identificador de modelo documentado `openai/gpt-oss-20b`. El backend autoriza una herramienta `consultar_anomalias_usuario`, que devuelve cantidades y hasta diez registros recientes según el estado solicitado (normal, alerta, crítico o todos). El asistente presenta hipótesis de investigación y no certifica causas raíz.
 
-- **Docker Compose y compilación del frontend**
-  - **Estado a octubre de 2026:** Probado localmente
-  - **Evidencia o límite:** Servicios de API/BD iniciados y npm run build completado.
+El frontend envía un contexto limitado de mensajes recientes, muestra Markdown con tablas desplazables y ofrece el botón «↓ Último». La conversación no tiene memoria persistente entre sesiones. La IA no analiza automáticamente cada métrica generada: las recomendaciones vinculadas al simulador proceden de reglas/textos locales.
 
-- **Ingesta desde pipelines empresariales reales**
-  - **Estado a octubre de 2026:** Fuera del MVP
-  - **Evidencia o límite:** No se conecta a fuentes productivas.
+### 1.5. Infraestructura
 
-- **Consultas avanzadas por fecha o métrica en J.A.R.V.I.S.**
-  - **Estado a octubre de 2026:** No implementado
-  - **Evidencia o límite:** La herramienta actual filtra solo por estado.
+FastAPI, PostgreSQL, WebSocket y React/Vite funcionan en un entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. Existe un workflow de GitHub Actions con pruebas aisladas y compilación de React. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
 
-- **Acciones correctivas automáticas en infraestructura**
-  - **Estado a octubre de 2026:** Fuera del MVP
-  - **Evidencia o límite:** El asistente recomienda; no opera sistemas externos.
+## 2. Estado verificable de las funcionalidades
 
+- **Usuarios, verificación y recuperación:** implementados; se reportaron pruebas manuales del código SMTP, recuperación y nuevo acceso. Códigos con HMAC y separación por propósito.
+- **JWT y aislamiento:** implementados; se probaron respuestas HTTP 401 y existen pruebas aisladas para casos de usuarios distintos y WebSocket. No equivale a una auditoría integral.
+- **Simulador automático:** implementado con frecuencia aproximada de 30 segundos, no garantizada.
+- **Ingesta autenticada:** implementada en la API con JWT o clave de pipeline, validación y clasificación; sin integración continua con sistemas empresariales.
+- **Pipelines:** creación, listado, rotación y revocación implementados en el backend; pantalla de React pendiente.
+- **Persistencia de anomalías:** implementada en PostgreSQL, con marca de tiempo y estado; las métricas normales no se registran como anomalías en el flujo revisado.
+- **WebSocket y dashboard:** implementados, con recepción de eventos y gráficos; falta ampliar pruebas integrales de interfaz.
+- **Historial reversible:** archivado lógico, restauración y paginación disponibles. La migración correspondiente aún debe verificarse en una instalación nueva y una existente.
+- **J.A.R.V.I.S.:** chat, consultas restringidas y diagnóstico orientativo implementados; sujeto a disponibilidad y límites de Groq.
+- **PDF, Markdown y onboarding:** disponibles para los registros y mensajes visibles.
+- **Compilación e instalación:** Vite y servicios locales comprobados en revisiones anteriores; hace falta una validación final desde un clon limpio después de integrar todos los cambios.
+- **Conectores empresariales, remediación y despliegue de producción:** no demostrados o fuera del MVP.
 
+## 3. Criterios de validación
 
-## 3. Criterios de validación del MVP
+1. **Acceso controlado:** registro, verificación y recuperación por correo; JWT válido y bloqueo de cuentas inactivas. Códigos temporales con vencimiento, máximo de cinco intentos y propósito específico.
+2. **Ingesta reproducible:** envío de una métrica válida mediante `/metricas/` o `/metricas/externas/` y comprobación de su clasificación; los datos normales no tienen por qué aparecer en el historial de anomalías.
+3. **Pipelines seguros:** emisión y rotación de claves mostradas una sola vez, revocación y rechazo de claves no válidas, dentro de las pruebas realizadas o por ejecutar.
+4. **Simulación automática:** generación periódica sin intervención manual y procesamiento por el mismo servicio que la ingesta.
+5. **Aislamiento y tiempo real:** solo el usuario autenticado recibe sus eventos y consulta sus registros.
+6. **Historial reversible:** el archivado conserva el registro y la restauración devuelve el estado activo. La paginación no debe confundirse con la totalidad del historial.
+7. **Asistente responsable:** J.A.R.V.I.S. recupera datos mediante funciones autorizadas, separa hechos de hipótesis y no opera infraestructura real.
+8. **Usabilidad y PDF:** dashboard, chat, tablas y exportación de los registros visibles.
+9. **Reproducibilidad:** arranque local siguiendo el README, funcionamiento del esquema nuevo/antiguo y registro de resultados de pruebas sin exponer contraseñas.
 
-**Cobertura automatizada:** el repositorio incluye 49 funciones de prueba: 32 aisladas, 9 HTTP y 8 de seguridad y archivado. GitHub Actions ejecuta las 32 aisladas con SQLite en memoria. Estas comprueban, entre otros casos, expiración, límites de intentos, HTTP 429 y aislamiento de usuarios. Persisten pruebas integrales y de carga pendientes.
+### Cobertura de pruebas y evidencia
 
+El repositorio revisado contiene **49 funciones de prueba**, pero no todas forman parte de la misma ejecución automática:
 
-### Validación adicional de la versión auditada
+- `backend/tests/test_flujos_aislados.py`: **32 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket y claves de pipelines. **Sí forman parte del workflow actual.**
+- `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, rutas, autorización, CORS y servicios. **No forman parte del workflow actual; fueron ejecutadas en revisiones anteriores.**
+- `backend/tests/test_seguridad_archivado.py`: **8 pruebas** de autorización e historial. **No forman parte del workflow actual; fueron ejecutadas en revisiones anteriores.**
 
-La versión actual incorpora reenvío de verificación, vencimiento de códigos, límite de cinco intentos, separación entre verificación y recuperación, y control de solicitudes de autenticación mediante PostgreSQL.
+GitHub Actions también instala el frontend con `npm ci` y compila Vite; se confirmó un resultado satisfactorio para el commit `f6a6ab9` de la rama `fix/segunda-auditoria-plurione`. Esto **no demuestra** que las 49 pruebas se hayan ejecutado juntas recientemente ni reemplaza una prueba con PostgreSQL real o una auditoría de producción.
 
-Se comprobó el arranque de una instalación limpia e independiente con Docker Compose, FastAPI, React y PostgreSQL. También se ejecutaron satisfactoriamente las nueve pruebas HTTP del archivo `backend/tests/test_integracion_http.py`.
+Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranque local de FastAPI/PostgreSQL, compilación de React, recepción de eventos, chat, recuperación SMTP y rechazo de JWT no autorizados. La evidencia debe actualizarse después de las próximas modificaciones del frontend y backend.
 
-Las pruebas no cubren de manera exhaustiva los flujos del navegador, SMTP, Groq, WebSocket, carga o seguridad de producción. La ingesta de datos empresariales reales continúa fuera del alcance del MVP.
+## 4. Lista de comprobación del MVP
 
+- [x] Registro, verificación, JWT, recuperación y protección de códigos mediante HMAC.
+- [x] Simulador, ingesta de métricas autenticada y clasificación compartida.
+- [x] Creación/listado/rotación/revocación de pipelines mediante API.
+- [x] PostgreSQL, dashboard y eventos WebSocket segmentados por usuario.
+- [x] Archivado y restauración del historial, PDF de los registros visibles y onboarding.
+- [x] J.A.R.V.I.S. con Groq, herramientas autorizadas y respuestas Markdown.
+- [x] 32 pruebas aisladas en GitHub Actions y compilación de React con CI satisfactorio documentado.
+- [ ] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo público del entorno frontend.
+- [ ] Prueba final del archivado con migraciones en esquemas antiguos y nuevos, con respaldo previo.
+- [ ] Integrar las otras 17 pruebas en CI, pruebas con PostgreSQL, lint, carga, navegador y seguridad más amplia.
+- [ ] Limitar frecuencia de ingesta y número de pipelines por usuario; continuar modularización.
+- [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
+## 5. Exclusiones, riesgos y trabajo posterior
 
-1. Acceso controlado. El MVP contempla registro, verificación SMTP, inicio de sesión JWT y recuperación de contraseña. Los códigos vencen después de 10 minutos, admiten cinco intentos y se invalidan tras su uso. Se comprobó el rechazo HTTP 401 en las rutas protegidas evaluadas.
-2. Automatización demostrable. El backend genera telemetría simulada aproximadamente cada 30 segundos sin intervención manual; la periodicidad es objetivo de la simulación, no garantía estricta de latencia.
-3. Actualización de interfaz. Un usuario autenticado observa las nuevas anomalías por WebSocket sin recargar el dashboard.
-4. Persistencia y trazabilidad. Las anomalías incluyen pipeline, métrica, valor, estado y fecha/hora registrada; el feed utiliza el tiempo proporcionado por el backend.
-5. Diagnóstico contextualizado. J.A.R.V.I.S. puede recuperar anomalías del usuario por estado, indicar cantidades y elaborar hipótesis y recomendaciones sin afirmar que verificó logs o infraestructura externa.
-6. Usabilidad. Los resultados extensos y las tablas se leen mediante desplazamiento dentro del chat; el historial visible puede exportarse a PDF.
-7. Entorno reproducible. El proyecto dispone de instrucciones para levantar FastAPI/PostgreSQL y ejecutar/compilar React localmente.
-Validaciones locales observadas en la iteración: compilación exitosa de Vite, arranque de los contenedores API y BD, recepción de telemetría, consultas conversacionales a registros y prueba del desplazamiento del chat. También se comprobó el envío de código SMTP desde la pantalla de React, su uso para restablecer la contraseña, el nuevo acceso al dashboard y respuestas HTTP 401 de rutas protegidas sin autorización. Estos resultados no equivalen a cobertura integral de pruebas automatizadas, auditoría de seguridad completa ni certificación de producción.
-## 4. Lista de comprobación de entregables
-Esta lista resume las funcionalidades incluidas en el MVP y las actividades que siguen pendientes.
-- [x] Base de datos PostgreSQL y API FastAPI.
-- [x] Simulación automática y eventos WebSocket por usuario.
-- [x] Dashboard y registro de alertas con marca temporal.
-- [x] J.A.R.V.I.S. 2.0 con Groq, herramienta autorizada y contexto reciente.
-- [x] Presentación Markdown, historial, PDF y guía de bienvenida.
-- [x] Ejecución local de servicios y compilación del frontend.
-- [x] Recuperación de contraseña iniciada en React y finalizada con inicio de sesión nuevo.
-- [x] Rechazo de acceso sin JWT y de cuentas inactivas en las rutas probadas.
-- [ ] Integración real con sistemas productivos (fuera del MVP).
-- [ ] Pruebas exhaustivas de seguridad y carga (pendientes).
-## 5. Exclusiones y trabajo posterior
-Quedan fuera del MVP o pendientes de una fase posterior: conectores reales de ingesta (AWS, bases corporativas y otros servicios), evaluación de causas raíz con evidencias externas, filtros complejos de consulta histórica, acciones de remediación automáticas, métricas de fiabilidad de producción, pruebas de carga y pruebas automatizadas de seguridad/aislamiento más exhaustivas.
-Los correos SMTP se utilizan para verificación y recuperación de acceso. El simulador no envía un correo por cada anomalía. Los códigos tienen vencimiento temporal y un máximo de cinco intentos. El archivo `backend/app/schema_migrations.py` actualiza instalaciones anteriores sin eliminar los registros existentes.
-## 6. Conclusión
-El MVP demuestra la integración de FastAPI + PostgreSQL + WebSockets + React + Groq en un escenario controlado con datos simulados. J.A.R.V.I.S. 2.0 amplía la experiencia mediante conversación contextual y acceso restringido a registros del usuario. El resultado sirve para validación académica y demostración técnica, sin presentar la simulación como monitoreo de producción.
-Documentos relacionados: [`../README.md`](../README.md) · [`PRD.md`](PRD.md) · [`../frontend/README.md`](../frontend/README.md).
+Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-## Actualizacion de la segunda auditoria - octubre de 2026
+Se deben fortalecer la modularización de `main.py` y `App.jsx`, la interfaz de pipelines, los límites de uso y el CI. Los Dockerfiles utilizan configuraciones de desarrollo. Para el archivado, `backend/migrations/001_archivado_logico_anomalias.sql` contiene las columnas `archived` y `archived_at`, pero no se ha confirmado a partir de los documentos que se aplique automáticamente junto con `backend/app/schema_migrations.py` en toda instalación. Antes de manipular un volumen antiguo, respaldarlo y verificar su esquema; nunca usar `docker compose down -v` para conservar datos.
 
-### Funcionalidades incorporadas al MVP
+**Uso de IA y tecnología elegida:** el backend implementa Groq; la auditoría menciona Azure como tecnología inicialmente prevista. La aprobación o justificación formal del cambio no está acreditada en la documentación examinada y corresponde confirmarla con el profesor o la empresa. Durante el desarrollo y las auditorías se utilizó asistencia de IA generativa para el análisis y la revisión documental; toda propuesta debe contrastarse con código y pruebas verificables.
 
-- Archivado logico del historial de anomalias por usuario.
-- Restauracion del historial archivado.
-- Consultas separadas de anomalias activas y archivadas.
-- Acceso protegido por JWT a las operaciones del historial.
-- Controles de React con confirmacion para archivar o restaurar.
-- Migracion versionada de PostgreSQL para los campos de archivado.
+## 6. Conclusión y documentos relacionados
 
-El archivado es reversible: no constituye una eliminacion fisica de los
-registros. Las vistas de historial utilizan consultas paginadas.
+El MVP reúne los elementos necesarios para demostrar observabilidad de métricas con entrada autenticada, simulación, seguimiento de anomalías y asistencia conversacional controlada. Su madurez operativa todavía está limitada por la ausencia de conectores productivos, pantalla de pipelines, pruebas integrales y validación de despliegue empresarial.
 
-### Evidencia de pruebas
+Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
 
-La segunda auditoria completo una compilacion de React/Vite y
-17 pruebas automatizadas en aquella revisión:
-
-- Nueve pruebas de integracion de servicios y rutas principales.
-- Ocho pruebas de autorizacion de rutas del historial, sin token
-  y con token invalido.
-
-Adicionalmente, el comportamiento de archivado y restauracion fue
-verificado con una base de datos aislada, sin archivar registros
-reales de PostgreSQL durante las pruebas.
-
-### Limitaciones y pendientes
-
-- La ingesta sigue siendo simulada, no empresarial real.
-- No existe validacion exhaustiva de carga o de seguridad productiva.
-- Las pruebas no cubren todos los flujos visuales del navegador.
-- Las consultas iniciales pueden mostrar solo una pagina del historial.
-- Falta una verificacion integral de SMTP y de servicios externos
-  en un entorno de despliegue controlado.
-
-Estos puntos deben conservarse como pendientes y no presentarse
-como funcionalidades concluidas del MVP.
-
-### Evidencia de integración continua
-
-El MVP dispone de un workflow de GitHub Actions ubicado en
-`.github/workflows/ci.yml`, incorporado durante la segunda
-auditoría del proyecto.
-
-El trabajo del backend ejecuta las pruebas aisladas existentes
-mediante `unittest` y SQLite. El trabajo del frontend instala
-dependencias con `npm ci` y compila React mediante Vite.
-Ambos trabajos finalizaron correctamente en la ejecución
-inicial correspondiente al commit `7de6a10`.
-
-La validación automatizada se limita a estas comprobaciones.
-No acredita la ejecución de todas las pruebas HTTP, las
-pruebas independientes de archivado, el lint del frontend
-ni un despliegue de producción. Las funcionalidades futuras
-y limitaciones documentadas en el MVP siguen vigentes.
-
-### Ingesta de métricas disponible en el MVP
-
-El backend implementa el registro autenticado de métricas
-mediante `POST /metricas/` y la recepción externa mediante
-`POST /metricas/externas/` con cabecera `X-Pipeline-Key`.
-
-También ofrece creación y listado de pipelines a través de
-`POST /pipelines/` y `GET /pipelines/`, además de rotación
-y revocación mediante las rutas correspondientes al
-identificador del pipeline. Estas operaciones de administración
-utilizan autenticación JWT.
-
-La presencia de estas rutas no implica que ya existan conectores
-específicos para AWS o plataformas corporativas. Dichos
-conectores, las pruebas de carga y el fortalecimiento de
-límites de uso continúan pendientes.
-
-### Cobertura de pruebas verificada en la auditoría
-
-El repositorio incluye 49 funciones de prueba distribuidas
-en tres archivos: 32 aisladas, 9 HTTP y 8 de seguridad
-y archivado.
-
-GitHub Actions ejecuta actualmente las 32 pruebas aisladas
-con SQLite en memoria y también compila el frontend.
-La ejecución correspondiente al commit `da374ac` fue
-satisfactoria.
-
-Las 17 pruebas restantes están disponibles en el código,
-pero no forman parte del workflow actual. Su existencia
-no debe interpretarse como una ejecución reciente.
-También quedan pendientes pruebas exhaustivas de
-seguridad, carga y despliegue.
-
-### Seguridad y uso responsable de IA
-
-La implementacion incorpora proteccion HMAC en los
-codigos temporales de verificacion. Las claves de
-pipelines utilizan SHA-256 y comparacion segura mediante
-`hmac.compare_digest`. Ambos mecanismos responden
-a necesidades diferentes.
-
-La integracion de inteligencia artificial identificada
-en el backend utiliza Groq. Aunque la auditoria menciona
-Azure como tecnologia prevista, no se identifico una
-implementacion de Azure en el codigo examinado.
-La aceptacion formal de la alternativa debe confirmarse
-con los responsables academicos y empresariales.
-
-En el desarrollo y la auditoria se utilizo asistencia
-de IA generativa para apoyar el analisis y la
-documentacion. Su uso no reemplaza la validacion del
-codigo, la comprobacion de las pruebas ni la revision
-humana de los resultados.
+**Estado documental:** versión consolidada para el tercer corte. Esta actualización reorganiza información del ZIP entregado; no certifica cambios nuevos en el código.

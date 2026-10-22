@@ -1,357 +1,173 @@
 # Documento de Requisitos del Producto (PRD) — PluriOne
-- Proyecto: Plataforma de Observabilidad de Datos con Inteligencia Artificial (PluriOne)
-- Empresa: PluriOne S.A. de C.V.
-- Autor: Diego Rivera Aguilar
-- Fecha: Octubre de 2026
-- Versión documentada: Prototipo académico con J.A.R.V.I.S. 2.0
+
+- **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial (PluriOne).
+- **Empresa vinculada:** PluriOne S.A. de C.V.
+- **Autor señalado en el documento original:** Diego Rivera Aguilar.
+- **Periodo:** octubre de 2026.
+- **Versión descrita:** prototipo académico; consolidación documental del tercer corte a partir de `b5957d4`.
+
 ## 1. Propósito, problemática y visión general
-Problemática
-El seguimiento de pipelines de datos puede resultar reactivo: los fallos, la latencia y los datos inconsistentes dificultan detectar problemas oportunamente y orientar la investigación técnica. Una vista centralizada de métricas y anomalías favorece el análisis operativo.
-Propósito y visión
-Desarrollar una plataforma que centralice métricas y alertas de prueba, permita observar su evolución y ofrezca diagnósticos orientativos mediante un asistente de IA. La versión actual está diseñada para demostración académica con telemetría simulada; la conexión a infraestructuras productivas corresponde a una posible evolución futura.
-## 2. Público objetivo y objetivos del proyecto
-Público objetivo
-- Ingenieros de Datos y DataOps: seguimiento de estados y exploración de incidentes representados por métricas.
-- Líderes técnicos y responsables de observabilidad: consulta de tableros, tendencias y bitácoras.
-- Administradores de la plataforma: supervisión de los flujos de registro, autenticación y acceso de usuarios.
-Objetivos específicos
-1. Implementar registro, verificación por código SMTP, autenticación JWT, almacenamiento de contraseñas mediante hash y recuperación de acceso iniciada desde el formulario React con envío de código al correo registrado.
-2. Generar automáticamente métricas simuladas en el backend y persistir las anomalías en PostgreSQL.
-3. Mostrar gráficas y alertas con actualización en tiempo real mediante WebSocket autenticado por usuario.
-4. Proporcionar un asistente conversacional que consulte datos del usuario mediante herramientas backend autorizadas y distinga hechos de hipótesis.
-5. Consultar registros y generar reportes PDF a partir de los datos cargados en la interfaz.
-6. Mantener instrucciones reproducibles de instalación, configuración y ejecución local.
-## 3. Alcance del proyecto
-Dentro del alcance del prototipo actual
-- Alta y validación de cuentas, autenticación con bloqueo de cuentas inactivas y recuperación de acceso solicitando el código SMTP desde React.
-- Simulador asíncrono de telemetría con registros de latencia, calidad e incidencias de fallos cada 30 segundos.
-- Persistencia y consulta de anomalías en PostgreSQL con marca de tiempo.
-- Distribución en tiempo real por WebSocket con autenticación JWT y segmentación por usuario.
-- Dashboard React/Vite con Recharts, estados y feed de alertas.
-- J.A.R.V.I.S. 2.0 con Groq, conversación contextual limitada y herramienta para consultar anomalías por estado del usuario autenticado.
-- Explicaciones y recomendaciones técnicas orientativas, no verificaciones independientes de causas raíz.
-- Respuestas Markdown, tablas desplazables, botón «↓ Último», onboarding y exportación PDF.
-- Entorno local de desarrollo con Docker Compose para API/base de datos y Vite para el frontend.
-Fuera del alcance de esta versión
-- Integración automática con pipelines de producción, AWS S3 real u otras infraestructuras externas.
-- Cambios, escrituras, restauraciones o correcciones automáticas sobre servicios productivos.
-- Confirmación de causas raíz mediante inspección real de logs, red, CPU o infraestructura.
-- Filtros conversacionales avanzados por rango de fechas, severidad, palabra clave o métrica; la herramienta actual permite filtrar por estado.
-- Memoria de chat permanente o compartida entre dispositivos/sesiones.
-- Garantías de disponibilidad, escalabilidad o preparación para despliegue empresarial.
-- Correos masivos por cada evento de telemetría: SMTP se utiliza para identidad y recuperación.
+
+En los pipelines de datos, los retrasos, los valores inconsistentes y los fallos pueden pasar inadvertidos si la información está dispersa. PluriOne busca centralizar la recepción y clasificación de métricas, la consulta de anomalías y las alertas para apoyar el seguimiento y la investigación técnica.
+
+La versión revisada combina **un simulador de demostración** con **endpoints de ingesta autenticada**. Puede aceptar métricas por JWT o clave de pipeline, pero no se ha demostrado que esté conectado de manera permanente con AWS o infraestructura corporativa real. J.A.R.V.I.S. 2.0 ofrece hipótesis orientativas, no confirmaciones autónomas de causas raíz.
+
+## 2. Usuarios y objetivos del producto
+
+**Usuarios previstos:** ingenieros de datos y DataOps que examinan fallos de pipelines, líderes técnicos que consultan indicadores y administradores que supervisan identidades, acceso y pipelines.
+
+**Objetivos específicos:**
+
+1. Registrar y verificar usuarios, autenticar con JWT y permitir la recuperación de contraseña con códigos SMTP protegidos.
+2. Recibir métricas desde el simulador y desde clientes autorizados por JWT o clave de pipeline; clasificarlas y almacenar anomalías que requieren seguimiento.
+3. Administrar pipelines y sus claves de ingesta mediante alta, consulta, rotación y revocación en FastAPI.
+4. Presentar alertas, indicadores y anomalías con segregación por usuario mediante React, PostgreSQL y WebSocket autenticado.
+5. Mantener un historial consultable, archivable y restaurable sin eliminación física de registros.
+6. Permitir a J.A.R.V.I.S. 2.0 consultar registros autorizados y proporcionar diagnósticos orientativos que diferencien evidencia e hipótesis.
+7. Exportar registros visibles a PDF y conservar documentación reproducible de instalación, pruebas y limitaciones.
+
+## 3. Alcance y exclusiones
+
+**Dentro del alcance implementado en el backend y la interfaz actual:**
+
+- Registro, verificación, reenvío de códigos, inicio de sesión JWT, recuperación de acceso y bloqueo de cuentas inactivas.
+- Simulador asíncrono de telemetría con un intervalo aproximado de 30 segundos para usuarios activos.
+- Ingesta HTTP con JWT (`/metricas/`) o cabecera `X-Pipeline-Key` (`/metricas/externas/`).
+- Creación y listado de pipelines, rotación y revocación de sus claves por rutas protegidas con JWT.
+- Validación de métricas, clasificación compartida entre simulador e ingesta y persistencia de anomalías relevantes; las mediciones normales no se guardan como anomalías en el flujo revisado.
+- Dashboard React/Vite, gráficas, feed con marca temporal de backend y WebSocket autenticado por usuario.
+- Consulta, archivado lógico y restauración de historial con filtrado por cuenta y paginación.
+- Asistente Groq con function calling limitado a herramientas backend autorizadas, Markdown, onboarding y exportación PDF de registros cargados.
+- Docker Compose para demostración y CI con 32 pruebas aisladas más compilación de React.
+
+**Fuera del alcance comprobado o pendiente de trabajo:**
+
+- Conectores permanentes a AWS, S3, bases corporativas o sistemas de observabilidad productivos.
+- Panel React para crear, listar, rotar o revocar pipelines (la API sí existe).
+- Remediación automática, inspección directa de logs/red/CPU y certificación de causas raíz.
+- Consultas conversacionales arbitrarias por fechas, métricas o palabras clave; la herramienta actual filtra por estado.
+- Memoria conversacional persistente, alta disponibilidad y garantías operativas empresariales.
+- Pruebas exhaustivas de carga, seguridad, navegador y migración de todos los esquemas.
+- Cuotas de ingesta y máximos de pipelines por usuario suficientemente verificados para producción.
+
 ## 4. Requisitos funcionales e historias de usuario
-- **RF-01**
-  - **Requisito / historia de usuario:** Como usuario nuevo, quiero registrarme y verificar mi cuenta mediante un código enviado por correo.
-  - **Estado de la versión documentada:** Implementado.
 
-- **RF-02**
-  - **Requisito / historia de usuario:** Como usuario, quiero iniciar sesión con JWT y recuperar mi contraseña solicitando un código por correo desde React, introduciéndolo y estableciendo una contraseña nueva.
-  - **Estado de la versión documentada:** Implementado y probado manualmente; permite volver a iniciar sesión.
-
-- **RF-02A**
-  - **Requisito / historia de usuario:** Como usuario cuya cuenta fue desactivada, no debo conservar acceso a rutas protegidas aunque tenga un JWT anterior.
-  - **Estado de la versión documentada:** Implementado; se comprobó respuesta HTTP 401 con cuenta inactiva.
-
-- **RF-03**
-  - **Requisito / historia de usuario:** Como operador, quiero recibir automáticamente métricas simuladas y consultarlas sin disparar eventos manualmente.
-  - **Estado de la versión documentada:** Implementado.
-
-- **RF-04**
-  - **Requisito / historia de usuario:** Como operador, quiero visualizar latencia, datos corruptos y fallos en el dashboard.
-  - **Estado de la versión documentada:** Implementado.
-
-- **RF-05**
-  - **Requisito / historia de usuario:** Como usuario autenticado, quiero recibir por WebSocket únicamente los eventos correspondientes a mi cuenta.
-  - **Estado de la versión documentada:** Implementado; requiere pruebas sistemáticas de aislamiento como parte de la validación.
-
-- **RF-06**
-  - **Requisito / historia de usuario:** Como analista, quiero conocer el estado, valor y hora de cada anomalía reciente.
-  - **Estado de la versión documentada:** Implementado.
-
-- **RF-07**
-  - **Requisito / historia de usuario:** Como analista, quiero preguntarle a J.A.R.V.I.S. por anomalías críticas o normales, y recibir cantidades y registros recientes de mi cuenta.
-  - **Estado de la versión documentada:** Implementado mediante herramienta con filtro por estado.
-
-- **RF-08**
-  - **Requisito / historia de usuario:** Como analista, quiero recibir posibles causas y recomendaciones de investigación sin presentar hipótesis como hechos comprobados.
-  - **Estado de la versión documentada:** Implementado como asistencia orientativa.
-
-- **RF-09**
-  - **Requisito / historia de usuario:** Como usuario, quiero mantener el contexto de mis últimas preguntas en el chat.
-  - **Estado de la versión documentada:** Implementado de forma limitada a los mensajes recientes de la sesión.
-
-- **RF-10**
-  - **Requisito / historia de usuario:** Como usuario, quiero leer las respuestas con títulos, listas y tablas navegables sin deformar el dashboard.
-  - **Estado de la versión documentada:** Implementado con Markdown y desplazamiento interno.
-
-- **RF-11**
-  - **Requisito / historia de usuario:** Como usuario, quiero consultar mi historial disponible y exportarlo a PDF.
-  - **Estado de la versión documentada:** Implementado para los registros cargados en la interfaz.
-
-- **RF-12**
-  - **Requisito / historia de usuario:** Como usuario nuevo, quiero una guía interactiva de bienvenida.
-  - **Estado de la versión documentada:** Implementado.
-
-
+- **RF-01 — Registro y verificación.** Como usuario nuevo, quiero crear una cuenta y verificarla mediante un código enviado por SMTP. **Estado:** implementado.
+- **RF-02 — Acceso y recuperación.** Como usuario, quiero iniciar sesión con JWT y restablecer mi contraseña usando un código recibido por correo desde React. **Estado:** implementado; flujo probado manualmente en revisiones anteriores.
+- **RF-02A — Revocación de acceso de usuarios inactivos.** Como administrador, quiero que una cuenta inactiva no acceda a rutas protegidas aunque tenga un JWT firmado. **Estado:** implementado y comprobado mediante respuestas HTTP 401 en pruebas locales.
+- **RF-03 — Simulación automática.** Como operador, quiero recibir telemetría de prueba sin presionar botones manuales. **Estado:** implementado, aproximadamente cada 30 segundos.
+- **RF-04 — Indicadores.** Como operador, quiero visualizar latencia, calidad y fallos. **Estado:** implementado en el dashboard.
+- **RF-05 — Eventos por usuario.** Como usuario, quiero recibir solo mis eventos vía WebSocket. **Estado:** implementado y cubierto parcialmente por pruebas aisladas; falta validación exhaustiva de concurrencia.
+- **RF-06 — Consulta de anomalías.** Como analista, quiero conocer estado, valor, pipeline y fecha de mis anomalías recientes. **Estado:** implementado.
+- **RF-07 — Consulta conversacional.** Como analista, quiero preguntar a J.A.R.V.I.S. por anomalías según su estado. **Estado:** implementado mediante una herramienta backend autorizada que devuelve cantidades y hasta 10 registros recientes.
+- **RF-08 — Diagnósticos orientativos.** Como analista, quiero obtener hipótesis y pasos de investigación sin que se presenten como hechos comprobados. **Estado:** implementado con esa limitación.
+- **RF-09 — Contexto de chat.** Como usuario, quiero que se conserve el contexto de mis mensajes recientes durante la sesión. **Estado:** implementado de manera temporal, sin persistencia permanente.
+- **RF-10 — Lectura accesible del contenido.** Como usuario, quiero ver mensajes Markdown, tablas desplazables y un control para llegar al último mensaje. **Estado:** implementado; pruebas completas de accesibilidad pendientes.
+- **RF-11 — Exportación y seguimiento.** Como usuario, quiero revisar mi historial y exportar lo visible a PDF. **Estado:** implementado; no exporta necesariamente el historial completo si está paginado.
+- **RF-12 — Bienvenida.** Como usuario nuevo, quiero una guía de incorporación. **Estado:** implementado.
+- **RF-13 — Archivado reversible.** Como usuario autenticado, quiero archivar mis anomalías sin borrarlas y restaurarlas posteriormente. **Estado:** implementado con JWT, filtrado por usuario, paginación y controles en React; la migración debe comprobarse en cada instalación.
+- **RF-14 — Ingesta de métricas.** Como operador, quiero registrar métricas mediante mi JWT o una clave de pipeline emitida para un cliente externo. **Estado:** implementado en la API; sin conectores corporativos ni validación de carga productiva.
+- **RF-15 — Gestión de pipelines.** Como propietario, quiero crear, listar, rotar y revocar claves de mis pipelines. **Estado:** implementado en la API; **pendiente** interfaz React y límites específicos de frecuencia/cantidad.
 
 ### Requisitos no funcionales
-- RNF-01 — Seguridad: contraseñas mediante hash, JWT, verificación de cuentas, credenciales en variables de entorno y control de acceso en los endpoints y WebSockets. El backend debe rechazar JWT de cuentas inexistentes o inactivas. Ninguna clave secreta debe almacenarse en el repositorio.
-- RNF-02 — Aislamiento: las consultas de anomalías y la transmisión de eventos deben limitarse al usuario autenticado.
-- RNF-03 — Tiempo real: la simulación busca generar eventos aproximadamente cada 30 segundos y propagarlos sin recarga manual. No se promete una latencia estricta garantizada.
-- RNF-04 — Persistencia: almacenar usuarios y anomalías con marca de tiempo en PostgreSQL.
-- RNF-05 — Usabilidad: conservar legibilidad de gráficas, estados, tablas extensas y chat; el desplazamiento de una tabla no debe ensanchar todo el dashboard.
-- RNF-06 — Trazabilidad de IA: indicar que los datos son simulados, distinguir valores de base de datos de hipótesis y no ofrecer capacidades inexistentes.
-- RNF-07 — Operación segura: no ejecutar modificaciones sobre infraestructura externa a partir de una recomendación del asistente.
-- RNF-08 — Configurabilidad: documentar dependencias, variables de entorno e instrucciones de ejecución y compilación local.
-## 5. Arquitectura del sistema y tecnologías
-- **Generación de datos:** Simulador asíncrono en Python/FastAPI.
 
-- **Backend:** FastAPI, rutas HTTP y WebSocket; lógica de autenticación y autorización.
+- **RNF-01 — Seguridad:** contraseñas con hash, JWT, identidad activa, secretos fuera de Git y validación de entradas.
+- **RNF-02 — Aislamiento:** anomalías, pipelines y WebSocket asociados al usuario autenticado; nunca utilizar un identificador de usuario generado libremente por el modelo.
+- **RNF-03 — Tiempo real:** entrega por WebSocket sin necesidad de recarga, sin promesa de latencia máxima.
+- **RNF-04 — Persistencia y trazabilidad:** guardar anomalías y su fecha, conservar el archivado reversible y proteger los datos existentes al migrar.
+- **RNF-05 — Usabilidad:** gráficas, feed, chat y tablas legibles, con desplazamiento dentro de su área.
+- **RNF-06 — IA responsable:** diferenciar telemetría sintética, registros observados e hipótesis; no atribuir inspecciones externas inexistentes.
+- **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
+- **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles; completar políticas de ingesta y cuotas de pipelines.
+- **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
+- **RNF-10 — Mantenibilidad:** continuar la separación de `main.py` y `App.jsx`, centralizar la URL del backend y unificar los límites de solicitudes.
 
-- **Persistencia:** PostgreSQL mediante modelos SQLAlchemy.
+## 5. Arquitectura y flujo de datos
 
-- **Inteligencia artificial:** Groq, modelo openai/gpt-oss-20b, función autorizada consultar_anomalias_usuario.
+- **Adquisición:** simulador FastAPI o `POST /metricas/`/`POST /metricas/externas/`, con validaciones y autenticación distintas.
+- **Procesamiento:** función `registrar_metrica` compartida para clasificar eventos; las mediciones normales no se persisten como anomalías en el flujo implementado.
+- **Persistencia:** PostgreSQL y SQLAlchemy para usuarios, anomalías y gestión de pipelines.
+- **Distribución:** WebSocket autorizado por usuario y consultas HTTP paginadas.
+- **Presentación:** React, Vite, Axios, React Router, Recharts, Markdown y PDF.
+- **IA:** Groq y el identificador `openai/gpt-oss-20b`, mediante herramientas de consulta controladas por el backend. El simulador no realiza una llamada de IA por cada registro.
+- **Identidad:** SMTP para códigos temporales, JWT y controles sobre cuentas inactivas.
 
-- **Interfaz web:** React, Vite, React Router, Axios, Recharts.
+**Flujo de observabilidad:** cliente o simulador → autenticación y validación → clasificación → persistencia de anomalías relevantes → WebSocket/HTTP → React. **Flujo de chat:** usuario con JWT → `/chat/` → Groq → herramienta permitida ejecutada por FastAPI → resultado autorizado → respuesta en React.
 
-- **Presentación de diagnósticos:** react-markdown, remark-gfm; tablas y chat con desplazamiento controlado.
+**Endpoints relevantes:**
 
-- **Reportes:** jsPDF y jspdf-autotable.
+- `POST /metricas/` — ingesta con JWT.
+- `POST /metricas/externas/` — ingesta con `X-Pipeline-Key`.
+- `POST /pipelines/`, `GET /pipelines/` — crear y consultar pipelines con JWT.
+- `POST /pipelines/{pipeline_id}/rotar/` y `POST /pipelines/{pipeline_id}/revocar/` — rotar o revocar con JWT.
+- `GET /anomalias/`, `DELETE /anomalias/`, `GET /anomalias/archivadas/`, `POST /anomalias/restaurar/` — historial protegido y reversible.
 
-- **Mensajería SMTP:** Envío de códigos de registro y recuperación de acceso solicitados desde el formulario de React.
+La información anterior documenta rutas existentes, no demuestra que se hayan ensayado todas con sistemas productivos.
 
-- **Entorno local:** Docker Compose y herramientas locales de desarrollo frontend.
+## 6. Seguridad y uso responsable de inteligencia artificial
 
+Los códigos SMTP de verificación y recuperación expiran después de 10 minutos, se limitan a cinco intentos y se separan por propósito. Su protección usa HMAC y `hmac.compare_digest` en `backend/app/verification_codes.py`. Las claves emitidas para pipelines son diferentes: `backend/app/pipeline_keys.py` utiliza SHA-256 y `hmac.compare_digest`. La clave debe copiarse al emitirla o rotarla, sin registrar su texto completo en la base de datos ni en documentos.
 
+El backend también incorpora autenticación JWT, rechazo de usuarios inactivos, limitación de solicitudes de autenticación, restricciones de herramientas de IA y una respuesta de recuperación que no revela públicamente la existencia de una cuenta. **Pendientes:** rate limits para ingesta, límites de cantidad de pipelines y auditoría de seguridad integral.
 
-Flujo general de telemetría
-1. El simulador crea una métrica de prueba para un usuario y un pipeline.
-2. FastAPI la almacena en PostgreSQL con su fecha/hora.
-3. El backend envía el evento por WebSocket a la sesión autenticada de ese usuario.
-4. React actualiza el dashboard y el feed sin recargar la página.
-Flujo general de J.A.R.V.I.S.
-1. El usuario envía una pregunta y, si existe, el contexto reciente de su conversación.
-2. FastAPI valida el JWT y remite el mensaje a Groq.
-3. Cuando el modelo solicita información del usuario, FastAPI ejecuta únicamente las herramientas autorizadas con el identificador de la sesión autenticada.
-4. Los datos recuperados se devuelven al modelo para redactar la respuesta y React la presenta con Markdown.
-5. Las hipótesis se comunican como posibles causas por verificar; el asistente no actúa directamente sobre sistemas externos.
-Distinción técnica: las recomendaciones de la telemetría simulada se producen localmente; la IA se invoca para el chat, no para analizar cada registro del simulador de manera automática.
-Diagrama resumido de integración
-La secuencia siguiente representa el prototipo actual; no supone ingesta desde infraestructura externa:
-Simulador asíncrono (FastAPI)
-    -> PostgreSQL (usuarios y anomalías)
-    -> WebSocket autenticado
-    -> Dashboard React (gráficas y feed)
+**Elección tecnológica:** se identificó Groq en la implementación; el informe académico menciona Azure como tecnología prevista en otra propuesta. No se ha verificado Azure como integración activa ni la autorización formal del cambio de proveedor. Debe documentarse y justificarse la decisión con el profesor o la empresa; no es correcto suponer razones de costo, rapidez o compatibilidad sin evidencia.
 
-Usuario autenticado -> FastAPI /chat/ -> Groq
-                                        -> solicitud de herramienta
-                     FastAPI -> consulta autorizada a PostgreSQL
-                     FastAPI -> resultado para Groq -> respuesta al usuario
-## 6. Reglas de seguridad y uso responsable de IA
+**Declaración de asistencia:** durante el desarrollo y la revisión se utilizó IA generativa como apoyo para el análisis, propuestas de código y documentación. Las modificaciones deben contrastarse con el repositorio y las pruebas; el equipo conserva la responsabilidad técnica y académica.
 
-### Controles de seguridad incorporados en la auditoría
-
-- Los códigos SMTP de verificación y recuperación tienen vencimiento temporal, límite de cinco intentos y un propósito específico.
-- Se implementó el reenvío de códigos de verificación desde la interfaz React y su endpoint de FastAPI.
-- Se incorporó limitación de solicitudes de autenticación respaldada por PostgreSQL.
-- Las rutas privadas y el asistente J.A.R.V.I.S. requieren autenticación JWT.
-- La actualización del esquema de PostgreSQL conserva los registros existentes.
-- La suite `backend/tests/test_integracion_http.py` incluye nueve pruebas automatizadas satisfactorias de disponibilidad, rutas, autenticación, CORS y base de datos.
-- Existen pruebas aisladas de separación entre usuarios. Permanecen pendientes las evaluaciones exhaustivas de carga, seguridad y despliegue productivo.
-
-- Las rutas de anomalías y chat deben requerir autenticación; las consultas deben estar asociadas al usuario autenticado, nunca a un identificador suministrado libremente por el modelo.
-- Las llamadas a herramientas de IA se restringen a funciones expresamente permitidas por FastAPI.
-- Las entradas del modelo y sus parámetros deben validarse; no ejecutar SQL arbitrario generado por la IA.
-- Distinguir datos realmente consultados en PostgreSQL de hipótesis técnicas.
-- No afirmar que se inspeccionaron logs o sistemas externos sin haberlo hecho.
-- Evitar recomendaciones destructivas basadas únicamente en métricas simuladas.
-- Mantener claves JWT, SMTP, base de datos y Groq fuera del repositorio.
 ## 7. Plan de trabajo y evolución
-- **Sprint 1 — Datos**
-  - **Entregable:** Modelos y almacenamiento relacional en PostgreSQL.
-  - **Estado:** Implementado.
 
-- **Sprint 2 — Seguridad y backend**
-  - **Entregable:** API, JWT, códigos SMTP y simulador asíncrono.
-  - **Estado:** Implementado; pendiente de ampliar pruebas sistemáticas.
+- **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; comprobación de migraciones de archivado pendiente para entornos nuevos/antiguos.
+- **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC y aislamiento incorporados. Pendientes modularización completa, unificación de límites y ampliación de pruebas.
+- **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial y PDF implementados. Pendientes pantalla de pipelines, `VITE_API_URL`, refactorización y accesibilidad.
+- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles; pendientes activar CI en `main`, lint, integración con PostgreSQL y revisar Dockerfiles orientados a desarrollo.
+- **Evolución posterior:** conectores productivos, búsqueda histórica avanzada, alta disponibilidad, pruebas de carga y remediación, fuera del alcance comprobado.
 
-- **Sprint 3 — Interfaz y tiempo real**
-  - **Entregable:** React, Recharts, WebSocket por usuario y J.A.R.V.I.S. 2.0.
-  - **Estado:** Implementado y probado funcionalmente en entorno local.
+## 8. Criterios de aceptación y evidencia
 
-- **Sprint 4 — Empaquetamiento y documentación**
-  - **Entregable:** Docker Compose, README, MVP, PRD y comprobaciones de compilación.
-  - **Estado:** Implementado en entorno local; revisión documental actualizada en octubre de 2026.
+- **CA-01:** la API inicia y el simulador genera métricas sin intervención manual.
+- **CA-02:** ingesta por JWT o clave válida de pipeline, con validación de entradas y clasificación compartida.
+- **CA-03:** solo el usuario autorizado consulta y recibe sus anomalías vía HTTP/WebSocket.
+- **CA-04:** el feed utiliza la fecha del registro, no una fecha inventada por el navegador.
+- **CA-05:** el asistente consulta únicamente mediante herramientas autorizadas y distingue hipótesis de observaciones.
+- **CA-06:** el chat presenta Markdown y tablas desplazables; el historial visible se puede exportar a PDF.
+- **CA-07:** los códigos, las rutas privadas y las cuentas inactivas cumplen sus reglas de acceso.
+- **CA-08:** las operaciones de archivado y restauración conservan los registros y su pertenencia al usuario; las rutas admiten paginación.
+- **CA-09:** las claves de pipelines se emiten, rotan y revocan sin almacenarse en claro.
+- **CA-10:** Docker/README permiten repetir el arranque, los cambios de esquema se verifican sin destruir datos y las pruebas automatizadas son trazables.
+- **CA-11:** las decisiones y limitaciones de IA están documentadas sin atribuir monitoreo empresarial no demostrado.
 
-- **Evolución posterior**
-  - **Entregable:** Conectores reales, consultas históricas avanzadas, pruebas exhaustivas de seguridad y carga, despliegue y observabilidad de producción.
-  - **Estado:** Fuera del MVP / pendiente.
+**Evidencia disponible y límites:** el repositorio contiene **49 funciones de prueba**: 32 aisladas (`test_flujos_aislados.py`), 9 HTTP (`test_integracion_http.py`) y 8 de seguridad/archivado (`test_seguridad_archivado.py`). GitHub Actions ejecuta **solo las 32 aisladas**, utilizando SQLite en memoria, y compila React con `npm ci`. Se confirmó un CI satisfactorio para el commit `f6a6ab9` en la rama de correcciones. Las otras 17 fueron ejecutadas en revisiones anteriores, pero no forman parte del workflow actual ni se deben presentar como una ejecución reciente.
 
+Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, respuesta 429, aislamiento entre usuarios, WebSocket y rotación/revocación de pipelines. Esto no acredita pruebas exhaustivas de PostgreSQL, carga, navegador, SMTP y servicios externos. Las comprobaciones manuales documentadas de identidad, chat y dashboard son antecedentes locales, no una certificación empresarial.
 
+## 9. Riesgos y restricciones
 
-## 8. Criterios de aceptación
+- Diagnósticos sujetos a errores del modelo y a la calidad de las métricas disponibles.
+- Simulación sintética y ausencia de conectores empresariales permanentes.
+- Dependencia de proveedores Groq/SMTP y cuotas de servicio.
+- Paginación: la primera consulta o el PDF puede no incluir todos los registros de la base de datos.
+- Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): no se ha confirmado a partir de los archivos aportados que se ejecute automáticamente en todos los entornos. Requiere prueba con volumen nuevo y volumen existente, previo respaldo.
+- Falta de pantalla React para pipelines y de límites robustos de ingesta/pipelines.
+- CI con SQLite en memoria y sin pruebas HTTP/de archivado, lint o carga integradas.
+- Dockerfiles todavía orientados a desarrollo; la preparación para producción no está demostrada.
 
-**Cobertura automatizada:** hay 49 funciones de prueba: 32 aisladas, 9 HTTP y 8 de seguridad y archivado. El CI actual ejecuta las 32 aisladas con SQLite en memoria. Entre ellas se incluyen comprobaciones de expiración de códigos, intentos fallidos, HTTP 429 y aislamiento. Las otras 17 no forman parte del workflow actual.
+## 10. Lista de verificación del producto
 
+- [x] Registro, verificación, JWT, recuperación y rechazo de usuarios inactivos.
+- [x] Simulador, endpoints de ingesta y administración de pipelines en el backend.
+- [x] WebSocket por usuario, dashboard, archivado lógico, restauración, chat y PDF.
+- [x] Códigos con HMAC y claves de pipeline con SHA-256.
+- [x] CI con 32 pruebas aisladas y compilación de frontend; ejecución satisfactoria documentada.
+- [ ] Interfaz de pipelines y configuración centralizada de la URL de FastAPI.
+- [ ] Modularización adicional, cuota de pipelines y rate limits de ingesta.
+- [ ] Migración de archivado validada automáticamente, sin daño a datos existentes.
+- [ ] Ampliar CI con PostgreSQL, pruebas HTTP/seguridad, lint y ejecución en `main`.
+- [ ] Conectores productivos, pruebas de carga, seguridad integral y eventual despliegue empresarial.
 
-
-- CA-01: FastAPI inicia correctamente y el simulador genera registros sin intervención manual.
-- CA-02: el usuario autenticado recibe y visualiza sus anomalías en el dashboard mediante WebSocket.
-- CA-03: el feed muestra la hora proveniente del registro de base de datos, no la hora actual del navegador.
-- CA-04: J.A.R.V.I.S. contesta consultas generales y, cuando necesita datos, utiliza la herramienta autorizada para recuperar anomalías por estado del usuario.
-- CA-05: las respuestas de IA separan valores observados de causas no verificadas y sugieren verificaciones seguras.
-- CA-06: los mensajes largos y las tablas pueden recorrerse dentro del chat, y el botón «↓ Último» funciona sin deformar el dashboard.
-- CA-07: el usuario puede consultar registros disponibles y exportar la bitácora visible a PDF.
-- CA-08: la verificación de cuenta y las rutas protegidas impiden accesos no autorizados según las reglas implementadas; el backend rechaza solicitudes sin JWT y con JWT de usuarios inactivos, y las credenciales no aparecen en los archivos versionados revisados.
-- CA-09: la compilación del frontend concluye sin errores y los servicios API/BD pueden ejecutarse en el entorno documentado.
-- CA-10: README, MVP y PRD describen expresamente la simulación y no atribuyen capacidades productivas inexistentes.
-- CA-11: desde la pantalla React de recuperación se solicita el código SMTP, se recibe en el correo registrado, se restablece la contraseña y se puede volver a iniciar sesión. Comprobado manualmente en el entorno local.
-Estado de validación: se han comprobado localmente compilación, arranque de servicios y funciones clave del dashboard y del chat. También se probaron la recuperación de contraseña completa y las respuestas de autorización HTTP 401 en rutas protegidas. La aceptación académica definitiva y una eventual certificación para producción requieren pruebas adicionales y evaluación externa.
-## 9. Riesgos, supuestos y restricciones
-- La calidad de los diagnósticos depende de los registros entregados, del modelo y de sus límites de cuota; no existe certeza causal automática.
-- La telemetría sintética sirve para demostrar flujos y no predice confiablemente incidentes empresariales reales.
-- El rendimiento observado en una computadora local no equivale a la capacidad en producción.
-- La memoria de chat enviada desde React es temporal y limitada.
-- El sistema SMTP depende de credenciales y conectividad externas y no se emplea como canal de alerta masiva.
-- **Riesgo residual de autenticación:** los códigos ya vencen a los 10 minutos y permiten un máximo de cinco intentos. Quedan pendientes pruebas automatizadas específicas de expiración, intentos fallidos, respuestas HTTP 429 y otros controles de seguridad.
-## 10. Lista de verificación de los requisitos
-- [x] Registro, verificación de cuentas, JWT y recuperación de acceso implementados.
-- [x] Solicitud del código SMTP desde React, actualización de contraseña y nuevo inicio de sesión probados manualmente.
-- [x] Acceso sin JWT y mediante JWT de cuenta inactiva rechazado en pruebas HTTP locales.
-- [x] Simulación, almacenamiento y actualización por WebSocket implementados.
-- [x] J.A.R.V.I.S. con consulta controlada de anomalías y respuesta orientativa implementado.
-- [x] Lectura de tablas y desplazamiento del chat comprobados localmente.
-- [ ] Pruebas automatizadas completas de autorización, carga y recuperación ante fallos.
-- [ ] Integraciones de producción y remediación automática (fuera del alcance actual).
 ## 11. Documentos relacionados
-- [`../README.md`](../README.md) — presentación, configuración y puesta en marcha.
-- [`../frontend/README.md`](../frontend/README.md) — implementación y uso de la interfaz.
-- [`MVP.md`](MVP.md) — alcance implementado, validaciones y exclusiones.
-Conclusión: PluriOne cumple el propósito de demostrar un flujo integral de observabilidad simulada asistida por IA en un entorno local. Su arquitectura deja abierta la posibilidad de integrar fuentes reales en versiones futuras, sin afirmar que esa capacidad ya existe.
-Versión documental del prototipo académico, octubre de 2026.
 
-## Actualizacion de la segunda auditoria - octubre de 2026
+- [`../README.md`](../README.md) — instalación, configuración, ingesta, seguridad y pruebas.
+- [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
+- [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-### Requisito funcional: conservacion y restauracion del historial
-
-Como usuario autenticado, necesito archivar las anomalias de mi cuenta
-sin eliminarlas de la base de datos y poder restaurarlas posteriormente,
-para conservar la trazabilidad de los eventos de observabilidad.
-
-Se incorporan las siguientes condiciones de funcionamiento:
-
-- Las consultas habituales muestran solamente anomalias activas.
-- El archivado conserva los registros y su pertenencia al usuario.
-- La restauracion devuelve los registros archivados al estado activo.
-- Las consultas y operaciones de cambio de estado requieren JWT.
-- La paginacion limita la cantidad de registros devueltos por consulta.
-- El dashboard dispone de controles para archivar y restaurar.
-- El archivado no modifica los registros pertenecientes a otros usuarios.
-
-### Criterios de aceptacion adicionales
-
-- CA-H01: el usuario autenticado puede archivar su historial sin
-  ejecutar una eliminacion fisica de registros.
-- CA-H02: el usuario autenticado puede restaurar los registros archivados.
-- CA-H03: las rutas del historial rechazan peticiones sin autenticacion
-  o con un token invalido.
-- CA-H04: las operaciones filtran los registros por el usuario actual.
-- CA-H05: el esquema incluye los campos `archived` y `archived_at`.
-- CA-H06: las consultas activas y archivadas admiten paginacion.
-
-### Evidencia de verificacion y riesgos residuales
-
-Una revision anterior ejecuto satisfactoriamente 17 pruebas automatizadas
-(nueve de integracion y ocho de seguridad de las rutas del historial).
-Ademas, el frontend completo una compilacion de produccion con Vite.
-
-Se verifico el comportamiento del archivado, restauracion y aislamiento
-entre usuarios mediante pruebas aisladas; no se realizaron operaciones
-autenticadas de archivado sobre la base de datos real.
-
-Siguen pendientes las pruebas exhaustivas de carga, escenarios de
-concurrencia, cobertura completa del navegador y validacion integral
-para un entorno de produccion. El proyecto continua utilizando
-telemetria simulada y no incorpora conectores empresariales reales.
-
-### Verificación automática en GitHub Actions
-
-Durante la segunda auditoría se incorporó el workflow
-`.github/workflows/ci.yml`. Su finalidad es detectar regresiones
-mediante pruebas aisladas del backend y compilación de React.
-
-La primera ejecución en GitHub terminó satisfactoriamente
-para ambos trabajos. La evidencia corresponde al commit
-`7de6a10` de la rama `fix/segunda-auditoria-plurione`.
-
-La automatización no sustituye las pruebas HTTP adicionales,
-las comprobaciones exhaustivas de seguridad, las pruebas de
-carga ni la validación de un despliegue de producción.
-Los trabajos futuros descritos en este PRD conservan su
-estado pendiente cuando corresponda.
-
-### Ingesta de métricas y administración de pipelines
-
-La versión auditada incorpora seis endpoints relacionados con
-la ingesta de métricas y la administración de pipelines:
-
-- `POST /metricas/`: ingreso de métricas con JWT.
-- `POST /metricas/externas/`: ingreso externo mediante
-  la cabecera `X-Pipeline-Key`.
-- `POST /pipelines/`: creación de pipelines con JWT.
-- `GET /pipelines/`: consulta de pipelines con JWT.
-- `POST /pipelines/{pipeline_id}/rotar/`: rotación
-  de la clave de un pipeline con JWT.
-- `POST /pipelines/{pipeline_id}/revocar/`: revocación
-  de un pipeline con JWT.
-
-Estos endpoints forman parte del backend implementado.
-La integración completa con servicios empresariales externos
-continúa como trabajo posterior. Los controles específicos de
-frecuencia de ingesta y cantidad de pipelines requieren revisión
-adicional antes de considerarse validados.
-
-### Estado actualizado de las pruebas
-
-La segunda auditoría identificó 49 funciones de prueba:
-32 pruebas aisladas, 9 pruebas HTTP y 8 pruebas de
-seguridad y archivado.
-
-La integración continua ejecuta las 32 pruebas aisladas
-del archivo `test_flujos_aislados.py` mediante SQLite en
-memoria. La ejecución correspondiente al commit `da374ac`
-finalizó correctamente.
-
-Los otros dos archivos de pruebas no están incluidos en
-el workflow actual. Su ejecución automatizada, la cobertura
-adicional sobre PostgreSQL y las pruebas exhaustivas de
-carga y seguridad permanecen como trabajo posterior.
-
-### Proteccion de codigos y claves
-
-El backend emplea HMAC para los codigos temporales de
-verificacion. Su modulo de verificacion incorpora
-`hmac.new` y `hmac.compare_digest`.
-
-Las claves de pipelines utilizan SHA-256 y comparacion
-mediante `hmac.compare_digest`. Son mecanismos distintos
-que deben revisarse conforme a sus respectivos requisitos
-de autenticacion, almacenamiento y seguridad.
-
-### Declaracion de IA y desviacion tecnologica
-
-El backend auditado utiliza Groq en funciones de
-inteligencia artificial. No se identifico Azure como
-integracion implementada en los archivos examinados.
-
-La observacion academica indica que Azure figuraba
-como tecnologia prevista. La implementacion actual
-representa una desviacion que debe justificarse y
-confirmarse con el profesor o la empresa. Esta
-documentacion no equivale a una autorizacion formal.
-
-Se utilizo asistencia de IA generativa durante el
-trabajo de revision tecnica y documental. Las sugerencias
-se contrastan con el codigo y las pruebas, y el equipo
-mantiene la responsabilidad sobre el proyecto.
+**Estado:** documento consolidado del tercer corte con base en los cuatro Markdown compartidos y las observaciones académicas. No se ha modificado ni ejecutado el código del repositorio durante esta consolidación.

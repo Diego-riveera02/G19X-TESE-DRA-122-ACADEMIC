@@ -1,609 +1,267 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-PluriOne es un prototipo académico funcional de observabilidad de datos. Permite visualizar métricas de pipelines, registrar anomalías, consultar su historial y obtener explicaciones técnicas mediante el asistente conversacional J.A.R.V.I.S., integrado con Groq.
+**Proyecto académico · Documentación consolidada para el Corte 3 (octubre de 2026).**
 
-Alcance actual: PluriOne cuenta con un simulador de demostración y con ingesta de métricas mediante API autenticada por JWT o clave de pipeline. No se acredita una conexión permanente con infraestructura empresarial productiva. Los diagnósticos de IA son hipótesis por verificar.
+PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
+
+**Alcance comprobado en el repositorio revisado:** existen endpoints de ingesta con JWT y clave de pipeline; **no** se ha demostrado una conexión permanente con AWS o con infraestructura empresarial productiva. El asistente propone hipótesis para investigar, no causas raíz confirmadas.
 
 ## 1. Funcionalidades implementadas
 
-Telemetría automática simulada: un proceso asíncrono en FastAPI genera registros de prueba aproximadamente cada 30 segundos, sin depender de botones de inyección manual.
+- **Identidad:** registro, verificación por correo SMTP, reenvío de códigos, inicio de sesión JWT, recuperación de contraseña y rechazo de cuentas inexistentes o inactivas. Los códigos temporales tienen un propósito específico, vencen después de 10 minutos y admiten hasta cinco intentos.
+- **Ingesta autenticada:** `POST /metricas/` recibe métricas con JWT y `POST /metricas/externas/` las recibe con `X-Pipeline-Key`. El servidor valida los datos y los procesa mediante una función compartida de registro y clasificación.
+- **Administración de pipelines en la API:** alta, listado, rotación y revocación de claves. La clave se muestra al crearla o rotarla; la base de datos conserva su hash SHA-256. **Todavía no existe una pantalla de administración de pipelines en React.**
+- **Simulador:** un proceso asíncrono en FastAPI genera métricas de demostración aproximadamente cada 30 segundos para usuarios activos, reutilizando la función que procesa la ingesta. La periodicidad no es una garantía de tiempo real estricto.
+- **Persistencia de anomalías:** PostgreSQL guarda las anomalías que requieren seguimiento. Las mediciones clasificadas como normales no se persisten como anomalías en el flujo actual.
+- **Dashboard:** React y Recharts muestran indicadores de latencia, calidad de datos y fallos, con alertas recibidas mediante WebSocket autenticado y segmentado por usuario.
+- **Historial reversible:** consulta de anomalías activas o archivadas, archivado lógico y restauración, siempre con JWT y filtrado por usuario. La API pagina las consultas; la interfaz puede mostrar solo una parte del historial cuando hay más registros.
+- **J.A.R.V.I.S. 2.0:** asistente en español con Groq, contexto reciente limitado y función de consulta controlada por FastAPI. Puede contar anomalías y recuperar hasta 10 registros recientes del usuario, filtrados por estado.
+- **Presentación y reportes:** respuestas Markdown con tablas desplazables, botón «↓ Último», guía de bienvenida y exportación PDF de los registros cargados en la interfaz.
 
-Persistencia: PostgreSQL almacena usuarios y anomalías con identificador, pipeline, métrica, valor, estado, recomendación y fecha de registro.
+Las recomendaciones asociadas a los eventos del simulador se generan mediante reglas o textos locales: **no se invoca Groq por cada métrica**. Groq se utiliza para el chat y sus herramientas autorizadas.
 
-Monitoreo en tiempo real: React presenta gráficas de latencia, calidad de datos y fallos, junto con un feed de alertas. WebSocket entrega eventos a las sesiones autenticadas del usuario correspondiente.
+## 2. Arquitectura y tecnologías
 
-Acceso a la plataforma: registro y verificación de cuenta por código SMTP, inicio de sesión con JWT, contraseñas almacenadas mediante hash y recuperación de contraseña desde React.
+- **Backend:** Python 3.12 en la imagen documentada, FastAPI, SQLAlchemy, endpoints HTTP, autenticación JWT y WebSocket.
+- **Base de datos:** PostgreSQL para usuarios, anomalías y los registros requeridos por las funciones de autenticación y pipelines.
+- **Frontend:** React, Vite, React Router, Axios, Recharts, `react-markdown` y `remark-gfm`.
+- **PDF:** jsPDF y jspdf-autotable.
+- **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
+- **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
+- **CI actual:** `.github/workflows/ci.yml`, con Python 3.12 y Node.js 24 en sus trabajos respectivos.
 
-Recuperación de acceso: el usuario solicita un código al correo registrado, lo introduce junto con una contraseña nueva y puede volver a iniciar sesión.
-
-J.A.R.V.I.S. 2.0: chat en español mediante Groq, seguimiento del contexto reciente de la conversación y consultas autorizadas a PostgreSQL mediante function calling.
-
-Consultas de anomalías: la herramienta disponible permite consultar el total y hasta 10 registros recientes del usuario autenticado, filtrados por estado normal, alerta, crítico o todos.
-
-Diagnósticos orientativos: J.A.R.V.I.S. relaciona los datos consultados con posibles causas y acciones de investigación. No confirma causas sin evidencia adicional ni ejecuta cambios en sistemas externos.
-
-Interfaz del asistente: renderizado Markdown con tablas, desplazamiento horizontal dentro de tablas extensas, desplazamiento vertical de la conversación y botón «↓ Último».
-
-Historial y reportes: visualización de anomalías y exportación a PDF de los registros cargados en la interfaz, además de una guía de bienvenida.
-
-Aclaración: la telemetría del simulador utiliza diagnósticos o recomendaciones locales predefinidas. Groq se utiliza para el asistente conversacional; no se realiza una llamada al modelo por cada métrica generada.
-
-## 2. Tecnologías
-
-Backend y API: Python, FastAPI y SQLAlchemy.
-
-Base de datos: PostgreSQL.
-
-Frontend: React, Vite, React Router y Axios.
-
-Gráficas: Recharts.
-
-Actualizaciones en tiempo real: WebSockets autenticados mediante JWT.
-
-Asistente inteligente: Groq API, modelo openai/gpt-oss-20b, con herramientas de consulta controladas por el backend.
-
-Respuestas enriquecidas: react-markdown y remark-gfm.
-
-Reportes: jsPDF y jspdf-autotable.
-
-Contenedores: Docker y Docker Compose.
-
-Imagen del frontend: Node.js 22 Alpine.
+**Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
 ## 3. Requisitos previos
 
-Para ejecutar PluriOne se recomienda contar con:
+Para un entorno local se requieren Git, Docker Desktop con Docker Compose y credenciales privadas para PostgreSQL. Si se ejecutan los componentes fuera de Docker, también se necesitan Python, PostgreSQL accesible, Node.js y npm compatibles con las dependencias del proyecto. Las funciones de identidad requieren SMTP; el asistente requiere una clave API de Groq.
 
-Git, para clonar y actualizar el repositorio.
+## 4. Configuración y seguridad de variables de entorno
 
-Docker Desktop y Docker Compose, para ejecutar los servicios contenerizados.
+El proyecto distingue dos archivos privados, que deben crearse **solamente si todavía no existen**:
 
-Node.js y npm compatibles con las dependencias declaradas en frontend/package.json.
+- **Raíz:** copiar `.env.example` a `.env` y definir `POSTGRES_PASSWORD`.
+- **Backend:** copiar `backend/.env.example` a `backend/.env` y configurar `DATABASE_URL`, `SECRET_KEY`, `SENDER_EMAIL`, `SENDER_PASSWORD` y `GROQ_API_KEY` según el entorno.
 
-Python y PostgreSQL para ejecutar el backend sin Docker.
+En una instalación nueva, desde PowerShell y en la raíz:
 
-Credenciales SMTP válidas para las funciones de verificación y recuperación.
-
-Una clave API de Groq para utilizar J.A.R.V.I.S.
-
-El contenedor del backend utiliza Python 3.12.
-
-## 4. Variables de entorno y seguridad
-
-PluriOne utiliza dos configuraciones de entorno independientes: una para Docker Compose en la raíz y otra para FastAPI dentro de backend.
-
-### 4.1. Configuración de PostgreSQL en la raíz
-
-El archivo .env.example ubicado en la raíz del repositorio contiene la siguiente variable:
-
-POSTGRES_PASSWORD=
-
-Para preparar una instalación nueva, ejecutar desde la raíz:
-
+```powershell
 Copy-Item .env.example .env
-
-Después, abrir el nuevo archivo .env y asignar una contraseña privada y segura a POSTGRES_PASSWORD.
-
-Docker Compose utiliza esta variable para configurar PostgreSQL y construir la cadena de conexión del backend.
-
-Importante:
-
-No publicar el archivo .env en GitHub.
-
-No introducir contraseñas reales en .env.example.
-
-No sobrescribir un .env existente que ya tenga una configuración funcional.
-
-Si PostgreSQL ya tiene un volumen de datos inicializado, cambiar solamente POSTGRES_PASSWORD en .env no cambia automáticamente la contraseña almacenada en PostgreSQL. Es necesario actualizar ambas configuraciones de manera coordinada.
-
-### 4.2. Configuración del backend
-
-El archivo backend/.env.example sirve como plantilla para las variables utilizadas por FastAPI.
-
-Para preparar una instalación nueva:
-
 Copy-Item backend/.env.example backend/.env
+```
 
-Después, editar backend/.env y configurar los valores privados correspondientes.
+Editar después ambos archivos con valores privados. **No ejecutar las copias si ya existen archivos `.env` configurados.** `DATABASE_URL` necesita un host/puerto apropiados: dentro de Compose el servicio de PostgreSQL es `db`, mientras que fuera del contenedor se utiliza la dirección accesible desde Windows. Compose construye la conexión para su entorno usando su configuración de PostgreSQL.
 
-Las variables principales son:
+No compartir `.env`, claves JWT, claves de pipeline reales ni contraseñas en GitHub, capturas o ZIP de entrega. `.env.example` solo debe contener nombres y valores ficticios. Si una clave privada fue expuesta, se debe rotar; cambiar `POSTGRES_PASSWORD` en `.env` no cambia por sí mismo una contraseña ya establecida en un volumen existente.
 
-DATABASE_URL: cadena de conexión a PostgreSQL. El host y el puerto dependen de si FastAPI se ejecuta dentro o fuera de Docker.
+### Controles implementados
 
-SECRET_KEY: secreto utilizado para firmar los tokens JWT. Debe ser largo, aleatorio y privado.
+- Los endpoints privados verifican JWT y usuario activo; el backend filtra las anomalías y eventos WebSocket por cuenta.
+- Los códigos de verificación y recuperación utilizan HMAC y `hmac.compare_digest` (`backend/app/verification_codes.py`).
+- **Mecanismo diferente:** las claves de pipeline se resumen con SHA-256 y se validan con `hmac.compare_digest` (`backend/app/pipeline_keys.py`). No describir estas claves como si usaran el mismo HMAC de los códigos.
+- La recuperación de cuenta evita revelar en su respuesta pública si un correo está registrado, según el comportamiento implementado y cubierto por pruebas aisladas.
+- Se aplican controles de intentos y limitación de solicitudes de autenticación; **todavía falta validar y fortalecer límites específicos de ingesta y cuotas de pipelines**.
+- J.A.R.V.I.S. utiliza funciones backend permitidas; no ejecuta consultas SQL arbitrarias ni acciones correctivas sobre infraestructura externa.
 
-SENDER_EMAIL: cuenta de correo configurada para enviar códigos de verificación y recuperación.
+Ninguno de estos controles sustituye una auditoría exhaustiva de seguridad de producción.
 
-SENDER_PASSWORD: credencial o contraseña de aplicación del servicio SMTP.
+## 5. Instalación y ejecución con Docker Compose
 
-GROQ_API_KEY: clave privada de acceso al servicio Groq.
-
-Cuando FastAPI se ejecuta mediante Docker Compose, DATABASE_URL se establece desde docker-compose.yml utilizando el servicio db y la variable POSTGRES_PASSWORD de la raíz.
-
-Cuando FastAPI se ejecuta directamente en Windows, debe utilizar una dirección de PostgreSQL accesible desde el equipo local.
-
-### 4.3. Protección de credenciales
-
-Los archivos .env son privados y no deben publicarse en GitHub, adjuntarse en entregas ni incluirse en archivos ZIP compartidos.
-
-Los archivos .env.example son plantillas públicas y deben contener únicamente nombres de variables o valores de ejemplo no sensibles.
-
-Si alguna contraseña o clave API se comparte accidentalmente, debe considerarse potencialmente comprometida y renovarse de forma segura.
-
-### 4.4. Autenticación y control de acceso
-
-FastAPI comprueba la firma del JWT, identifica la cuenta correspondiente en PostgreSQL y rechaza el acceso a las rutas protegidas si la cuenta no existe o está inactiva (is_active = False).
-
-Durante las pruebas locales, los endpoints /anomalias/ y /chat/ respondieron HTTP 401 ante solicitudes sin JWT. También se comprobó que una cuenta inactiva recibiera HTTP 401, incluso con un JWT firmado correctamente.
-
-Las operaciones sobre anomalías deben respetar el identificador del usuario autenticado para evitar la exposición de registros de otras cuentas.
-
-## 5. Ejecución local con Docker Compose
-
-### Descargar el código desde GitHub
-
-Para obtener el proyecto en una computadora nueva:
+### 5.1. Clonar y preparar el proyecto
 
 ```powershell
 git clone https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC.git
 cd G19X-TESE-DRA-122-ACADEMIC
 ```
 
-Después, crear los archivos `.env` a partir de las plantillas
-`.env.example` y configurar las credenciales necesarias.
-Continuar con las instrucciones de Docker Compose de esta sección.
+Preparar las variables indicadas en la sección 4, sin sobrescribir archivos privados existentes.
 
-### Inicialización y migración de PostgreSQL
+### 5.2. Iniciar API y PostgreSQL
 
-Al arrancar FastAPI, SQLAlchemy crea las tablas que no existen.
+Desde la raíz:
 
-El archivo `backend/app/schema_migrations.py` actualiza las
-instalaciones antiguas que todavía no tienen estas columnas:
-
-- `codigo_expira_en`
-- `codigo_intentos`
-- `codigo_proposito`
-
-La migración se ejecuta al iniciar el backend y conserva los
-registros existentes. Puede ejecutarse nuevamente sin duplicar
-las columnas.
-
-No ejecutar `docker compose down -v` si se necesitan conservar
-los datos de PostgreSQL.
-
-
-### 5.1. Preparación inicial
-
-Antes de iniciar los servicios, comprobar que existan los archivos privados:
-
-.env en la raíz, con POSTGRES_PASSWORD.
-
-backend/.env, con las variables necesarias para FastAPI, SMTP, JWT y Groq.
-
-Si se trata de un entorno nuevo, generarlos a partir de sus respectivas plantillas .env.example.
-
-No copiar estas plantillas sobre configuraciones existentes sin revisar primero sus valores.
-
-### 5.2. Iniciar PostgreSQL y FastAPI
-
-Desde la raíz del repositorio, ejecutar:
-
+```powershell
 docker compose up -d --build api
-
-Este comando construye o actualiza el backend e inicia su dependencia de PostgreSQL.
-
-El servicio db dispone de una comprobación de salud mediante pg_isready. La API utiliza depends_on con condition: service_healthy para esperar a que PostgreSQL esté disponible antes de comenzar su arranque.
-
-La configuración incluye una política de reinicio unless-stopped para PostgreSQL y FastAPI.
-
-Comprobar el estado de los servicios mediante:
-
 docker compose ps
-
-Revisar los registros del backend mediante:
-
 docker compose logs --tail 40 api
+```
 
-La documentación interactiva de FastAPI se encuentra en:
-
-http://127.0.0.1:8000/docs
-
-Durante las pruebas locales realizadas en octubre de 2026, PostgreSQL alcanzó el estado healthy, FastAPI inició correctamente y /docs respondió HTTP 200.
+La configuración revisada incluye `healthcheck` con `pg_isready` en PostgreSQL y dependencia de la API respecto de una base saludable. La documentación de FastAPI está disponible normalmente en `http://127.0.0.1:8000/docs`. El despliegue documentado es **de desarrollo/demostración**, no una configuración empresarial endurecida; el Dockerfile del backend todavía utiliza recarga de desarrollo.
 
 ### 5.3. Ejecutar el frontend
 
-El frontend utiliza React y Vite.
+Desde la raíz, con Node.js y npm instalados:
 
-Para ejecutarlo directamente desde Windows:
-
+```powershell
 npm --prefix ./frontend install
 npm --prefix ./frontend run dev
+```
 
-El proyecto también incluye un Dockerfile del frontend con Node.js 22 Alpine y un archivo .dockerignore para excluir dependencias locales, archivos temporales y configuraciones privadas del contexto de construcción.
+Para comprobar la compilación de React:
 
-La imagen del frontend se construyó correctamente mediante:
+```powershell
+npm --prefix ./frontend run build
+```
 
-docker compose build frontend
+También existe un Dockerfile del frontend con Node.js 22 Alpine. Se documentó la construcción local con `docker compose build frontend`, pero esa construcción no reemplaza una prueba funcional completa del navegador. La configuración Docker del frontend todavía ejecuta el servidor de desarrollo y necesita revisión antes de considerarse un despliegue de producción.
 
-Esta prueba confirma la construcción de la imagen, pero no sustituye una prueba funcional completa del frontend ejecutándose dentro del contenedor.
+### 5.4. Direcciones utilizadas en las pruebas locales
 
-### 5.4. Direcciones locales
+- Frontend: `http://127.0.0.1:5173/app`
+- API: `http://127.0.0.1:8000`
+- Documentación de la API: `http://127.0.0.1:8000/docs`
+- PostgreSQL desde el host Windows, según el Compose documentado: `127.0.0.1:5433`
+- PostgreSQL entre contenedores: `db:5432`
 
-Frontend: http://127.0.0.1:5173/app
+Los puertos dependen de la configuración local. **Pendiente en el frontend:** reemplazar las URL repetidas del backend por una variable `VITE_API_URL` y proporcionar `frontend/.env.example`. La existencia de esta sección no implica que esa refactorización ya se haya realizado.
 
-Backend: http://127.0.0.1:8000
+## 6. Ejecución sin Docker y conservación de datos
 
-Documentación FastAPI: http://127.0.0.1:8000/docs
+Con PostgreSQL accesible y los archivos de entorno configurados:
 
-PostgreSQL desde Windows: 127.0.0.1:5433
-
-PostgreSQL dentro de Docker: db:5432
-
-Si se modifican los puertos o los nombres de los servicios, también deben actualizarse las variables de conexión correspondientes.
-
-### 5.5. Conservación de datos
-
-PostgreSQL utiliza un volumen persistente de Docker denominado plurione_postgres_data, asociado al proyecto de Compose.
-
-Para detener los servicios sin eliminar sus datos se puede utilizar:
-
-docker compose stop
-
-No ejecutar docker compose down -v ni eliminar manualmente el volumen cuando se necesite conservar la base de datos.
-
-## 6. Ejecución sin Docker
-
-Se requiere una instancia de PostgreSQL accesible, variables de entorno configuradas y dependencias instaladas.
-
-Desde una terminal ubicada dentro de backend/:
-
+```powershell
+cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
 
-En otra terminal, dentro de frontend/:
+En otra terminal, dentro de `frontend/`:
 
+```powershell
 npm install
 npm run dev
+```
 
-La configuración de DATABASE_URL debe corresponder a la ubicación real de PostgreSQL.
+### Esquema y migraciones
 
-Las variables SMTP y Groq deben configurarse antes de utilizar las funciones que dependen de esos servicios.
+SQLAlchemy crea tablas faltantes al iniciar la aplicación. `backend/app/schema_migrations.py` incluye migraciones documentadas para los campos de códigos `codigo_expira_en`, `codigo_intentos` y `codigo_proposito` y permite actualizar instalaciones anteriores sin perder los registros.
 
-## 7. Uso básico
+**Archivado lógico:** existe además `backend/migrations/001_archivado_logico_anomalias.sql`, que añade `archived` y `archived_at` a `anomaly_logs`. La migración se aplicó en el entorno de desarrollo durante una auditoría anterior; **con los cuatro documentos recibidos no se pudo confirmar que esta migración específica se ejecute automáticamente en todas las instalaciones nuevas o antiguas**. Antes de aplicarla en otro entorno, comprobar el esquema y el arranque con datos de respaldo. No volver a ejecutar manualmente un SQL sin revisar si sus columnas ya existen.
 
-Registrar una cuenta y completar la verificación enviada al correo configurado.
+El volumen PostgreSQL usado por Docker Compose debe conservarse. Para detener los servicios sin borrar sus datos:
 
-Iniciar sesión y abrir la vista Datos (Dashboard).
+```powershell
+docker compose stop
+```
 
-Si es necesario recuperar el acceso, seleccionar «¿Olvidaste tu contraseña?», escribir el correo registrado y pulsar «Enviar código de recuperación». Después, introducir el código recibido y una nueva contraseña.
+**No ejecutar `docker compose down -v` ni eliminar el volumen** cuando se necesite conservar la información. El archivado lógico tampoco sustituye un respaldo de la base de datos.
 
-Observar las métricas simuladas y las alertas recibidas mediante WebSocket.
+## 7. Uso de la plataforma y API de ingesta
 
-Consultar a J.A.R.V.I.S. utilizando preguntas sobre las anomalías registradas.
+### 7.1. Flujo desde React
 
-Abrir el historial y exportar un PDF con los registros cargados.
+1. Registrarse y verificar la cuenta con el código de correo; iniciar sesión.
+2. Abrir el dashboard y observar las métricas y alertas de demostración recibidas por WebSocket.
+3. Consultar a J.A.R.V.I.S.: «¿Cuántas anomalías críticas tengo y cuál fue la más reciente?». Distinguir siempre los datos recuperados de las hipótesis generadas.
+4. Consultar el historial, archivar con confirmación, restaurar cuando corresponda y exportar los registros visibles en PDF.
+5. Para recuperar el acceso, solicitar el código desde el formulario React, validarlo y establecer una contraseña nueva.
 
-La conversación con J.A.R.V.I.S. conserva un contexto reciente y limitado durante la sesión del frontend; no debe interpretarse como memoria permanente entre sesiones.
+La memoria conversacional es temporal y limitada; no persiste entre sesiones.
 
-Ejemplo de consulta al asistente
+### 7.2. Endpoints de ingesta y pipelines
 
-J.A.R.V.I.S., ¿cuántas anomalías críticas tengo registradas? Analiza la última y distingue los datos observados de las posibles causas.
+| Método | Ruta | Acceso |
+| --- | --- | --- |
+| `POST` | `/metricas/` | JWT del usuario |
+| `POST` | `/metricas/externas/` | Cabecera `X-Pipeline-Key` |
+| `POST` | `/pipelines/` | JWT del usuario |
+| `GET` | `/pipelines/` | JWT del usuario |
+| `POST` | `/pipelines/{pipeline_id}/rotar/` | JWT del usuario |
+| `POST` | `/pipelines/{pipeline_id}/revocar/` | JWT del usuario |
 
-Ejemplo ilustrativo de una anomalía
+La administración de pipelines está disponible en la API, **no todavía en una pantalla de React**. Al crear o rotar un pipeline, copiar y resguardar la clave devuelta en ese momento; no depender de recuperarla después.
 
-Los siguientes valores son ilustrativos y no representan un incidente real comprobado.
+**Ejemplo orientativo de ingesta externa (bash):**
 
-{
-  "id": 123,
-  "pipeline_name": "Sync PostgreSQL",
-  "metric_type": "latencia_ms",
-  "value": 725.04,
-  "status": "Critico",
-  "timestamp": "2026-10-17T09:00:00Z"
-}
+```bash
+curl -X POST 'http://127.0.0.1:8000/metricas/externas/' \
+  -H 'X-Pipeline-Key: plr_EJEMPLO_NO_VALIDO' \
+  -H 'Content-Type: application/json' \
+  -d '{"metrica":"latencia_ms","valor":850}'
+```
 
-El botón Archivar historial archiva las anomalías del usuario en PostgreSQL sin eliminarlas. El botón Restaurar historial permite recuperarlas.
+La clave mostrada es **ficticia e inválida**. Sustituirla por la clave real emitida al crear el pipeline y confirmar el esquema exacto del cuerpo en `http://127.0.0.1:8000/docs` o `backend/app/schemas.py` antes de probarlo: el ZIP aportado contiene documentos, no código para verificar el contrato del endpoint. Por tanto, este fragmento muestra el flujo esperado, **no una ejecución validada de extremo a extremo**.
 
-## 8. Validación y limitaciones
+La ingesta autenticada tampoco implica la existencia de conectores automáticos a AWS u otros sistemas productivos. No está acreditado un límite de frecuencia para esas rutas ni una cuota máxima de pipelines por usuario.
 
-### Actualización de la auditoría (octubre de 2026)
+### 7.3. Archivado y restauración
 
-- Se comprobó la instalación desde una copia limpia del repositorio, con Docker Compose y un volumen PostgreSQL independiente.
-- Se verificó que FastAPI, React y PostgreSQL arrancan correctamente.
-- Se incorporaron nueve pruebas automatizadas de integración en `backend/tests/test_integracion_http.py`; las nueve finalizaron satisfactoriamente.
-- La verificación y recuperación de cuentas incluyen códigos temporales, un máximo de cinco intentos y propósitos separados.
-- El backend incorpora limitación de solicitudes de autenticación respaldada por PostgreSQL y permite reenviar el código de verificación.
-- La migración de esquema contempla instalaciones antiguas sin eliminar los registros existentes.
-- Estas comprobaciones no equivalen a una auditoría exhaustiva de seguridad ni a una certificación para producción.
+- `GET /anomalias/`: listar anomalías activas del usuario.
+- `DELETE /anomalias/`: archivarlas lógicamente, sin eliminarlas físicamente.
+- `GET /anomalias/archivadas/`: consultar su historial archivado.
+- `POST /anomalias/restaurar/`: restaurar sus anomalías archivadas.
 
+Estas operaciones requieren JWT y filtran los registros por usuario. La API utiliza paginación; la documentación anterior señala un límite predeterminado de hasta 100 registros por consulta, por lo que una página no equivale necesariamente a todo el historial.
 
-### Pruebas automatizadas de integración
+## 8. Pruebas, verificaciones e integración continua
 
-Con Docker Compose y los tres servicios iniciados, ejecutar
-desde la carpeta raiz del proyecto:
+El repositorio revisado contiene **49 funciones de prueba** distribuidas en tres archivos:
+
+| Archivo | Pruebas | Cobertura y ejecución |
+| --- | ---: | --- |
+| `backend/tests/test_flujos_aislados.py` | 32 | Flujos de identidad, seguridad, ingesta, WebSocket y pipelines con SQLite aislado. **Se ejecutan en CI.** |
+| `backend/tests/test_integracion_http.py` | 9 | Pruebas HTTP y disponibilidad de API, frontend, CORS y PostgreSQL. **No se ejecutan en el CI actual.** |
+| `backend/tests/test_seguridad_archivado.py` | 8 | Rechazo de accesos no autorizados y rutas de historial. **No se ejecutan en el CI actual.** |
+
+Las nueve pruebas HTTP y las ocho de seguridad se ejecutaron satisfactoriamente en revisiones anteriores (17 en total); **no debe interpretarse ese resultado histórico como una ejecución reciente de las 49**.
+
+### Ejecución local
+
+Para ejecutar exclusivamente las pruebas HTTP, con API, React y PostgreSQL levantados y configurados, utilizar el archivo `backend/tests/test_integracion_http.py` según sus requisitos. El comando amplio siguiente descubre las distintas suites y **puede requerir preparación adicional de servicios/entornos**, por lo que no se presenta como una validación que ya haya pasado completa:
 
 ```powershell
 python -m unittest discover -s backend/tests -p "test_*.py" -v
 ```
 
-Las nueve pruebas HTTP comprueban disponibilidad de FastAPI y React,
-rutas principales, rechazo de tokens JWT ausentes o invalidos,
-configuracion CORS y conexion con PostgreSQL.
+Para el frontend:
 
-Estas pruebas necesitan los servicios locales en los puertos
-8000 y 5173. No crean usuarios ni modifican registros.
-No sustituyen pruebas funcionales completas del navegador,
-SMTP, Groq o WebSockets.
-
-
-### Validaciones realizadas durante el desarrollo
-
-- Compilación del frontend en React.
-
-- Construcción de la imagen Docker del frontend con Node.js 22.
-
-- Arranque de PostgreSQL y comprobación del estado healthy.
-
-- Inicio de FastAPI y respuesta HTTP 200 del endpoint /docs.
-
-- Recepción de telemetría simulada mediante WebSocket.
-
-- Conversación con Groq y generación de diagnósticos orientativos.
-
-- Solicitud del código de recuperación desde React.
-
-- Restablecimiento de contraseña e inicio de sesión con la nueva contraseña.
-
-- Rechazo de peticiones a rutas protegidas sin JWT.
-
-- Rechazo de cuentas inactivas con JWT válido.
-
-- Verificación de cambios mediante Git y sincronización del repositorio.
-
-La auditoría de npm reportó cero vulnerabilidades conocidas durante las comprobaciones realizadas en octubre de 2026. Ese resultado puede cambiar cuando se publiquen nuevos avisos de seguridad.
-
-### Limitaciones conocidas
-
-Las métricas proceden de un simulador interno, no de AWS, bases productivas u otros servicios empresariales reales.
-
-Los diagnósticos de IA son orientativos y pueden ser incorrectos.
-
-La herramienta de J.A.R.V.I.S. consulta estados y registros recientes, pero no implementa búsquedas históricas arbitrarias por fechas, métricas o severidades.
-
-El asistente depende de la disponibilidad de Groq y de los límites de uso de su API.
-
-Los códigos de verificación y recuperación son de seis dígitos, vencen después de 10 minutos y admiten hasta cinco intentos. Se distinguen por propósito, se comparan de forma segura y se invalidan tras su uso.
-
-El repositorio contiene 49 funciones de prueba: 32 aisladas, 9 HTTP y 8 de seguridad y archivado. GitHub Actions ejecuta las 32 aisladas con SQLite en memoria. Sigue pendiente una cobertura exhaustiva de integración, carga y despliegue.
-
-No se ha demostrado preparación para operación empresarial productiva, alta disponibilidad o escalabilidad a gran escala.
-
-## 9. Documentación
-
-- README del frontend: instalación y funcionamiento de la interfaz.
-
-- Producto Mínimo Viable: alcance implementado y criterios de validación.
-
-- Documento de Requisitos del Producto: problemática, objetivos, arquitectura, requisitos y criterios de aceptación.
-
-- docs/Informe Técnico Plataforma de Observabilidad.pdf: informe técnico del desarrollo académico.
-
-- docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf: registro de actividades y avances del proyecto.
-
-## 10. Lista de comprobación de la versión
-
-Esta lista resume las funcionalidades implementadas y las comprobaciones que todavía están pendientes.
-
-- [x] Ejecutar la simulación automática y registrar anomalías en PostgreSQL.
-
-- [x] Presentar métricas mediante React y WebSocket autenticado.
-
-- [x] Consultar anomalías por estado mediante J.A.R.V.I.S. 2.0.
-
-- [x] Presentar respuestas Markdown y exportar registros en PDF.
-
-- [x] Documentar las limitaciones de la simulación y la inteligencia artificial.
-
-- [x] Solicitar un código SMTP desde React, restablecer la contraseña e iniciar sesión nuevamente.
-
-- [x] Rechazar solicitudes sin JWT y JWT de cuentas inactivas en las rutas protegidas probadas.
-
-- [x] Actualizar la imagen Docker del frontend a Node.js 22.
-
-- [x] Agregar .dockerignore para reducir los archivos enviados a Docker.
-
-- [x] Configurar PostgreSQL con healthcheck y comprobar su estado healthy.
-
-- [x] Comprobar que FastAPI responde HTTP 200 después de iniciar PostgreSQL.
-
-- [x] Crear una plantilla .env.example en la raíz para POSTGRES_PASSWORD.
-
-- [x] Documentar la configuración de variables de entorno para instalaciones nuevas.
-
-- [x] Implementado el vencimiento de códigos y el límite de cinco intentos fallidos.
-
-- [x] Incorporada limitación de solicitudes en endpoints sensibles mediante PostgreSQL.
-
-- [x] Ejecutar 32 pruebas aisladas automatizadas en GitHub Actions. Esto no equivale a una validación integral de producción.
-
-- [ ] Comprobar el arranque completo desde un clon limpio del repositorio.
-
-- [ ] Integrar conectores permanentes con sistemas productivos externos. La API de ingesta autenticada ya existe.
-
-Proyecto académico: PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial.
-
-Documentación: octubre de 2026.
-
-Estado: prototipo académico funcional en proceso de reforzamiento de seguridad y reproducibilidad.
-
-## Actualizacion de la segunda auditoria - octubre de 2026
-
-### Archivado reversible de anomalias
-
-El sistema permite archivar y restaurar el historial de anomalias sin
-eliminar fisicamente los registros de PostgreSQL. El archivado es una
-accion solicitada por el usuario; no es una politica de eliminacion
-automatica por antiguedad.
-
-Las operaciones del backend son:
-
-- `GET /anomalias/`: consulta las anomalias activas del usuario autenticado.
-- `DELETE /anomalias/`: archiva logicamente sus anomalias activas.
-- `GET /anomalias/archivadas/`: consulta sus anomalias archivadas.
-- `POST /anomalias/restaurar/`: restaura sus anomalias archivadas.
-
-Todas las operaciones anteriores requieren autenticacion JWT y filtran
-los registros por usuario. Los listados cuentan con paginacion; de forma
-predeterminada, la API devuelve un maximo de 100 registros por consulta.
-
-En React existen controles para archivar y restaurar el historial.
-El boton de archivado solicita confirmacion previa. La restauracion
-vuelve a mostrar los registros disponibles en la consulta inicial;
-no representa necesariamente la totalidad del historial cuando hay
-mas de 100 registros.
-
-### Migracion y conservacion de datos
-
-La migracion SQL correspondiente se conserva en
-`backend/migrations/001_archivado_logico_anomalias.sql`.
-Agrega los campos `archived` y `archived_at` a `anomaly_logs`.
-
-La migracion fue aplicada al entorno local de desarrollo durante la
-auditoria. En otra instalacion, comprobar primero si dichas columnas
-ya existen y revisar el procedimiento de inicializacion antes de
-aplicar la migracion. No ejecutarla nuevamente sobre un esquema
-que ya contiene las columnas.
-
-El archivado no sustituye los respaldos de PostgreSQL. No ejecutar
-`docker compose down -v` cuando se necesite conservar el volumen.
-
-### Validacion automatizada
-
-En la segunda auditoria se verifico que el frontend compilara con
-Vite y que FastAPI respondiera correctamente. El conjunto automatizado
-incluia entonces 17 pruebas: nueve pruebas de integracion y ocho pruebas de
-seguridad del historial.
-
-Para ejecutar las pruebas con los servicios correspondientes activos:
-
-```bash
-python -m unittest discover -s backend/tests -p "test_*.py" -v
+```powershell
+npm --prefix ./frontend run build
 ```
 
-Las ocho pruebas nuevas verifican el rechazo de solicitudes sin
-token y con token invalido, incluidas las operaciones de archivado
-y restauracion. No ejecutan archivado autenticado sobre los datos
-reales de PostgreSQL.
+### GitHub Actions
 
-### Alcance y restricciones
+El workflow `.github/workflows/ci.yml` instala dependencias de Python 3.12 y ejecuta 32 pruebas aisladas con SQLite en memoria. Para React usa Node.js 24, `npm ci` y `npm run build`, sin requerir los archivos `.env` privados. Se verificó su finalización satisfactoria para el commit `f6a6ab9` en la rama `fix/segunda-auditoria-plurione`.
 
-La telemetria generada por el simulador no procede de infraestructura
-productiva. Los resultados de las pruebas no equivalen a una
-certificacion de seguridad, pruebas exhaustivas de carga o validacion
-integral en un ambiente de produccion. Las operaciones completas
-de navegador, correo SMTP y servicios externos requieren verificaciones
-adicionales.
+**Cobertura pendiente:** incorporar las otras 17 pruebas, PostgreSQL de integración, `npm run lint`, pruebas de carga, seguridad y navegador. Según la revisión del Corte 3, el workflow todavía debe configurarse para ejecutarse también en cada `push` a `main` (además de la rama de correcciones y los pull requests). La versión de Node.js en CI (24) y Docker (22) debe revisarse para alinearlas.
 
-### Integración continua con GitHub Actions
+**Antecedentes de verificación local:** se reportaron arranque de FastAPI y PostgreSQL, `/docs` con HTTP 200, compilación de Vite, pruebas de acceso con JWT, recuperación mediante SMTP y funcionamiento del chat/WebSocket. Esas comprobaciones corresponden a distintas sesiones de desarrollo, no a una campaña integral de pruebas de producción.
 
-El proyecto dispone de integración continua mediante
-`.github/workflows/ci.yml`. El workflow se ejecuta al publicar
-cambios en `fix/segunda-auditoria-plurione`, al crear una solicitud
-de integración hacia `main` y mediante ejecución manual.
+## 9. Limitaciones, riesgos y uso de IA
 
-- **Backend:** Python 3.12, dependencias de `requirements.txt`
-  y pruebas aisladas de `test_flujos_aislados.py` con `unittest`.
-  El archivo contiene 32 pruebas y utiliza SQLite aislado.
-- **Frontend:** Node.js 24, instalación reproducible mediante
-  `npm ci` y compilación de producción con `npm run build`.
+- El simulador usa telemetría sintética y la API puede aceptar entradas externas autenticadas; no hay prueba de monitoreo continuo en AWS ni de integración automática con sistemas corporativos.
+- La interfaz aún no permite administrar pipelines. También faltan centralizar la URL de FastAPI y modularizar los archivos grandes del frontend y backend.
+- No se han demostrado cuotas para ingesta/pipelines, pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
+- La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
+- J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
+- Las dependencias de Groq y SMTP están sujetas a disponibilidad y límites de sus proveedores.
+- Las imágenes Docker siguen orientadas a desarrollo/demostración. Falta comprobar el proceso de migración de archivado con volúmenes nuevos y antiguos sin pérdida de datos.
 
-La ejecución inicial de GitHub Actions correspondiente al
-commit `7de6a10` finalizó correctamente en ambos trabajos.
-Esta verificación no representa un despliegue a producción.
+### Transparencia sobre inteligencia artificial
 
-El workflow actual no ejecuta `test_integracion_http.py`,
-`test_seguridad_archivado.py`, `npm run lint` ni pruebas de carga.
-Estas comprobaciones permanecen fuera de su cobertura automática.
+El backend utiliza **Groq**, mientras que la revisión académica identifica **Azure** como tecnología contemplada en una propuesta anterior. No se identificó una integración Azure en el código revisado; la justificación y aceptación formal de la alternativa deben confirmarse con el profesor o la empresa. No se atribuyen beneficios de costo, rendimiento o aprobación sin evidencia.
 
-## Ingesta de métricas y pipelines
+Durante el desarrollo y la auditoría se utilizó **asistencia de IA generativa** para analizar problemas, proponer cambios y revisar documentación. El equipo sigue siendo responsable del código, las decisiones y la verificación de pruebas: ninguna respuesta generada por IA constituye, por sí sola, evidencia de funcionamiento.
 
-El backend ofrece rutas para registrar métricas mediante JWT y
-para recibir datos externos mediante una clave de pipeline.
+## 10. Documentación y pendientes principales
 
-| Método | Endpoint | Autenticación |
-| --- | --- | --- |
-| POST | `/metricas/` | JWT del usuario |
-| POST | `/metricas/externas/` | Cabecera `X-Pipeline-Key` |
-| POST | `/pipelines/` | JWT del usuario |
-| GET | `/pipelines/` | JWT del usuario |
-| POST | `/pipelines/{pipeline_id}/rotar/` | JWT del usuario |
-| POST | `/pipelines/{pipeline_id}/revocar/` | JWT del usuario |
+- [`docs/PRD.md`](docs/PRD.md): objetivos, requisitos funcionales y criterios de aceptación.
+- [`docs/MVP.md`](docs/MVP.md): alcance, estado verificable y exclusiones.
+- [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
+- `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos referidos en la documentación previa; su contenido no formó parte del ZIP revisado.
 
-Los endpoints permiten crear y consultar pipelines, rotar o revocar
-sus claves y registrar métricas. La existencia de la API no implica
-que ya existan conectores completos para sistemas empresariales.
+### Lista de verificación
 
-**Límites de uso:** en esta revisión documental aún no se ha
-acreditado un límite específico para la ingesta ni un máximo de
-pipelines por usuario. Su verificación y fortalecimiento quedan
-pendientes de la etapa de seguridad.
+- [x] Autenticación JWT, SMTP, recuperación y códigos protegidos mediante HMAC.
+- [x] Simulador automático e ingesta por JWT o clave de pipeline en la API.
+- [x] Alta, listado, rotación y revocación de pipelines desde el backend.
+- [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
+- [x] CI con 32 pruebas aisladas y compilación de React, con ejecución satisfactoria documentada.
+- [ ] Pantalla de pipelines en React, centralización de `VITE_API_URL` y `frontend/.env.example`.
+- [ ] Modularización de archivos principales y consolidación de límites de solicitudes.
+- [ ] Integrar pruebas HTTP/archivado, lint, PostgreSQL y ejecución del CI en `main`.
+- [ ] Verificar migración de archivado en instalaciones nuevas y antiguas, y realizar una instalación limpia completa con evidencia reproducible.
+- [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
+- [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-Nunca publiques JWT ni claves de pipeline reales en ejemplos,
-capturas, documentación o repositorios.
-
-### Cobertura de pruebas de la segunda auditoría
-
-Actualmente existen 49 funciones de prueba distribuidas en tres
-archivos del backend:
-
-- `backend/tests/test_flujos_aislados.py`: 32 pruebas aisladas.
-- `backend/tests/test_integracion_http.py`: 9 pruebas HTTP.
-- `backend/tests/test_seguridad_archivado.py`: 8 pruebas de
-  seguridad y archivado.
-
-La integración continua de GitHub Actions ejecuta las 32 pruebas
-aisladas utilizando SQLite en memoria. Las otras 17 funciones
-existen en el repositorio, pero no se ejecutan en el workflow
-actual. Su presencia no acredita una ejecución reciente.
-
-La ejecución de CI correspondiente al commit `da374ac` finalizó
-correctamente. Permanecen pendientes la ampliación de cobertura
-automatizada con PostgreSQL, pruebas de carga y otras
-verificaciones necesarias para un despliegue de producción.
-
-### Seguridad HMAC y claves de pipelines
-
-Los codigos temporales de verificacion utilizan funciones
-basadas en HMAC, con verificaciones mediante
-`hmac.compare_digest`, segun la implementacion de
-`backend/app/verification_codes.py`.
-
-Las claves de pipelines siguen un mecanismo distinto:
-`backend/app/pipeline_keys.py` incorpora SHA-256 y
-`hmac.compare_digest`. No deben confundirse el HMAC
-de los codigos temporales y el hash SHA-256 de las
-claves de pipelines.
-
-Estos mecanismos forman parte de los controles de
-seguridad del backend, pero no sustituyen las pruebas
-exhaustivas de seguridad ni la gestion segura de secretos.
-
-### Uso de IA generativa y decision tecnologica
-
-PluriOne integra Groq para funciones de inteligencia
-artificial del backend. No se identifico una integracion
-con Azure en el codigo examinado durante esta auditoria.
-
-El informe de auditoria menciona Azure como referencia
-tecnologica prevista. Por ello se documenta la diferencia
-entre la propuesta y la implementacion actual. La
-aprobacion formal de esta decision por la empresa o el
-profesor no esta acreditada en esta revision y debe
-confirmarse con los responsables del proyecto.
-
-Durante el desarrollo y la segunda auditoria se utilizo
-asistencia de IA generativa como apoyo para analizar
-problemas, proponer mejoras y revisar documentacion.
-Las propuestas requieren verificacion humana y pruebas;
-no se considera que una respuesta de IA, por si sola,
-demuestre que una funcionalidad esta implementada.
+**Estado documental:** consolidación de los cuatro Markdown recibidos para el tercer corte, basada en la versión `b5957d4`. Los cambios en la aplicación o la base de datos quedan fuera de esta entrega documental.
