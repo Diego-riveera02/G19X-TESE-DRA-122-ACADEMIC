@@ -1548,5 +1548,74 @@ class PruebasFlujosAislados(unittest.TestCase):
         )
 
 
+    def test_33_limite_pipelines_activos(self):
+        correo = "limite33@example.invalid"
+        self.activar(correo)
+
+        token = self.token(correo)
+        headers = {"Authorization": "Bearer " + token}
+
+        identificadores = []
+
+        for numero in range(20):
+            respuesta = self.client.post(
+                "/pipelines/",
+                headers=headers,
+                json={"nombre": f"Fuente {numero + 1}"}
+            )
+
+            self.assertEqual(
+                respuesta.status_code,
+                201,
+                respuesta.text
+            )
+
+            identificadores.append(respuesta.json()["id"])
+
+        excedido = self.client.post(
+            "/pipelines/",
+            headers=headers,
+            json={"nombre": "Fuente 21"}
+        )
+
+        self.assertEqual(
+            excedido.status_code,
+            409,
+            excedido.text
+        )
+
+        revocado = self.client.post(
+            f"/pipelines/{identificadores[0]}/revocar/",
+            headers=headers
+        )
+
+        self.assertEqual(
+            revocado.status_code,
+            200,
+            revocado.text
+        )
+
+        nuevo = self.client.post(
+            "/pipelines/",
+            headers=headers,
+            json={"nombre": "Fuente Nueva"}
+        )
+
+        self.assertEqual(
+            nuevo.status_code,
+            201,
+            nuevo.text
+        )
+
+        with self.Session() as db:
+            activos = db.query(
+                self.models.Pipeline
+            ).filter(
+                self.models.Pipeline.revocado.is_(False)
+            ).count()
+
+            self.assertEqual(activos, 20)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
