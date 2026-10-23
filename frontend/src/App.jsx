@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 
 import { api, WS_URL } from './api';
+import Pipelines from './Pipelines';
 
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
@@ -941,6 +942,17 @@ const irAlFinalChat = () => {
 
           <button onClick={() => setVista('dashboard')} style={{ background: vista === 'dashboard' ? 'rgba(229,184,11,0.1)' : 'transparent', color: vista === 'dashboard' ? '#E5B80B' : '#888', border: 'none', borderBottom: vista === 'dashboard' ? '2px solid #E5B80B' : '2px solid transparent', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em' }}>Datos (Dashboard)</button>
 
+          <Link
+            to="/pipelines"
+            style={{
+              color: '#E5B80B',
+              textDecoration: 'none',
+              padding: '10px 12px',
+              fontWeight: 'bold'
+            }}
+          >
+            Pipelines
+          </Link>
           <button onClick={() => setVista('historial')} style={{ background: vista === 'historial' ? 'rgba(229,184,11,0.1)' : 'transparent', color: vista === 'historial' ? '#E5B80B' : '#888', border: 'none', borderBottom: vista === 'historial' ? '2px solid #E5B80B' : '2px solid transparent', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em' }}>Historial</button>
 
         </div>
@@ -1306,6 +1318,7 @@ export default function App() {
         <Route path="/recuperar" element={<RecuperarPassword />} />
 
         <Route path="/app" element={<PluriOneApp />} />
+        <Route path="/pipelines" element={<Pipelines />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
 
