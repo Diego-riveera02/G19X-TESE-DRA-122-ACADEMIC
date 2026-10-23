@@ -2,7 +2,7 @@
 
 **Documento consolidado para el tercer corte académico (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
-El backend también dispone de ingesta autenticada y gestión de pipelines, pero **la pantalla React para crear, listar, rotar y revocar pipelines aún está pendiente**. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
+El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
 ## 1. Tecnologías y componentes
 
@@ -68,7 +68,7 @@ En la configuración local utilizada:
 - WebSocket: `ws://127.0.0.1:8000/ws/anomalias`
 - Frontend: `http://127.0.0.1:5173`
 
-**Pendiente:** centralizar las URL de API y WebSocket en `frontend/src/api.js` utilizando `import.meta.env.VITE_API_URL` y añadir `frontend/.env.example`. En la versión revisada se identificaron URL locales repetidas en `App.jsx`, `Login.jsx` y `Registro.jsx`. No se afirma que la refactorización ya exista.
+La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. El backend puede configurarse sin modificar URL repetidas en los componentes.
 
 ### Rutas relevantes para la interfaz
 
@@ -101,7 +101,7 @@ El flujo fue probado manualmente en un entorno local durante revisiones anterior
 
 J.A.R.V.I.S. 2.0 permite preguntas generales sobre observabilidad y consultas autorizadas de anomalías del usuario. Su herramienta devuelve totales y hasta 10 registros recientes, filtrados por estado. No dispone de consultas arbitrarias por fecha o métrica ni de memoria permanente entre sesiones. Las explicaciones sobre posibles causas son orientativas.
 
-La administración de pipelines **sí existe en el backend** (`POST /pipelines/`, `GET /pipelines/`, rotación y revocación con JWT), igual que la ingesta mediante `/metricas/` y `/metricas/externas/`. **No se encontró una pantalla de pipelines en React** en el corte revisado. La futura pantalla debe permitir crear, listar, rotar y revocar, mostrar la clave solo al emitirla o rotarla y ofrecer un botón seguro para copiarla, sin guardarla permanentemente en el frontend.
+La administración de pipelines existe en FastAPI y en `frontend/src/Pipelines.jsx`. La interfaz permite crear, listar, rotar y revocar claves. Las claves se muestran al emitirlas o rotarlas; el botón de copia ofrece una alternativa de selección manual cuando el navegador bloquea la copia automática. Su funcionamiento debe comprobarse manualmente en el navegador.
 
 Los códigos de verificación usan HMAC en el backend; las claves de pipeline usan SHA-256 y comparación segura. **Estas funciones de seguridad pertenecen al servidor** y no autorizan almacenar secretos en el código o en el repositorio del frontend.
 
@@ -113,7 +113,7 @@ El repositorio contiene 49 funciones de prueba en backend:
 - **9 HTTP** en `test_integracion_http.py`: necesitan los servicios correspondientes y no se ejecutan en el workflow actual.
 - **8 de seguridad/archivado** en `test_seguridad_archivado.py`: fuera del workflow actual.
 
-La ejecución de GitHub Actions del commit `f6a6ab9` terminó correctamente en la rama de correcciones: el backend ejecutó las 32 pruebas aisladas y el frontend instaló dependencias con `npm ci` y compiló con `npm run build`. Esta confirmación no equivale a pruebas automatizadas exhaustivas de interfaz, accesibilidad, SMTP o carga. Las 9 pruebas HTTP y 8 de archivado se habían ejecutado en auditorías anteriores; no corresponde describirlas como ejecutadas por ese workflow.
+GitHub Actions aprobó las 32 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #10. Además, el 23 de octubre de 2026 aprobaron localmente 9 pruebas HTTP de integración y 8 de seguridad/archivado. Esto no equivale a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
 
 Comandos útiles desde la raíz:
 
@@ -123,16 +123,16 @@ npm --prefix ./frontend run lint
 npm --prefix ./frontend audit
 ```
 
-La existencia del comando `lint` no significa que el CI ya lo ejecute; incorporarlo es un pendiente del tercer corte. Se registró una auditoría npm con cero vulnerabilidades conocidas en un entorno local de octubre de 2026, resultado que puede cambiar con nuevos avisos.
+ESLint se ejecuta localmente y forma parte del workflow actual de GitHub Actions. Continúan pendientes pruebas automatizadas de navegador y accesibilidad. Una auditoría npm anterior reportó cero vulnerabilidades conocidas, resultado que puede cambiar con nuevos avisos.
 
 La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las pruebas mediante descubrimiento global puede requerir preparar previamente entornos diferentes. Para pasos reproducibles de instalación y detalles de CI, consultar el README raíz.
 
 ## 7. Seguridad, limitaciones y trabajo pendiente
 
-- Las URL del backend aún están repetidas y deben centralizarse con `VITE_API_URL`; falta `frontend/.env.example`.
-- No hay pantalla de pipelines, aunque las rutas del backend están implementadas.
+- La URL de API y WebSocket está centralizada; es necesario configurar `VITE_API_URL` correctamente en cada entorno.
+- La pantalla de pipelines existe; falta ampliar las pruebas manuales de copia, errores y accesibilidad.
 - El archivo `App.jsx` es grande; está pendiente extraer pantallas de verificación, recuperación y respuesta de J.A.R.V.I.S. sin modificar su comportamiento.
-- Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error, además de incorporar lint al CI.
+- Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error; ESLint ya se ejecuta en CI.
 - El historial PDF puede reflejar solo una página de registros.
 - La interfaz no confirma incidentes productivos ni ejecuta acciones correctivas en sistemas externos.
 - La seguridad real de JWT, WebSocket, claves y aislamiento se valida en FastAPI y no debe depender de controles visuales.
@@ -149,8 +149,8 @@ El proveedor de IA identificado es **Groq**. La auditoría menciona Azure como r
 - [x] Dashboard, alertas, WebSocket por usuario y chat Markdown.
 - [x] Historial reversible, exportación PDF y onboarding.
 - [x] Compilación de producción del frontend confirmada en GitHub Actions.
-- [ ] Pantalla de administración de pipelines.
-- [ ] Centralizar API/WebSocket y crear `frontend/.env.example`.
-- [ ] Dividir componentes grandes y ampliar pruebas de interfaz, accesibilidad y lint en CI.
+- [x] Pantalla de administración de pipelines.
+- [x] Centralización de API/WebSocket y creación de `frontend/.env.example`.
+- [ ] Dividir componentes grandes y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** documentación consolidada; no se ha modificado ni ejecutado la aplicación frontend durante la preparación de este archivo.
+**Estado:** documentación actualizada hasta el merge `5b0fa07` y las verificaciones del 23 de octubre de 2026. No se considera una certificación de producción.

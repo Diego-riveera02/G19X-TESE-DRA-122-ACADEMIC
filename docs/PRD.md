@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor señalado en el documento original:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión descrita:** prototipo académico; consolidación documental del tercer corte a partir de `b5957d4`.
+- **Versión descrita:** tercer corte académico, con referencia al merge `5b0fa07` en `main` y pruebas verificadas el 23 de octubre de 2026.
 
 ## 1. Propósito, problemática y visión general
 
@@ -38,12 +38,12 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - Dashboard React/Vite, gráficas, feed con marca temporal de backend y WebSocket autenticado por usuario.
 - Consulta, archivado lógico y restauración de historial con filtrado por cuenta y paginación.
 - Asistente Groq con function calling limitado a herramientas backend autorizadas, Markdown, onboarding y exportación PDF de registros cargados.
-- Docker Compose para demostración y CI con 32 pruebas aisladas más compilación de React.
+- Docker Compose para demostración y CI con 32 pruebas aisladas, ESLint y compilación de React en Node.js 22.
 
 **Fuera del alcance comprobado o pendiente de trabajo:**
 
 - Conectores permanentes a AWS, S3, bases corporativas o sistemas de observabilidad productivos.
-- Panel React para crear, listar, rotar o revocar pipelines (la API sí existe).
+- Verificación manual exhaustiva de la interfaz de pipelines, especialmente portapapeles, errores de red y accesibilidad.
 - Remediación automática, inspección directa de logs/red/CPU y certificación de causas raíz.
 - Consultas conversacionales arbitrarias por fechas, métricas o palabras clave; la herramienta actual filtra por estado.
 - Memoria conversacional persistente, alta disponibilidad y garantías operativas empresariales.
@@ -67,7 +67,7 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - **RF-12 — Bienvenida.** Como usuario nuevo, quiero una guía de incorporación. **Estado:** implementado.
 - **RF-13 — Archivado reversible.** Como usuario autenticado, quiero archivar mis anomalías sin borrarlas y restaurarlas posteriormente. **Estado:** implementado con JWT, filtrado por usuario, paginación y controles en React; la migración debe comprobarse en cada instalación.
 - **RF-14 — Ingesta de métricas.** Como operador, quiero registrar métricas mediante mi JWT o una clave de pipeline emitida para un cliente externo. **Estado:** implementado en la API; sin conectores corporativos ni validación de carga productiva.
-- **RF-15 — Gestión de pipelines.** Como propietario, quiero crear, listar, rotar y revocar claves de mis pipelines. **Estado:** implementado en la API; **pendiente** interfaz React y límites específicos de frecuencia/cantidad.
+- **RF-15 — Gestión de pipelines.** Como propietario, quiero crear, listar, rotar y revocar claves. **Estado:** implementado en FastAPI y React; faltan pruebas exhaustivas de navegador y escenarios de error.
 
 ### Requisitos no funcionales
 
@@ -80,7 +80,7 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
 - **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles; completar políticas de ingesta y cuotas de pipelines.
 - **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
-- **RNF-10 — Mantenibilidad:** continuar la separación de `main.py` y `App.jsx`, centralizar la URL del backend y unificar los límites de solicitudes.
+- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket centralizada y rutas de pipelines extraídas a un router independiente. Pendiente continuar modularizando componentes grandes y ampliar las pruebas.
 
 ## 5. Arquitectura y flujo de datos
 
@@ -117,9 +117,9 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 ## 7. Plan de trabajo y evolución
 
 - **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; comprobación de migraciones de archivado pendiente para entornos nuevos/antiguos.
-- **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC y aislamiento incorporados. Pendientes modularización completa, unificación de límites y ampliación de pruebas.
-- **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial y PDF implementados. Pendientes pantalla de pipelines, `VITE_API_URL`, refactorización y accesibilidad.
-- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles; pendientes activar CI en `main`, lint, integración con PostgreSQL y revisar Dockerfiles orientados a desarrollo.
+- **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC, aislamiento y router de pipelines implementados. Pendientes cuotas específicas de ingesta, modularización adicional y auditoría integral.
+- **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial, PDF y gestión React de pipelines implementados. URL del backend centralizada. Pendientes accesibilidad y pruebas completas de navegador.
+- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 32 pruebas aisladas, ESLint y build aprobados. Pendientes CI con PostgreSQL real, pruebas HTTP y revisión de contenedores productivos.
 - **Evolución posterior:** conectores productivos, búsqueda histórica avanzada, alta disponibilidad, pruebas de carga y remediación, fuera del alcance comprobado.
 
 ## 8. Criterios de aceptación y evidencia
@@ -136,7 +136,7 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 - **CA-10:** Docker/README permiten repetir el arranque, los cambios de esquema se verifican sin destruir datos y las pruebas automatizadas son trazables.
 - **CA-11:** las decisiones y limitaciones de IA están documentadas sin atribuir monitoreo empresarial no demostrado.
 
-**Evidencia disponible y límites:** el repositorio contiene **49 funciones de prueba**: 32 aisladas (`test_flujos_aislados.py`), 9 HTTP (`test_integracion_http.py`) y 8 de seguridad/archivado (`test_seguridad_archivado.py`). GitHub Actions ejecuta **solo las 32 aisladas**, utilizando SQLite en memoria, y compila React con `npm ci`. Se confirmó un CI satisfactorio para el commit `f6a6ab9` en la rama de correcciones. Las otras 17 fueron ejecutadas en revisiones anteriores, pero no forman parte del workflow actual ni se deben presentar como una ejecución reciente.
+**Evidencia disponible y límites:** el repositorio contiene 49 pruebas: 32 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. Las 32 aisladas aprobaron en GitHub Actions y las otras 17 aprobaron localmente el 23 de octubre de 2026 con FastAPI, React y PostgreSQL disponibles. CI también aprobó ESLint y la compilación del frontend para el Pull Request #10. Las 17 pruebas HTTP no forman parte del workflow y estas verificaciones no sustituyen pruebas de carga, SMTP real, navegador o producción.
 
 Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, respuesta 429, aislamiento entre usuarios, WebSocket y rotación/revocación de pipelines. Esto no acredita pruebas exhaustivas de PostgreSQL, carga, navegador, SMTP y servicios externos. Las comprobaciones manuales documentadas de identidad, chat y dashboard son antecedentes locales, no una certificación empresarial.
 
@@ -147,8 +147,8 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - Dependencia de proveedores Groq/SMTP y cuotas de servicio.
 - Paginación: la primera consulta o el PDF puede no incluir todos los registros de la base de datos.
 - Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): no se ha confirmado a partir de los archivos aportados que se ejecute automáticamente en todos los entornos. Requiere prueba con volumen nuevo y volumen existente, previo respaldo.
-- Falta de pantalla React para pipelines y de límites robustos de ingesta/pipelines.
-- CI con SQLite en memoria y sin pruebas HTTP/de archivado, lint o carga integradas.
+- Pendientes las pruebas manuales completas de portapapeles y los límites robustos de ingesta y cantidad de pipelines.
+- CI con SQLite en memoria para las 32 pruebas aisladas; ESLint y build activos. Pendiente incorporar pruebas HTTP/archivado con servicios al workflow.
 - Dockerfiles todavía orientados a desarrollo; la preparación para producción no está demostrada.
 
 ## 10. Lista de verificación del producto
@@ -158,10 +158,10 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [x] WebSocket por usuario, dashboard, archivado lógico, restauración, chat y PDF.
 - [x] Códigos con HMAC y claves de pipeline con SHA-256.
 - [x] CI con 32 pruebas aisladas y compilación de frontend; ejecución satisfactoria documentada.
-- [ ] Interfaz de pipelines y configuración centralizada de la URL de FastAPI.
+- [x] Interfaz React de pipelines y configuración centralizada de API/WebSocket.
 - [ ] Modularización adicional, cuota de pipelines y rate limits de ingesta.
 - [ ] Migración de archivado validada automáticamente, sin daño a datos existentes.
-- [ ] Ampliar CI con PostgreSQL, pruebas HTTP/seguridad, lint y ejecución en `main`.
+- [ ] Ampliar CI con PostgreSQL y pruebas HTTP/seguridad; la ejecución en `main` y ESLint ya están configurados.
 - [ ] Conectores productivos, pruebas de carga, seguridad integral y eventual despliegue empresarial.
 
 ## 11. Documentos relacionados
@@ -170,4 +170,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** documento consolidado del tercer corte con base en los cuatro Markdown compartidos y las observaciones académicas. No se ha modificado ni ejecutado el código del repositorio durante esta consolidación.
+**Estado:** documento actualizado conforme a los cambios integrados hasta `5b0fa07` y las verificaciones locales del 23 de octubre de 2026. Continúan pendientes las pruebas de producción y la aprobación formal de las sustituciones tecnológicas.
