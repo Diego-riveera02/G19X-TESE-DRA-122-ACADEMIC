@@ -1,21 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const JarvisOnboarding = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [nombreUsuario, setNombreUsuario] = useState('Ingeniero');
-
-  useEffect(() => {
-    // Verificamos si hay una sesión activa y un nombre guardado
+  const [isVisible, setIsVisible] = useState(() => {
     const token = localStorage.getItem('token_plurione');
     const nombre = localStorage.getItem('usuario_nombre');
+    return Boolean(token && nombre);
+  });
 
-    if (token && nombre) {
-      setNombreUsuario(nombre);
-      setIsVisible(true); // Muestra la burbuja cada vez que detecta sesión activa
-    } else {
-      setIsVisible(false);
-    }
-  }, []);
+  const nombreUsuario = localStorage.getItem('usuario_nombre') || 'Ingeniero';
 
   if (!isVisible) return null;
 

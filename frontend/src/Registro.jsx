@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from './api';
 import ParticlesBackground from './ParticlesBackground';
 
 export default function Registro() {
@@ -15,7 +15,7 @@ export default function Registro() {
   const manejarRegistro = async (e) => {
     e.preventDefault();
     try { 
-      await axios.post('http://127.0.0.1:8000/registro/', { nombre_completo: nombreCompleto, correo, telefono, password }); 
+      await api.post('/registro/', { nombre_completo: nombreCompleto, correo, telefono, password });
       setExito(true); 
       setTimeout(() => navigate('/verificar', { state: { email: correo } }), 2000); 
     } catch (err) { setError(err.response?.data?.detail || 'Error al registrar.'); }
