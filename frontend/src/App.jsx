@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 
-import axios from 'axios';
+import { api, WS_URL } from './api';
 
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
@@ -108,7 +108,7 @@ function Verificar() {
     setVerificando(true);
 
     try {
-      await axios.post('http://127.0.0.1:8000/verificar/', {
+      await api.post('/verificar/', {
         correo: correo.trim(),
         codigo
       });
@@ -131,7 +131,7 @@ function Verificar() {
     setReenviando(true);
 
     try {
-      const respuesta = await axios.post('http://127.0.0.1:8000/reenviar-verificacion/', {
+      const respuesta = await api.post('/reenviar-verificacion/', {
         correo: correoSolicitado
       });
       // La API da una respuesta genérica: no revela cuentas registradas
@@ -247,9 +247,9 @@ function RecuperarPassword() {
 
     try {
 
-      await axios.post(
+      await api.post(
 
-        'http://127.0.0.1:8000/solicitar-recuperacion/',
+        '/solicitar-recuperacion/',
 
         { correo: correo.trim() }
 
@@ -283,7 +283,7 @@ function RecuperarPassword() {
 
     try {
 
-      await axios.post('http://127.0.0.1:8000/recuperar-password/', { correo, codigo, nueva_password: nuevaPassword });
+      await api.post('/recuperar-password/', { correo, codigo, nueva_password: nuevaPassword });
 
       setMensaje('Contraseña actualizada correctamente.');
 
@@ -407,7 +407,7 @@ function PluriOneApp() {
 
     if (!token) { navigate('/login'); return; }
 
-    axios.get('http://127.0.0.1:8000/anomalias/', { headers: { Authorization: `Bearer ${token}` } }).then(res => {
+    api.get('/anomalias/', { headers: { Authorization: `Bearer ${token}` } }).then(res => {
 
       setAnomalias(res.data.filter(item => item.id > idOcultosHasta).sort((a, b) => b.id - a.id));
 
@@ -415,7 +415,7 @@ function PluriOneApp() {
 
     // Conexion WebSocket autenticada mediante JWT
 
-    const ws = new WebSocket('ws://127.0.0.1:8000/ws/anomalias');
+    const ws = new WebSocket(`${WS_URL}/ws/anomalias`);
 
     // Enviar el token al establecer la conexion
 
@@ -527,7 +527,7 @@ function PluriOneApp() {
 
         });
 
-      } catch (error) {
+      } catch {
 
         console.error('Error al procesar mensaje WebSocket');
 
@@ -625,9 +625,9 @@ const irAlFinalChat = () => {
 
     try {
 
-      const response = await axios.post(
+      const response = await api.post(
 
-        'http://127.0.0.1:8000/chat/',
+        '/chat/',
 
         {
 
@@ -661,7 +661,7 @@ const irAlFinalChat = () => {
 
       ]);
 
-    } catch (error) {
+    } catch {
 
       setMensajes(prev => [
 
@@ -691,7 +691,7 @@ const irAlFinalChat = () => {
 
     setProcesandoHistorial(true);
     try {
-      await axios.delete("http://127.0.0.1:8000/anomalias/", {
+      await api.delete("/anomalias/", {
         headers: { Authorization: `Bearer ${tokenActual}` }
       });
 
@@ -700,7 +700,7 @@ const irAlFinalChat = () => {
       setAnomalias([]);
       setMetricasEnVivo({});
       window.alert('Historial archivado. Puedes restaurarlo cuando quieras.');
-    } catch (error) {
+    } catch {
       window.alert('No fue posible archivar el historial. Los datos visibles no se modificaron.');
     } finally {
       setProcesandoHistorial(false);
@@ -723,14 +723,14 @@ const irAlFinalChat = () => {
 
     setProcesandoHistorial(true);
     try {
-      await axios.post("http://127.0.0.1:8000/anomalias/restaurar/", {}, {
+      await api.post("/anomalias/restaurar/", {}, {
         headers: { Authorization: `Bearer ${tokenActual}` }
       });
 
       localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
       setIdOcultosHasta(0);
 
-      const respuesta = await axios.get("http://127.0.0.1:8000/anomalias/", {
+      const respuesta = await api.get("/anomalias/", {
         headers: { Authorization: `Bearer ${tokenActual}` }
       });
 
@@ -739,7 +739,7 @@ const irAlFinalChat = () => {
       );
       setMetricasEnVivo({});
       window.alert('Historial restaurado correctamente.');
-    } catch (error) {
+    } catch {
       window.alert('No se pudo completar la restauracion. Actualiza la pagina para consultar el estado actual.');
     } finally {
       setProcesandoHistorial(false);

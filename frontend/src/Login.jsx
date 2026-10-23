@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from './api';
 import ParticlesBackground from './ParticlesBackground';
 
 export default function Login() {
@@ -18,7 +18,7 @@ export default function Login() {
     formData.append('username', correo); 
     formData.append('password', password);
     try {
-      const response = await axios.post('http://127.0.0.1:8000/login/', formData, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+      const response = await api.post('/login/', formData, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
       localStorage.setItem('token_plurione', response.data.access_token);
       localStorage.setItem('usuario_nombre', response.data.nombre);
       navigate('/app');
