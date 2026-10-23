@@ -10,7 +10,7 @@ PluriOne es un prototipo de observabilidad de datos construido con FastAPI, Post
 
 - **Identidad:** registro, verificación por correo SMTP, reenvío de códigos, inicio de sesión JWT, recuperación de contraseña y rechazo de cuentas inexistentes o inactivas. Los códigos temporales tienen un propósito específico, vencen después de 10 minutos y admiten hasta cinco intentos.
 - **Ingesta autenticada:** `POST /metricas/` recibe métricas con JWT y `POST /metricas/externas/` las recibe con `X-Pipeline-Key`. El servidor valida los datos y los procesa mediante una función compartida de registro y clasificación.
-- **Administración de pipelines en la API:** alta, listado, rotación y revocación de claves. La clave se muestra al crearla o rotarla; la base de datos conserva su hash SHA-256. **Todavía no existe una pantalla de administración de pipelines en React.**
+- **Administración de pipelines:** creación, listado, rotación y revocación mediante FastAPI y la pantalla React `frontend/src/Pipelines.jsx`. Las claves se almacenan como hash y se muestran al emitirlas o rotarlas. La copia mediante navegador requiere comprobación manual.
 - **Simulador:** un proceso asíncrono en FastAPI genera métricas de demostración aproximadamente cada 30 segundos para usuarios activos, reutilizando la función que procesa la ingesta. La periodicidad no es una garantía de tiempo real estricto.
 - **Persistencia de anomalías:** PostgreSQL guarda las anomalías que requieren seguimiento. Las mediciones clasificadas como normales no se persisten como anomalías en el flujo actual.
 - **Dashboard:** React y Recharts muestran indicadores de latencia, calidad de datos y fallos, con alertas recibidas mediante WebSocket autenticado y segmentado por usuario.
@@ -28,7 +28,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** `.github/workflows/ci.yml`, con Python 3.12 y Node.js 24 en sus trabajos respectivos.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta 32 pruebas aisladas, ESLint y compilación de React en las ramas configuradas, incluida `main`.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -113,7 +113,7 @@ También existe un Dockerfile del frontend con Node.js 22 Alpine. Se documentó 
 - PostgreSQL desde el host Windows, según el Compose documentado: `127.0.0.1:5433`
 - PostgreSQL entre contenedores: `db:5432`
 
-Los puertos dependen de la configuración local. **Pendiente en el frontend:** reemplazar las URL repetidas del backend por una variable `VITE_API_URL` y proporcionar `frontend/.env.example`. La existencia de esta sección no implica que esa refactorización ya se haya realizado.
+Los puertos dependen de la configuración local. La API y WebSocket se centralizaron en `frontend/src/api.js` mediante `VITE_API_URL`. Existe `frontend/.env.example` con la dirección local de ejemplo.
 
 ## 6. Ejecución sin Docker y conservación de datos
 
@@ -169,7 +169,7 @@ La memoria conversacional es temporal y limitada; no persiste entre sesiones.
 | `POST` | `/pipelines/{pipeline_id}/rotar/` | JWT del usuario |
 | `POST` | `/pipelines/{pipeline_id}/revocar/` | JWT del usuario |
 
-La administración de pipelines está disponible en la API, **no todavía en una pantalla de React**. Al crear o rotar un pipeline, copiar y resguardar la clave devuelta en ese momento; no depender de recuperarla después.
+La administración de pipelines está disponible en la API y en la pantalla React. La clave se muestra al crear o rotar un pipeline; debe conservarse de forma segura. El botón de copia dispone de una alternativa de selección manual si el navegador bloquea el portapapeles.
 
 **Ejemplo orientativo de ingesta externa (bash):**
 
@@ -203,7 +203,7 @@ El repositorio revisado contiene **49 funciones de prueba** distribuidas en tres
 | `backend/tests/test_integracion_http.py` | 9 | Pruebas HTTP y disponibilidad de API, frontend, CORS y PostgreSQL. **No se ejecutan en el CI actual.** |
 | `backend/tests/test_seguridad_archivado.py` | 8 | Rechazo de accesos no autorizados y rutas de historial. **No se ejecutan en el CI actual.** |
 
-Las nueve pruebas HTTP y las ocho de seguridad se ejecutaron satisfactoriamente en revisiones anteriores (17 en total); **no debe interpretarse ese resultado histórico como una ejecución reciente de las 49**.
+El 23 de octubre de 2026 se aprobaron localmente las 9 pruebas de integración HTTP y las 8 pruebas de seguridad/archivado. Las 32 pruebas aisladas fueron aprobadas en CI. Son ejecuciones diferenciadas: no se afirma que las 49 pruebas se ejecutaron juntas en un mismo proceso.
 
 ### Ejecución local
 
@@ -221,16 +221,16 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` instala dependencias de Python 3.12 y ejecuta 32 pruebas aisladas con SQLite en memoria. Para React usa Node.js 24, `npm ci` y `npm run build`, sin requerir los archivos `.env` privados. Se verificó su finalización satisfactoria para el commit `f6a6ab9` en la rama `fix/segunda-auditoria-plurione`.
+El workflow `.github/workflows/ci.yml` ejecuta las 32 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las comprobaciones del Pull Request #10.
 
-**Cobertura pendiente:** incorporar las otras 17 pruebas, PostgreSQL de integración, `npm run lint`, pruebas de carga, seguridad y navegador. Según la revisión del Corte 3, el workflow todavía debe configurarse para ejecutarse también en cada `push` a `main` (además de la rama de correcciones y los pull requests). La versión de Node.js en CI (24) y Docker (22) debe revisarse para alinearlas.
+**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, y verificar migraciones en instalaciones nuevas y antiguas. El lint y la ejecución del workflow en `main` ya están configurados.
 
 **Antecedentes de verificación local:** se reportaron arranque de FastAPI y PostgreSQL, `/docs` con HTTP 200, compilación de Vite, pruebas de acceso con JWT, recuperación mediante SMTP y funcionamiento del chat/WebSocket. Esas comprobaciones corresponden a distintas sesiones de desarrollo, no a una campaña integral de pruebas de producción.
 
 ## 9. Limitaciones, riesgos y uso de IA
 
 - El simulador usa telemetría sintética y la API puede aceptar entradas externas autenticadas; no hay prueba de monitoreo continuo en AWS ni de integración automática con sistemas corporativos.
-- La interfaz aún no permite administrar pipelines. También faltan centralizar la URL de FastAPI y modularizar los archivos grandes del frontend y backend.
+- La interfaz permite administrar pipelines y utiliza una URL de API centralizada. Continúan pendientes las pruebas completas de navegador y la modularización adicional de componentes grandes.
 - No se han demostrado cuotas para ingesta/pipelines, pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
 - La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
 - J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
@@ -257,11 +257,11 @@ Durante el desarrollo y la auditoría se utilizó **asistencia de IA generativa*
 - [x] Alta, listado, rotación y revocación de pipelines desde el backend.
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
 - [x] CI con 32 pruebas aisladas y compilación de React, con ejecución satisfactoria documentada.
-- [ ] Pantalla de pipelines en React, centralización de `VITE_API_URL` y `frontend/.env.example`.
-- [ ] Modularización de archivos principales y consolidación de límites de solicitudes.
-- [ ] Integrar pruebas HTTP/archivado, lint, PostgreSQL y ejecución del CI en `main`.
+- [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
+- [x] Extracción de las rutas de pipelines a `backend/app/pipelines_router.py`; permanece pendiente modularizar otros componentes extensos.
+- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado aprobaron localmente; sigue pendiente integrarlas en CI con los servicios correspondientes.
 - [ ] Verificar migración de archivado en instalaciones nuevas y antiguas, y realizar una instalación limpia completa con evidencia reproducible.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** consolidación de los cuatro Markdown recibidos para el tercer corte, basada en la versión `b5957d4`. Los cambios en la aplicación o la base de datos quedan fuera de esta entrega documental.
+**Estado documental:** actualización del tercer corte tras los Pull Requests #9 y #10, tomando como referencia `main` en `5b0fa07` y las pruebas locales del 23 de octubre de 2026. No equivale a una certificación de producción.

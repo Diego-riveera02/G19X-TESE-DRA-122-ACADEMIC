@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor señalado en el documento original:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** prototipo académico con J.A.R.V.I.S. 2.0; consolidación documental del Corte 3 basada en `b5957d4`.
+- **Versión:** MVP académico del tercer corte, actualizado hasta el merge `5b0fa07` y las verificaciones del 23 de octubre de 2026.
 
 ## 1. Alcance del MVP
 
@@ -21,7 +21,7 @@ Las claves de pipeline tienen un mecanismo diferente: se muestran al emitirlas/r
 
 El simulador asíncrono de FastAPI genera métricas sintéticas aproximadamente cada 30 segundos para los usuarios activos, sin un botón de inyección manual. Utiliza el mismo servicio de clasificación que la ingesta autenticada. Las anomalías relevantes se guardan en PostgreSQL; las mediciones normales no se persisten como anomalías en el flujo actual.
 
-La API dispone de `POST /metricas/` con JWT y `POST /metricas/externas/` con `X-Pipeline-Key`. La gestión de pipelines ofrece `POST /pipelines/`, `GET /pipelines/`, rotación y revocación de claves. Estas rutas existen en el backend, pero todavía falta una pantalla React para administrarlas.
+La API dispone de `POST /metricas/` con JWT y `POST /metricas/externas/` con `X-Pipeline-Key`. La creación, consulta, rotación y revocación de pipelines están implementadas en backend y React. Las rutas de administración se separaron en `backend/app/pipelines_router.py`.
 
 ### 1.3. Dashboard, historial y alertas
 
@@ -45,13 +45,13 @@ FastAPI, PostgreSQL, WebSocket y React/Vite funcionan en un entorno local de des
 - **JWT y aislamiento:** implementados; se probaron respuestas HTTP 401 y existen pruebas aisladas para casos de usuarios distintos y WebSocket. No equivale a una auditoría integral.
 - **Simulador automático:** implementado con frecuencia aproximada de 30 segundos, no garantizada.
 - **Ingesta autenticada:** implementada en la API con JWT o clave de pipeline, validación y clasificación; sin integración continua con sistemas empresariales.
-- **Pipelines:** creación, listado, rotación y revocación implementados en el backend; pantalla de React pendiente.
+- **Pipelines:** creación, listado, rotación y revocación disponibles en backend y React. La copia de claves tiene alternativa manual; falta confirmar su funcionamiento en distintas condiciones del navegador.
 - **Persistencia de anomalías:** implementada en PostgreSQL, con marca de tiempo y estado; las métricas normales no se registran como anomalías en el flujo revisado.
 - **WebSocket y dashboard:** implementados, con recepción de eventos y gráficos; falta ampliar pruebas integrales de interfaz.
 - **Historial reversible:** archivado lógico, restauración y paginación disponibles. La migración correspondiente aún debe verificarse en una instalación nueva y una existente.
 - **J.A.R.V.I.S.:** chat, consultas restringidas y diagnóstico orientativo implementados; sujeto a disponibilidad y límites de Groq.
 - **PDF, Markdown y onboarding:** disponibles para los registros y mensajes visibles.
-- **Compilación e instalación:** Vite y servicios locales comprobados en revisiones anteriores; hace falta una validación final desde un clon limpio después de integrar todos los cambios.
+- **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación; la instalación limpia completa aún requiere evidencia independiente.
 - **Conectores empresariales, remediación y despliegue de producción:** no demostrados o fuera del MVP.
 
 ## 3. Criterios de validación
@@ -71,10 +71,10 @@ FastAPI, PostgreSQL, WebSocket y React/Vite funcionan en un entorno local de des
 El repositorio revisado contiene **49 funciones de prueba**, pero no todas forman parte de la misma ejecución automática:
 
 - `backend/tests/test_flujos_aislados.py`: **32 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket y claves de pipelines. **Sí forman parte del workflow actual.**
-- `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, rutas, autorización, CORS y servicios. **No forman parte del workflow actual; fueron ejecutadas en revisiones anteriores.**
-- `backend/tests/test_seguridad_archivado.py`: **8 pruebas** de autorización e historial. **No forman parte del workflow actual; fueron ejecutadas en revisiones anteriores.**
+- `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 23 de octubre de 2026; no se ejecutan en CI.**
+- `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 23 de octubre de 2026; no se ejecutan en CI.**
 
-GitHub Actions también instala el frontend con `npm ci` y compila Vite; se confirmó un resultado satisfactorio para el commit `f6a6ab9` de la rama `fix/segunda-auditoria-plurione`. Esto **no demuestra** que las 49 pruebas se hayan ejecutado juntas recientemente ni reemplaza una prueba con PostgreSQL real o una auditoría de producción.
+GitHub Actions ejecuta 32 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. Los dos trabajos del Pull Request #10 finalizaron correctamente. El 23 de octubre de 2026 también aprobaron localmente 9 pruebas de integración HTTP y 8 de seguridad/archivado. No se afirma que todas las pruebas se ejecutaran juntas en CI.
 
 Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranque local de FastAPI/PostgreSQL, compilación de React, recepción de eventos, chat, recuperación SMTP y rechazo de JWT no autorizados. La evidencia debe actualizarse después de las próximas modificaciones del frontend y backend.
 
@@ -86,25 +86,25 @@ Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranqu
 - [x] PostgreSQL, dashboard y eventos WebSocket segmentados por usuario.
 - [x] Archivado y restauración del historial, PDF de los registros visibles y onboarding.
 - [x] J.A.R.V.I.S. con Groq, herramientas autorizadas y respuestas Markdown.
-- [x] 32 pruebas aisladas en GitHub Actions y compilación de React con CI satisfactorio documentado.
-- [ ] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo público del entorno frontend.
+- [x] 32 pruebas aisladas aprobadas en CI, junto con ESLint y compilación de React; 17 pruebas HTTP/seguridad aprobadas localmente.
+- [x] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo `frontend/.env.example`.
 - [ ] Prueba final del archivado con migraciones en esquemas antiguos y nuevos, con respaldo previo.
-- [ ] Integrar las otras 17 pruebas en CI, pruebas con PostgreSQL, lint, carga, navegador y seguridad más amplia.
-- [ ] Limitar frecuencia de ingesta y número de pipelines por usuario; continuar modularización.
+- [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador.
+- [ ] Limitar frecuencia de ingesta y número de pipelines por usuario; continuar modularizando componentes distintos del router de pipelines.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se deben fortalecer la modularización de `main.py` y `App.jsx`, la interfaz de pipelines, los límites de uso y el CI. Los Dockerfiles utilizan configuraciones de desarrollo. Para el archivado, `backend/migrations/001_archivado_logico_anomalias.sql` contiene las columnas `archived` y `archived_at`, pero no se ha confirmado a partir de los documentos que se aplique automáticamente junto con `backend/app/schema_migrations.py` en toda instalación. Antes de manipular un volumen antiguo, respaldarlo y verificar su esquema; nunca usar `docker compose down -v` para conservar datos.
+Se completó la extracción del router de pipelines y la pantalla React correspondiente. Persisten tareas de modularización adicional, cuotas de uso y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Se verificó que las columnas de archivado existen en la base PostgreSQL actual, pero no se ha comprobado la ejecución de la migración en instalaciones nuevas o antiguas. Antes de migrar otro entorno, realizar un respaldo y comprobar su esquema.
 
 **Uso de IA y tecnología elegida:** el backend implementa Groq; la auditoría menciona Azure como tecnología inicialmente prevista. La aprobación o justificación formal del cambio no está acreditada en la documentación examinada y corresponde confirmarla con el profesor o la empresa. Durante el desarrollo y las auditorías se utilizó asistencia de IA generativa para el análisis y la revisión documental; toda propuesta debe contrastarse con código y pruebas verificables.
 
 ## 6. Conclusión y documentos relacionados
 
-El MVP reúne los elementos necesarios para demostrar observabilidad de métricas con entrada autenticada, simulación, seguimiento de anomalías y asistencia conversacional controlada. Su madurez operativa todavía está limitada por la ausencia de conectores productivos, pantalla de pipelines, pruebas integrales y validación de despliegue empresarial.
+El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, administración de pipelines desde React y asistencia conversacional controlada. Su madurez operativa aún está limitada por la ausencia de conectores productivos, pruebas completas de navegador y validación de despliegue empresarial.
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** versión consolidada para el tercer corte. Esta actualización reorganiza información del ZIP entregado; no certifica cambios nuevos en el código.
+**Estado documental:** actualizado con funcionalidades integradas hasta `5b0fa07` y resultados de pruebas del 23 de octubre de 2026. Las pruebas verifican escenarios concretos y no certifican un entorno de producción.
