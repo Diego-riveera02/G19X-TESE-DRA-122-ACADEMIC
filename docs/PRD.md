@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** basada en `main` en `e13d0fd` (Pull Request #17), con el router de autenticación extraído en `refactor/auth-router-corte4` y validado localmente el 24 de octubre de 2026.
+- **Versión:** integrada en `main` en `73bccce` (Pull Request #18), con el router de autenticación modularizado y validaciones locales del 24 de octubre de 2026.
 
 ## 1. Propósito, problemática y visión general
 
@@ -117,10 +117,10 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 
 ## 7. Plan de trabajo y evolución
 
-- **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; `schema_migrations.py` actualiza columnas de autenticación, pero **no** ejecuta el SQL de archivado. Comprobar el esquema en cada instalación y aplicar la migración manual controlada cuando corresponda.
+- **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; `schema_migrations.py` actualiza columnas de autenticación, pero **no** ejecuta el SQL de archivado. El SQL se comprobó sobre una tabla antigua mínima con un registro ficticio; el modelo SQLAlchemy creó un esquema nuevo en otro PostgreSQL 16 aislado. Comprobar el esquema en cada instalación y aplicar la migración manual controlada cuando corresponda; faltan otras variantes históricas y una restauración de respaldo de prueba.
 - **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC, aislamiento, límites de ingesta y de pipelines y routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket implementados. La extracción de autenticación aprobó pruebas de regresión locales. Pendiente una auditoría integral de seguridad.
 - **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial, PDF y gestión React de pipelines implementados. URL del backend y token/401 HTTP centralizados en `api.js`. Los flujos habituales de autenticación se comprobaron manualmente; pendientes accesibilidad y pruebas automatizadas de navegador, incluida la expiración de sesión.
-- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 41 pruebas aisladas, ESLint y build aprobados en el Pull Request #17 para la base anterior al refactor. En el refactor aprobaron localmente 41 pruebas aisladas y 17 pruebas HTTP/seguridad. Pendientes CI con PostgreSQL real, clon limpio y revisión de contenedores productivos.
+- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 41 pruebas aisladas, ESLint y compilación de React aprobados en los dos trabajos del Pull Request #18, ya integrado. Con el refactor aprobaron localmente 41 pruebas aisladas y 17 pruebas HTTP/seguridad. Dos escenarios de esquema aprobaron en contenedores PostgreSQL 16 temporales independientes, sin modificar la base principal. Pendientes CI con PostgreSQL real, instalación desde clon limpio, restauración de respaldo y revisión de contenedores productivos.
 - **Evolución posterior:** conectores productivos, búsqueda histórica avanzada, alta disponibilidad, pruebas de carga y remediación, fuera del alcance comprobado.
 
 ## 8. Criterios de aceptación y evidencia
@@ -137,9 +137,11 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 - **CA-10:** Docker/README permiten repetir el arranque, los cambios de esquema se verifican sin destruir datos y las pruebas automatizadas son trazables.
 - **CA-11:** las decisiones y limitaciones de IA están documentadas sin atribuir monitoreo empresarial no demostrado.
 
-**Evidencia disponible y límites:** el repositorio contiene 58 pruebas: 41 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. Las 41 aisladas, ESLint y compilación del frontend aprobaron en GitHub Actions para el Pull Request #17, antes de la extracción de autenticación. Después del refactor, las tres suites aprobaron localmente el 24 de octubre de 2026: **58 de 58 casos en ejecuciones separadas**. Las 17 pruebas HTTP/seguridad no se ejecutan en el workflow actual y la evidencia local no sustituye pruebas de carga, navegador automatizado o producción.
+**Evidencia disponible y límites:** el repositorio contiene 58 pruebas: 41 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. Las 41 aisladas, ESLint y compilación del frontend aprobaron en GitHub Actions para el Pull Request #18, que incorporó la extracción de autenticación. Después del refactor, las tres suites aprobaron localmente el 24 de octubre de 2026: **58 de 58 casos en ejecuciones separadas**. Las 17 pruebas HTTP/seguridad no se ejecutan en el workflow actual y la evidencia local no sustituye pruebas de carga, navegador automatizado o producción.
 
 Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, respuesta 429, aislamiento entre usuarios, WebSocket y rotación/revocación de pipelines. Además, con la API reconstruida en Docker se validaron sus rutas y la conexión con PostgreSQL. Se confirmaron manualmente cinco flujos: login, rechazo de credenciales erróneas, recuperación por correo, inicio de sesión con contraseña nueva y separación de pipelines entre cuentas. Esto no acredita pruebas exhaustivas de PostgreSQL, carga, navegador automatizado, SMTP a gran escala y servicios externos; tampoco constituye certificación empresarial.
+
+**Evidencia de migración aislada:** el 24 de octubre de 2026, un PostgreSQL 16 temporal sin acceso a la red ni a los volúmenes de PluriOne permitió ejecutar `001_archivado_logico_anomalias.sql` sobre una tabla antigua mínima simulada. Se mantuvo su único registro ficticio y quedó activo (`archived = FALSE`, `archived_at = NULL`). En otro PostgreSQL 16 temporal y separado, SQLAlchemy creó las tablas `users`, `anomaly_logs`, `auth_rate_limits` y `pipelines` con las columnas de archivado. Ambos entornos se eliminaron; la base principal solo se inspeccionó en modo lectura y ya contenía las columnas. Estas pruebas no acreditan la migración de todas las variantes históricas, una restauración del respaldo ni la instalación completa desde un clon limpio.
 
 ## 9. Riesgos y restricciones
 
@@ -147,7 +149,7 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - Simulación sintética y ausencia de conectores empresariales permanentes.
 - Dependencia de proveedores Groq/SMTP y cuotas de servicio.
 - Paginación: la primera consulta o el PDF puede no incluir todos los registros de la base de datos.
-- Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): **no se ejecuta desde `schema_migrations.py`**. Su SQL incorpora columnas sin `IF NOT EXISTS`, por lo que no debe repetirse a ciegas. En una base de datos existente se debe verificar el esquema y hacer respaldo antes de aplicarlo manualmente si falta.
+- Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): **no se ejecuta desde `schema_migrations.py`**. Su SQL incorpora columnas sin `IF NOT EXISTS`, por lo que no debe repetirse a ciegas. Aprobó una simulación limitada con una tabla antigua mínima, pero faltan verificaciones de otras versiones históricas y restauración de respaldo. En una base de datos existente se debe verificar el esquema y hacer respaldo antes de aplicarlo manualmente si falta.
 - Pendientes pruebas manuales de portapapeles, concurrencia y resistencia bajo carga de los límites de ingesta y cantidad de pipelines.
 - CI con SQLite en memoria para las 41 pruebas aisladas; ESLint y build activos. Pendiente incorporar pruebas HTTP/archivado con servicios al workflow.
 - Dockerfiles todavía orientados a desarrollo; la preparación para producción no está demostrada.
@@ -158,14 +160,15 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [x] Simulador, endpoints de ingesta y administración de pipelines en el backend.
 - [x] WebSocket por usuario, dashboard, archivado lógico, restauración, chat y PDF.
 - [x] Códigos con HMAC y claves de pipeline con SHA-256.
-- [x] CI con 41 pruebas aisladas, ESLint y compilación de frontend; Pull Request #17 aprobado antes de este refactor.
+- [x] CI con 41 pruebas aisladas, ESLint y compilación de frontend; los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.
 - [x] Interfaz React de pipelines y configuración centralizada de API/WebSocket.
 - [x] Cuota de hasta 20 pipelines activos por usuario y límites de 60 solicitudes de ingesta por minuto implementados.
 - [x] Routers de autenticación, pipelines, métricas, chat, anomalías y WebSocket extraídos de `main.py`, con configuración compartida preservada.
 - [x] Centralizar la autorización JWT y el cierre por HTTP 401 de solicitudes Axios protegidas, sin redirigir ante un 401 de login público.
 - [x] Extraer las seis rutas de identidad a `auth_router.py` y repetir las 58 pruebas locales y los flujos esenciales de autenticación.
 - [ ] Modularizar `App.jsx`; automatizar pruebas del interceptor, sesión y accesibilidad en navegador.
-- [ ] Verificar esquema y procedimiento manual de migración de archivado en instalaciones nuevas y existentes, sin pérdida de datos.
+- [x] Verificar el SQL de archivado en una tabla antigua mínima simulada y el esquema nuevo generado por SQLAlchemy, con PostgreSQL 16 temporal aislado en ambos casos.
+- [ ] Verificar variantes históricas adicionales, restaurar un respaldo en un entorno de prueba e instalar todo el sistema desde un clon limpio.
 - [ ] Ampliar CI con PostgreSQL y pruebas HTTP/seguridad; la ejecución en `main` y ESLint ya están configurados.
 - [ ] Conectores productivos, pruebas de carga, seguridad integral y eventual despliegue empresarial.
 
@@ -175,4 +178,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** basado en `main` en `e13d0fd` (PR #17), más la extracción de autenticación validada en `refactor/auth-router-corte4`. Continúan pendientes la instalación completa desde un clon limpio, pruebas automatizadas de sesión en navegador, migración en otros entornos y confirmación formal de las sustituciones tecnológicas.
+**Estado:** integrado en `main` en `73bccce` (PR #18), con autenticación modularizada y dos escenarios limitados de migración/creación de esquema comprobados sobre PostgreSQL 16 temporal. Continúan pendientes la instalación completa desde un clon limpio, pruebas automatizadas de sesión en navegador, variantes históricas de migración, restauración de respaldo y confirmación formal de las sustituciones tecnológicas.

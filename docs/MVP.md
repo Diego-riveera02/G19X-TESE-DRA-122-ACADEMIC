@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico sobre `main` en `e13d0fd` (PR #17), con la extracción de autenticación revisada en la rama `refactor/auth-router-corte4` (24 de octubre de 2026).
+- **Versión:** MVP académico integrado en `main` en `73bccce` (PR #18), con autenticación modularizada y verificaciones locales del 24 de octubre de 2026.
 
 ## 1. Alcance del MVP
 
@@ -51,7 +51,7 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 - **Pipelines:** creación, listado, rotación y revocación disponibles en backend y React, comprobadas en escenarios manuales con cuentas distintas. La copia de claves tiene alternativa manual; falta cubrir diferentes permisos y condiciones de navegador.
 - **Persistencia de anomalías:** implementada en PostgreSQL, con marca de tiempo y estado; las métricas normales no se registran como anomalías en el flujo revisado.
 - **WebSocket y dashboard:** implementados, con recepción de eventos y gráficos; falta ampliar pruebas integrales de interfaz.
-- **Historial reversible:** archivado lógico, restauración y paginación disponibles. `schema_migrations.py` no aplica la migración SQL del archivado; su aplicación controlada requiere revisar antes las columnas y respaldar cualquier base existente.
+- **Historial reversible:** archivado lógico, restauración y paginación disponibles. `schema_migrations.py` no aplica la migración SQL del archivado; su aplicación controlada requiere revisar antes las columnas y respaldar cualquier base existente. El SQL se probó en una tabla antigua mínima simulada; el modelo actual se probó en una base temporal nueva. No se probó una migración integral de todos los esquemas históricos.
 - **J.A.R.V.I.S.:** chat, consultas restringidas y diagnóstico orientativo implementados; sujeto a disponibilidad y límites de Groq.
 - **PDF, Markdown y onboarding:** disponibles para los registros y mensajes visibles.
 - **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación; la instalación limpia completa aún requiere evidencia independiente.
@@ -77,7 +77,9 @@ El repositorio contiene **58 funciones de prueba**, pero no todas forman parte d
 - `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
 - `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
 
-GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. Los dos trabajos del Pull Request #17 finalizaron correctamente **antes** del refactor de autenticación. El 24 de octubre de 2026, en la rama del refactor, aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
+GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. **Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.** El 24 de octubre de 2026 aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
+
+**Pruebas aisladas adicionales de esquema (24 de octubre de 2026):** en un PostgreSQL 16 temporal, el archivo `001_archivado_logico_anomalias.sql` agregó las columnas de archivado a una tabla antigua mínima simulada y conservó su único registro ficticio activo. En otro PostgreSQL 16 temporal se comprobó que SQLAlchemy crea desde cero las tablas `users`, `anomaly_logs`, `auth_rate_limits` y `pipelines` con las columnas de archivado esperadas. Ambos contenedores se eliminaron. En la base principal solo se consultaron las columnas existentes; no se aplicó allí una migración. Faltan pruebas de variantes históricas reales, restauración del respaldo e instalación completa desde un clon limpio.
 
 Se confirmaron manualmente cinco puntos funcionales después del refactor: entrada con cuenta activa, rechazo de contraseña errónea/cierre de sesión, recepción de código SMTP, recuperación y nuevo acceso, y separación de pipelines entre dos usuarios. También se registró una métrica externa autenticada con HTTP 201 en un entorno local. Estas evidencias no son pruebas automáticas de navegador ni certificación de seguridad productiva; deben repetirse cuando cambie el código pertinente.
 
@@ -89,9 +91,10 @@ Se confirmaron manualmente cinco puntos funcionales después del refactor: entra
 - [x] PostgreSQL, dashboard y eventos WebSocket segmentados por usuario.
 - [x] Archivado y restauración del historial, PDF de los registros visibles y onboarding.
 - [x] J.A.R.V.I.S. con Groq, herramientas autorizadas y respuestas Markdown.
-- [x] 41 pruebas aisladas, 9 HTTP y 8 de seguridad/archivado aprobadas localmente después del refactor; CI del PR #17 aprobado previamente para la base integrada.
+- [x] 41 pruebas aisladas, 9 HTTP y 8 de seguridad/archivado aprobadas localmente después del refactor; ambos trabajos de CI del PR #18 aprobados.
 - [x] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo `frontend/.env.example`.
-- [ ] Prueba final del archivado con migraciones en esquemas antiguos y nuevos, con respaldo previo.
+- [x] Prueba limitada del SQL de archivado en una tabla antigua mínima simulada y de creación de esquema nuevo mediante SQLAlchemy, usando dos PostgreSQL 16 temporales y aislados.
+- [ ] Probar variantes adicionales de esquemas anteriores, restaurar un respaldo de prueba y repetir una instalación completa desde un clon limpio.
 - [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador automatizado.
 - [x] Límites de 60 solicitudes por minuto para ingesta y máximo de 20 pipelines activos por usuario.
 - [x] Routers de métricas, chat y WebSocket separados de `main.py`, además de anomalías y pipelines.
@@ -104,7 +107,7 @@ Se confirmaron manualmente cinco puntos funcionales después del refactor: entra
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, y la pantalla React de pipelines. Persisten tareas de modularización del frontend, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se habían comprobado en la base PostgreSQL local, pero `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
+Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, y la pantalla React de pipelines. Persisten tareas de modularización del frontend, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
 
 **Uso de IA y tecnología elegida:** el MVP implementa Groq para las respuestas de J.A.R.V.I.S. 2.0 y su llamada controlada a funciones backend. En la propuesta de referencia se plantean servicios Azure, que no se incorporaron al prototipo. Groq permite implementar el flujo conversacional previsto con la integración disponible en FastAPI; la aceptación académica formal de esta sustitución debe confirmarse con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo de análisis, programación y documentación; cada resultado requiere revisión y pruebas del equipo.
 
@@ -114,4 +117,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** base `e13d0fd` (PR #17) con router de autenticación validado localmente en `refactor/auth-router-corte4`. Siguen pendientes una instalación limpia reproducible, pruebas automatizadas de sesión en navegador y verificaciones integrales de ingesta/alertas en distintos entornos, además de las pruebas productivas.
+**Estado documental:** base integrada `73bccce` (PR #18), con autenticación modularizada y dos escenarios limitados de esquema PostgreSQL comprobados en contenedores temporales. Siguen pendientes una instalación limpia reproducible, variantes de migración históricas, restauración del respaldo, pruebas automatizadas de sesión en navegador y verificaciones integrales de ingesta/alertas en distintos entornos.

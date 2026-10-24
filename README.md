@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Corte de documentación de octubre de 2026. Base integrada en `main`: `e13d0fd` (PR #17). Esta revisión describe la extracción del router de autenticación desarrollada en `refactor/auth-router-corte4`, todavía pendiente de integración.**
+**Proyecto académico · Corte de documentación de octubre de 2026. Base integrada en `main`: `73bccce` (PR #18), que incorpora el router de autenticación, los interceptores Axios y la documentación de sus verificaciones.**
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -30,7 +30,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Las dos verificaciones del PR #17 fueron exitosas; el refactor de autenticación requiere verificaciones propias cuando se publique su Pull Request.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Las dos verificaciones del PR #18, correspondiente al refactor de autenticación, fueron exitosas.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -138,7 +138,9 @@ npm run dev
 
 SQLAlchemy crea tablas faltantes al iniciar la aplicación. `backend/app/schema_migrations.py` aplica automáticamente a PostgreSQL las actualizaciones de autenticación para `codigo_expira_en`, `codigo_intentos` y `codigo_proposito` cuando corresponden. Este módulo **no** migra las columnas de archivado lógico.
 
-**Archivado lógico:** el archivo `backend/migrations/001_archivado_logico_anomalias.sql` incorpora `archived` y `archived_at` a una tabla `anomaly_logs` existente. **Este SQL no se ejecuta automáticamente al iniciar la API.** Las bases nuevas creadas a partir del modelo actual ya incluyen esas columnas; una base anterior al archivado debe revisar su esquema y aplicar la migración pendiente de forma controlada, con respaldo previo. El archivo SQL no es idempotente: no debe ejecutarse si las columnas ya existen. Sigue pendiente validar la instalación completa con una base nueva y una base antigua, sin pérdida de datos.
+**Archivado lógico:** el archivo `backend/migrations/001_archivado_logico_anomalias.sql` incorpora `archived` y `archived_at` a una tabla `anomaly_logs` existente. **Este SQL no se ejecuta automáticamente al iniciar la API.** Las bases nuevas creadas a partir del modelo actual ya incluyen esas columnas; una base anterior al archivado debe revisar su esquema y aplicar la migración pendiente de forma controlada, con respaldo previo. El archivo SQL no es idempotente: no debe ejecutarse si las columnas ya existen.
+
+**Pruebas aisladas del 24 de octubre de 2026:** (1) en un PostgreSQL 16 temporal, una tabla antigua simulada con un registro recibió ambas columnas mediante el SQL real y conservó el registro activo (1 de 1); (2) en otro PostgreSQL 16 temporal, el modelo SQLAlchemy del backend creó desde cero `users`, `anomaly_logs`, `auth_rate_limits` y `pipelines`, con las columnas de archivado esperadas. Ambos entornos se eliminaron después. En la base principal se verificó que las columnas ya existen y se localizó un respaldo previo, sin ejecutar allí la migración. **La prueba antigua utilizó una tabla mínima simulada**, no todas las variantes históricas; tampoco se comprobó una restauración de respaldo ni una instalación completa del sistema desde un clon limpio.
 
 El volumen PostgreSQL usado por Docker Compose debe conservarse. Para detener los servicios sin borrar sus datos:
 
@@ -197,7 +199,7 @@ Estas operaciones requieren JWT y filtran los registros por usuario. La API util
 
 ## 8. Pruebas, verificaciones e integración continua
 
-La base integrada en `e13d0fd` y la rama del refactor de autenticación cuentan con **58 pruebas** distribuidas en tres archivos:
+La base integrada en `73bccce` cuenta con **58 pruebas** distribuidas en tres archivos:
 
 | Archivo | Pruebas | Cobertura y ejecución |
 | --- | ---: | --- |
@@ -236,9 +238,9 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones del Pull Request #17, antes de esta extracción del router de autenticación.
+El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones del Pull Request #18, que integró la extracción del router de autenticación.
 
-**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, y verificar migraciones en instalaciones nuevas y antiguas. El lint y la ejecución del workflow en `main` están configurados.
+**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, verificar variantes adicionales de esquemas históricos y ejecutar una instalación completa desde un clon limpio. El lint y la ejecución del workflow en `main` están configurados.
 
 **Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
 
@@ -250,7 +252,7 @@ El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Pytho
 - La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
 - J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
 - Las dependencias de Groq y SMTP están sujetas a disponibilidad y límites de sus proveedores.
-- Las imágenes Docker siguen orientadas a desarrollo/demostración. Falta comprobar el proceso de migración de archivado con volúmenes nuevos y antiguos sin pérdida de datos.
+- Las imágenes Docker siguen orientadas a desarrollo/demostración. La migración y creación de tablas aprobaron en bases temporales aisladas; falta repetir el proceso completo con volúmenes nuevos/antiguos representativos y comprobar la restauración de un respaldo.
 
 ### Transparencia sobre inteligencia artificial
 
@@ -271,14 +273,15 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Simulador automático e ingesta por JWT o clave de pipeline en la API.
 - [x] Alta, listado, rotación y revocación de pipelines desde el backend.
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
-- [x] CI con 41 pruebas aisladas, ESLint y compilación de React, con verificaciones satisfactorias del PR #17.
+- [x] CI con 41 pruebas aisladas, ESLint y compilación de React, con verificaciones satisfactorias del PR #18.
 - [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
 - [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; se comprobaron manualmente los flujos principales de identidad, pero faltan pruebas automatizadas de navegador y expiración de sesión.
 - [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py`, `websocket_router.py`, router de anomalías y `auth_router.py` para las seis operaciones de identidad. `main.py` conserva el montaje de routers y configuración compartida.
 - [x] Límites de ingesta y chat y máximo de 20 pipelines activos por usuario, con pruebas aisladas.
 - [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado se repitieron localmente y aprobaron tras el refactor; sigue pendiente integrarlas en CI con los servicios correspondientes.
-- [ ] Verificar migración de archivado en instalaciones nuevas y antiguas, y realizar una instalación limpia completa con evidencia reproducible.
+- [x] Verificar la migración sobre una tabla antigua simulada y la creación de esquema nuevo mediante SQLAlchemy, ambas en PostgreSQL 16 temporal y aislado.
+- [ ] Verificar variantes históricas adicionales, restauración de respaldo e instalación completa desde un clon limpio con evidencia reproducible.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** base `e13d0fd` (PR #17), con extracción de autenticación validada en la rama `refactor/auth-router-corte4`. Están pendientes una instalación completamente limpia, migraciones de archivado en bases nuevas y antiguas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
+**Estado documental:** base `73bccce` (PR #18), con autenticación modularizada y dos escenarios de esquema PostgreSQL validados en entornos temporales. Están pendientes una instalación completamente limpia, variantes de migración no simuladas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
