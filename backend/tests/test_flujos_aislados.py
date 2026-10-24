@@ -1883,5 +1883,62 @@ class PruebasFlujosAislados(unittest.TestCase):
 
         llamada.assert_called_once()
 
+
+    def test_40_routers_metricas_modularizados(self):
+        rutas_esperadas = (
+            "/metricas/",
+            "/metricas/externas/",
+        )
+
+        for ruta_esperada in rutas_esperadas:
+            encontradas = [
+                ruta
+                for ruta in self.main.app.routes
+                if getattr(ruta, "path", None) == ruta_esperada
+                and "POST" in (
+                    getattr(ruta, "methods", set()) or set()
+                )
+            ]
+
+            self.assertEqual(
+                len(encontradas),
+                1,
+                ruta_esperada,
+            )
+
+            self.assertEqual(
+                encontradas[0].endpoint.__module__,
+                "app.metricas_router",
+            )
+
+        sin_token = self.client.post(
+            "/metricas/",
+            json={
+                "pipeline": "Prueba",
+                "metrica": "latencia_ms",
+                "valor": 50,
+            },
+        )
+
+        self.assertEqual(
+            sin_token.status_code,
+            401,
+            sin_token.text,
+        )
+
+        sin_clave = self.client.post(
+            "/metricas/externas/",
+            json={
+                "metrica": "latencia_ms",
+                "valor": 50,
+            },
+        )
+
+        self.assertEqual(
+            sin_clave.status_code,
+            401,
+            sin_clave.text,
+        )
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
