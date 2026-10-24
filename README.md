@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Documentación del MVP actualizada hasta el commit `6e1d626` (PR #15, octubre de 2026).**
+**Proyecto académico · Documentación del MVP basada en `main` en `305f2bd` (PR #16) e incluye la centralización de Axios de esta revisión (octubre de 2026).**
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -14,6 +14,7 @@ PluriOne es un prototipo de observabilidad de datos construido con FastAPI, Post
 - **Simulador:** un proceso asíncrono en FastAPI genera métricas de demostración aproximadamente cada 30 segundos para usuarios activos, reutilizando la función que procesa la ingesta. La periodicidad no es una garantía de tiempo real estricto.
 - **Persistencia de anomalías:** PostgreSQL guarda las anomalías que requieren seguimiento. Las mediciones clasificadas como normales no se persisten como anomalías en el flujo actual.
 - **Dashboard:** React y Recharts muestran indicadores de latencia, calidad de datos y fallos, con alertas recibidas mediante WebSocket autenticado y segmentado por usuario.
+- **Cliente HTTP:** `frontend/src/api.js` añade JWT a peticiones protegidas mediante un interceptor Axios y centraliza la limpieza de sesión ante HTTP 401, sin redirigir por errores del login o la recuperación pública.
 - **Historial reversible:** consulta de anomalías activas o archivadas, archivado lógico y restauración, siempre con JWT y filtrado por usuario. La API pagina las consultas; la interfaz puede mostrar solo una parte del historial cuando hay más registros.
 - **J.A.R.V.I.S. 2.0:** asistente en español con Groq, contexto reciente limitado y función de consulta controlada por FastAPI. Puede contar anomalías y recuperar hasta 10 registros recientes del usuario, filtrados por estado.
 - **Presentación y reportes:** respuestas Markdown con tablas desplazables, botón «↓ Último», guía de bienvenida y exportación PDF de los registros cargados en la interfaz.
@@ -195,7 +196,7 @@ Estas operaciones requieren JWT y filtran los registros por usuario. La API util
 
 ## 8. Pruebas, verificaciones e integración continua
 
-La versión `6e1d626` cuenta con **58 pruebas** distribuidas en tres archivos:
+La base integrada en `305f2bd` cuenta con **58 pruebas** distribuidas en tres archivos:
 
 | Archivo | Pruebas | Cobertura y ejecución |
 | --- | ---: | --- |
@@ -230,7 +231,7 @@ El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Pytho
 ## 9. Limitaciones, riesgos y uso de IA
 
 - El simulador usa telemetría sintética y la API puede aceptar entradas externas autenticadas; no hay prueba de monitoreo continuo en AWS ni de integración automática con sistemas corporativos.
-- La interfaz permite administrar pipelines y utiliza una URL de API centralizada. Continúan pendientes las pruebas completas de navegador y la modularización adicional de componentes grandes.
+- La interfaz permite administrar pipelines y utiliza URL, token JWT y respuesta HTTP 401 centralizados en `api.js` para peticiones Axios. Continúan pendientes las pruebas completas de navegador y la modularización adicional de componentes grandes.
 - Los límites de ingesta y cuota de pipelines están implementados y cubiertos por pruebas aisladas; no se han realizado pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
 - La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
 - J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
@@ -258,6 +259,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
 - [x] CI con 41 pruebas aisladas, ESLint y compilación de React, con verificaciones satisfactorias del PR #15.
 - [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
+- [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; falta comprobar el flujo real en navegador.
 - [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py` y `websocket_router.py`, además del router de anomalías. La autenticación aún permanece en `main.py`.
 - [x] Límites de ingesta y chat y máximo de 20 pipelines activos por usuario, con pruebas aisladas.
 - [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado aprobaron previamente de forma local; sigue pendiente integrarlas en CI con los servicios correspondientes y repetirlas en la versión actual.
@@ -265,4 +267,4 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** versión alineada con `main` en `6e1d626` (Pull Requests #12 al #15 integrados). Persisten pruebas de instalación limpia, migración de archivado, navegador y PostgreSQL completo; la entrega sigue siendo un MVP académico, no una certificación de producción.
+**Estado documental:** actualización de la base `305f2bd` (PR #16) con centralización de Axios incluida en esta revisión. Persisten pruebas de instalación limpia, migración de archivado, navegador y PostgreSQL completo; la entrega sigue siendo un MVP académico, no una certificación de producción.

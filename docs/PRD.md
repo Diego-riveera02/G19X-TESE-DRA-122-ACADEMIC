@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** actualizada hasta el merge `6e1d626` en `main` (Pull Request #15, octubre de 2026).
+- **Versión:** basada en el merge `305f2bd` en `main` (Pull Request #16) y actualizada con el interceptor Axios de esta revisión (octubre de 2026).
 
 ## 1. Propósito, problemática y visión general
 
@@ -80,7 +80,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
 - **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles, máximo de 20 pipelines activos por usuario y límite de 60 solicitudes por minuto para ingesta; falta validar su eficacia bajo carga y concurrencia reales.
 - **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
-- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket centralizada y routers independientes para anomalías, pipelines, chat, métricas y WebSocket. Pendiente separar las rutas de autenticación de `main.py`, reducir `App.jsx` y ampliar pruebas.
+- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para anomalías, pipelines, chat, métricas y WebSocket. Pendiente separar autenticación de `main.py`, reducir `App.jsx` y ampliar pruebas.
 
 ## 5. Arquitectura y flujo de datos
 
@@ -118,7 +118,7 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 
 - **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; `schema_migrations.py` actualiza columnas de autenticación, pero **no** ejecuta el SQL de archivado. Comprobar el esquema en cada instalación y aplicar la migración manual controlada cuando corresponda.
 - **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC, aislamiento, límites de ingesta y de pipelines y routers de anomalías, pipelines, métricas, chat y WebSocket implementados. Pendientes extracción de autenticación y auditoría integral.
-- **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial, PDF y gestión React de pipelines implementados. URL del backend centralizada. Pendientes accesibilidad y pruebas completas de navegador.
+- **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial, PDF y gestión React de pipelines implementados. URL del backend y token/401 HTTP centralizados en `api.js`. Pendientes accesibilidad y pruebas completas de navegador, incluida la expiración de sesión.
 - **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 41 pruebas aisladas, ESLint y build aprobados en el Pull Request #15. Pendientes CI con PostgreSQL real, pruebas HTTP, clon limpio y revisión de contenedores productivos.
 - **Evolución posterior:** conectores productivos, búsqueda histórica avanzada, alta disponibilidad, pruebas de carga y remediación, fuera del alcance comprobado.
 
@@ -161,7 +161,8 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [x] Interfaz React de pipelines y configuración centralizada de API/WebSocket.
 - [x] Cuota de hasta 20 pipelines activos por usuario y límites de 60 solicitudes de ingesta por minuto implementados.
 - [x] Routers de pipelines, métricas, chat, anomalías y WebSocket extraídos de `main.py`.
-- [ ] Extraer autenticación, modularizar `App.jsx` y centralizar el manejo de JWT/401 con interceptores Axios.
+- [x] Centralizar la autorización JWT y el cierre por HTTP 401 de solicitudes Axios protegidas, sin redirigir ante un 401 de login público.
+- [ ] Extraer autenticación y modularizar `App.jsx`; verificar el interceptor con pruebas de navegador.
 - [ ] Verificar esquema y procedimiento manual de migración de archivado en instalaciones nuevas y existentes, sin pérdida de datos.
 - [ ] Ampliar CI con PostgreSQL y pruebas HTTP/seguridad; la ejecución en `main` y ESLint ya están configurados.
 - [ ] Conectores productivos, pruebas de carga, seguridad integral y eventual despliegue empresarial.
@@ -172,4 +173,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** actualizado conforme a los cambios integrados hasta `6e1d626` (PR #15) y la evidencia disponible hasta el 23 de octubre de 2026. Continúan pendientes la prueba completa desde un clon limpio, la validación del procedimiento de migración en otros entornos y la confirmación formal de las sustituciones tecnológicas.
+**Estado:** basado en `main` en `305f2bd` (PR #16), con el cambio de Axios descrito en esta revisión. Continúan pendientes la prueba completa desde un clon limpio, el comportamiento de sesión en navegador, la migración en otros entornos y la confirmación formal de las sustituciones tecnológicas.
