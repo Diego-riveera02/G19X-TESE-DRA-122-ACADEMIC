@@ -1832,5 +1832,56 @@ class PruebasFlujosAislados(unittest.TestCase):
                 resultado.exception.headers,
             )
 
+
+    def test_39_chat_router_autenticado(self):
+        from types import SimpleNamespace
+
+        correo = "chat39@example.invalid"
+
+        self.activar(correo)
+        token = self.token(correo)
+
+        respuesta_ia = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content="Chat modularizado OK",
+                        tool_calls=[],
+                    )
+                )
+            ]
+        )
+
+        with patch.object(
+            self.main.client.chat.completions,
+            "create",
+            return_value=respuesta_ia,
+        ) as llamada:
+            respuesta = self.client.post(
+                "/chat/",
+                headers={
+                    "Authorization": "Bearer " + token
+                },
+                json={
+                    "anomaly_id": 0,
+                    "pregunta": "Prueba del router",
+                    "contexto_anomalia": "",
+                    "historial": [],
+                },
+            )
+
+        self.assertEqual(
+            respuesta.status_code,
+            200,
+            respuesta.text,
+        )
+
+        self.assertEqual(
+            respuesta.json()["respuesta"],
+            "Chat modularizado OK",
+        )
+
+        llamada.assert_called_once()
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
