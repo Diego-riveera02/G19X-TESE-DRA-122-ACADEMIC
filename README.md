@@ -295,3 +295,7 @@ frontend y autenticacion de la fase 12.48 se documentan en
 Estas pruebas incluyen verificaciones manuales y automatizadas
 aisladas. La entrega real de correo SMTP y las pruebas de navegador
 automatizadas continuan pendientes.
+
+## Validacion SMTP - Fase 12.49
+
+- [Evidencias de validacion SMTP y recuperacion](docs/VALIDACION_SMTP_12_49.md)
