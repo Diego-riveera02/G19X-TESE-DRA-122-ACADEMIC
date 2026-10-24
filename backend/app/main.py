@@ -83,9 +83,8 @@ from .email_utils import (
 )
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# Limites de solicitudes por IP de origen y ruta, compartidos por
-# las instancias mediante una tabla PostgreSQL.
-# El formato es ruta: (maximo de solicitudes, segundos de ventana).
+# Limites compartidos por las instancias mediante AuthRateLimit.
+# Formato: ruta -> (solicitudes permitidas, ventana en segundos).
 LIMITES_AUTENTICACION = {
     "/registro/": (20, 3600),
     "/login/": (15, 300),
@@ -95,62 +94,120 @@ LIMITES_AUTENTICACION = {
     "/recuperar-password/": (30, 600),
 }
 
+LIMITES_POR_IP = {
+    **LIMITES_AUTENTICACION,
+    "/metricas/": (60, 60),
+    "/metricas/externas/": (60, 60),
+    "/pipelines/": (60, 60),
+}
 
-@app.middleware("http")
-async def limitar_solicitudes_autenticacion(request: Request, call_next):
-    # No tocar el resto de rutas ni las conexiones WebSocket.
-    configuracion = LIMITES_AUTENTICACION.get(request.url.path)
-    if request.method != "POST" or configuracion is None:
-        return await call_next(request)
 
-    maximo, ventana_segundos = configuracion
-    origen = request.client.host if request.client else "origen-desconocido"
-    # No guardar direcciones IP en texto claro dentro de la tabla.
+def consumir_limite_solicitudes(
+    db: Session,
+    identificador: str,
+    maximo: int,
+    ventana_segundos: int,
+    detalle: str = "Demasiadas solicitudes. Intenta mas tarde.",
+) -> None:
+    """Contador atomico compartido entre middleware y endpoints."""
     clave = hmac.new(
         SECRET_KEY.encode("utf-8"),
-        f"{request.url.path}|{origen}".encode("utf-8"),
+        identificador.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
+
     ahora = datetime.now(timezone.utc).replace(tzinfo=None)
     limite_anterior = ahora - timedelta(seconds=ventana_segundos)
+
     tabla = models.AuthRateLimit
     vencida = tabla.inicio_ventana <= limite_anterior
 
-    # ON CONFLICT aplica el contador atomica y persistentemente,
-    # aun si llegan varias peticiones simultaneamente.
     insercion = pg_insert(tabla).values(
-        clave=clave, inicio_ventana=ahora, cantidad=1
+        clave=clave,
+        inicio_ventana=ahora,
+        cantidad=1,
     )
+
     instruccion = insercion.on_conflict_do_update(
         index_elements=[tabla.clave],
         set_={
             "inicio_ventana": case(
-                (vencida, ahora), else_=tabla.inicio_ventana
+                (vencida, ahora),
+                else_=tabla.inicio_ventana,
             ),
             "cantidad": case(
-                (vencida, 1), else_=tabla.cantidad + 1
+                (vencida, 1),
+                else_=tabla.cantidad + 1,
             ),
         },
-    ).returning(tabla.cantidad, tabla.inicio_ventana)
+    ).returning(
+        tabla.cantidad,
+        tabla.inicio_ventana,
+    )
 
-    with SessionLocal() as db:
-        cantidad, inicio_ventana = db.execute(instruccion).one()
-        db.commit()
+    cantidad, inicio_ventana = db.execute(instruccion).one()
+    db.commit()
 
     if cantidad > maximo:
         espera = max(
             1,
-            int((inicio_ventana + timedelta(seconds=ventana_segundos) - ahora)
-                .total_seconds()) + 1,
+            int(
+                (
+                    inicio_ventana
+                    + timedelta(seconds=ventana_segundos)
+                    - ahora
+                ).total_seconds()
+            ) + 1,
         )
-        return JSONResponse(
+
+        raise HTTPException(
             status_code=429,
-            content={"detail": "Demasiadas solicitudes. Intenta mas tarde."},
+            detail=detalle,
             headers={"Retry-After": str(espera)},
         )
 
-    return await call_next(request)
 
+@app.middleware("http")
+async def limitar_solicitudes_autenticacion(request: Request, call_next):
+    if request.method != "POST":
+        return await call_next(request)
+
+    ruta = request.url.path
+
+    # Crear, rotar y revocar comparten el limite de pipelines.
+    if ruta.startswith("/pipelines/"):
+        ruta = "/pipelines/"
+
+    configuracion = LIMITES_POR_IP.get(ruta)
+
+    if configuracion is None:
+        return await call_next(request)
+
+    maximo, ventana_segundos = configuracion
+
+    origen = (
+        request.client.host
+        if request.client
+        else "origen-desconocido"
+    )
+
+    try:
+        with SessionLocal() as db:
+            consumir_limite_solicitudes(
+                db,
+                f"{ruta}|{origen}",
+                maximo,
+                ventana_segundos,
+            )
+
+    except HTTPException as error:
+        return JSONResponse(
+            status_code=error.status_code,
+            content={"detail": error.detail},
+            headers=error.headers,
+        )
+
+    return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,
@@ -799,6 +856,13 @@ async def ingestar_metrica_externa(
             detail="Clave de pipeline invalida"
         )
 
+    consumir_limite_solicitudes(
+        db,
+        f"/metricas/externas/|pipeline:{pipeline.id}",
+        60,
+        60,
+    )
+
     return await registrar_metrica(
         db=db,
         user_id=usuario.id,
@@ -816,6 +880,13 @@ async def ingestar_metrica(
     current_user: models.User = Depends(get_current_user),
 ):
     """Registra telemetria de la cuenta autenticada."""
+    consumir_limite_solicitudes(
+        db,
+        f"/metricas/|usuario:{current_user.id}",
+        60,
+        60,
+    )
+
     return await registrar_metrica(
         db=db,
         user_id=current_user.id,
@@ -837,73 +908,14 @@ def limitar_chat_por_usuario(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Limita el chat por usuario autenticado usando PostgreSQL."""
-    maximo = 6
-    ventana_segundos = 60
-
-    identificador = (
-        f"/chat/|usuario:{current_user.id}"
-    ).encode("utf-8")
-
-    clave = hmac.new(
-        SECRET_KEY.encode("utf-8"),
-        identificador,
-        hashlib.sha256,
-    ).hexdigest()
-
-    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
-    limite_anterior = ahora - timedelta(seconds=ventana_segundos)
-
-    tabla = models.AuthRateLimit
-    vencida = tabla.inicio_ventana <= limite_anterior
-
-    insercion = pg_insert(tabla).values(
-        clave=clave,
-        inicio_ventana=ahora,
-        cantidad=1,
+    """Conserva el limite de seis mensajes por minuto y usuario."""
+    consumir_limite_solicitudes(
+        db,
+        f"/chat/|usuario:{current_user.id}",
+        6,
+        60,
+        detalle="Limite del chat alcanzado. Intenta mas tarde.",
     )
-
-    instruccion = insercion.on_conflict_do_update(
-        index_elements=[tabla.clave],
-        set_={
-            "inicio_ventana": case(
-                (vencida, ahora),
-                else_=tabla.inicio_ventana,
-            ),
-            "cantidad": case(
-                (vencida, 1),
-                else_=tabla.cantidad + 1,
-            ),
-        },
-    ).returning(
-        tabla.cantidad,
-        tabla.inicio_ventana,
-    )
-
-    cantidad, inicio_ventana = db.execute(
-        instruccion
-    ).one()
-
-    db.commit()
-
-    if cantidad > maximo:
-        espera = max(
-            1,
-            int(
-                (
-                    inicio_ventana
-                    + timedelta(seconds=ventana_segundos)
-                    - ahora
-                ).total_seconds()
-            ) + 1,
-        )
-
-        raise HTTPException(
-            status_code=429,
-            detail="Limite del chat alcanzado. Intenta mas tarde.",
-            headers={"Retry-After": str(espera)},
-        )
-
 
 @app.post("/chat/")
 def chat_causa_raiz(

@@ -7,6 +7,9 @@ from .database import get_db
 from .pipeline_keys import emitir_clave, calcular_hash
 
 
+MAX_PIPELINES_ACTIVOS = 20
+
+
 def crear_router_pipelines(get_current_user):
     router = APIRouter()
 
@@ -16,14 +19,29 @@ def crear_router_pipelines(get_current_user):
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        pipeline = models.Pipeline(
-            user_id=current_user.id,
-            nombre=entrada.nombre,
-            clave_hash="0" * 64,
-            revocado=False
-        )
-
         try:
+            # Serializa las creaciones del mismo usuario en PostgreSQL.
+            db.query(models.User.id).filter(
+                models.User.id == current_user.id
+            ).with_for_update().one()
+
+            activos = db.query(models.Pipeline).filter(
+                models.Pipeline.user_id == current_user.id,
+                models.Pipeline.revocado.is_(False)
+            ).count()
+
+            if activos >= MAX_PIPELINES_ACTIVOS:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Limite de pipelines activos alcanzado"
+                )
+
+            pipeline = models.Pipeline(
+                user_id=current_user.id,
+                nombre=entrada.nombre,
+                clave_hash="0" * 64,
+                revocado=False
+            )
             db.add(pipeline)
             db.flush()
 
