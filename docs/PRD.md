@@ -2,15 +2,15 @@
 
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial (PluriOne).
 - **Empresa vinculada:** PluriOne S.A. de C.V.
-- **Autor señalado en el documento original:** Diego Rivera Aguilar.
+- **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión descrita:** tercer corte académico, con referencia al merge `5b0fa07` en `main` y pruebas verificadas el 23 de octubre de 2026.
+- **Versión:** actualizada hasta el merge `6e1d626` en `main` (Pull Request #15, octubre de 2026).
 
 ## 1. Propósito, problemática y visión general
 
 En los pipelines de datos, los retrasos, los valores inconsistentes y los fallos pueden pasar inadvertidos si la información está dispersa. PluriOne busca centralizar la recepción y clasificación de métricas, la consulta de anomalías y las alertas para apoyar el seguimiento y la investigación técnica.
 
-La versión revisada combina **un simulador de demostración** con **endpoints de ingesta autenticada**. Puede aceptar métricas por JWT o clave de pipeline, pero no se ha demostrado que esté conectado de manera permanente con AWS o infraestructura corporativa real. J.A.R.V.I.S. 2.0 ofrece hipótesis orientativas, no confirmaciones autónomas de causas raíz.
+El MVP combina **un simulador de demostración** con **endpoints de ingesta autenticada**. Puede aceptar métricas por JWT o clave de pipeline, pero no se ha demostrado que esté conectado de manera permanente con AWS o infraestructura corporativa real. J.A.R.V.I.S. 2.0 ofrece hipótesis orientativas, no confirmaciones autónomas de causas raíz.
 
 ## 2. Usuarios y objetivos del producto
 
@@ -38,7 +38,7 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - Dashboard React/Vite, gráficas, feed con marca temporal de backend y WebSocket autenticado por usuario.
 - Consulta, archivado lógico y restauración de historial con filtrado por cuenta y paginación.
 - Asistente Groq con function calling limitado a herramientas backend autorizadas, Markdown, onboarding y exportación PDF de registros cargados.
-- Docker Compose para demostración y CI con 32 pruebas aisladas, ESLint y compilación de React en Node.js 22.
+- Docker Compose para demostración y CI con 41 pruebas aisladas, ESLint y compilación de React en Node.js 22.
 
 **Fuera del alcance comprobado o pendiente de trabajo:**
 
@@ -48,7 +48,7 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - Consultas conversacionales arbitrarias por fechas, métricas o palabras clave; la herramienta actual filtra por estado.
 - Memoria conversacional persistente, alta disponibilidad y garantías operativas empresariales.
 - Pruebas exhaustivas de carga, seguridad, navegador y migración de todos los esquemas.
-- Cuotas de ingesta y máximos de pipelines por usuario suficientemente verificados para producción.
+- Garantías de resistencia a abuso bajo carga real y operación productiva de las cuotas actuales.
 
 ## 4. Requisitos funcionales e historias de usuario
 
@@ -78,9 +78,9 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - **RNF-05 — Usabilidad:** gráficas, feed, chat y tablas legibles, con desplazamiento dentro de su área.
 - **RNF-06 — IA responsable:** diferenciar telemetría sintética, registros observados e hipótesis; no atribuir inspecciones externas inexistentes.
 - **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
-- **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles; completar políticas de ingesta y cuotas de pipelines.
+- **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles, máximo de 20 pipelines activos por usuario y límite de 60 solicitudes por minuto para ingesta; falta validar su eficacia bajo carga y concurrencia reales.
 - **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
-- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket centralizada y rutas de pipelines extraídas a un router independiente. Pendiente continuar modularizando componentes grandes y ampliar las pruebas.
+- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket centralizada y routers independientes para anomalías, pipelines, chat, métricas y WebSocket. Pendiente separar las rutas de autenticación de `main.py`, reducir `App.jsx` y ampliar pruebas.
 
 ## 5. Arquitectura y flujo de datos
 
@@ -102,24 +102,24 @@ La versión revisada combina **un simulador de demostración** con **endpoints d
 - `POST /pipelines/{pipeline_id}/rotar/` y `POST /pipelines/{pipeline_id}/revocar/` — rotar o revocar con JWT.
 - `GET /anomalias/`, `DELETE /anomalias/`, `GET /anomalias/archivadas/`, `POST /anomalias/restaurar/` — historial protegido y reversible.
 
-La información anterior documenta rutas existentes, no demuestra que se hayan ensayado todas con sistemas productivos.
+Estas rutas forman parte del código del MVP; la prueba completa de extremo a extremo con una instalación desde cero continúa pendiente.
 
 ## 6. Seguridad y uso responsable de inteligencia artificial
 
 Los códigos SMTP de verificación y recuperación expiran después de 10 minutos, se limitan a cinco intentos y se separan por propósito. Su protección usa HMAC y `hmac.compare_digest` en `backend/app/verification_codes.py`. Las claves emitidas para pipelines son diferentes: `backend/app/pipeline_keys.py` utiliza SHA-256 y `hmac.compare_digest`. La clave debe copiarse al emitirla o rotarla, sin registrar su texto completo en la base de datos ni en documentos.
 
-El backend también incorpora autenticación JWT, rechazo de usuarios inactivos, limitación de solicitudes de autenticación, restricciones de herramientas de IA y una respuesta de recuperación que no revela públicamente la existencia de una cuenta. **Pendientes:** rate limits para ingesta, límites de cantidad de pipelines y auditoría de seguridad integral.
+El backend también incorpora autenticación JWT, rechazo de usuarios inactivos, limitación de solicitudes de autenticación, ingesta limitada a 60 solicitudes por minuto y un máximo de 20 pipelines activos por cuenta. La recuperación no revela públicamente si existe una cuenta. **Pendientes:** pruebas de carga, revisión de posibles carreras de concurrencia y auditoría integral de seguridad.
 
-**Elección tecnológica:** se identificó Groq en la implementación; el informe académico menciona Azure como tecnología prevista en otra propuesta. No se ha verificado Azure como integración activa ni la autorización formal del cambio de proveedor. Debe documentarse y justificarse la decisión con el profesor o la empresa; no es correcto suponer razones de costo, rapidez o compatibilidad sin evidencia.
+**Elección tecnológica:** el prototipo utiliza Groq para generar respuestas y realizar llamadas controladas a funciones backend en J.A.R.V.I.S. 2.0. La propuesta empresarial de referencia menciona Azure OpenAI Service y otras herramientas Azure; esas integraciones no forman parte del MVP implementado. Esta sustitución permite demostrar el flujo conversacional y su autorización desde FastAPI sin depender de servicios empresariales Azure. Se debe conservar la justificación académica y confirmar su aceptación formal con el profesor o la empresa; no se afirman ventajas de costo o rendimiento no medidas.
 
 **Declaración de asistencia:** durante el desarrollo y la revisión se utilizó IA generativa como apoyo para el análisis, propuestas de código y documentación. Las modificaciones deben contrastarse con el repositorio y las pruebas; el equipo conserva la responsabilidad técnica y académica.
 
 ## 7. Plan de trabajo y evolución
 
-- **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; comprobación de migraciones de archivado pendiente para entornos nuevos/antiguos.
-- **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC, aislamiento y router de pipelines implementados. Pendientes cuotas específicas de ingesta, modularización adicional y auditoría integral.
+- **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; `schema_migrations.py` actualiza columnas de autenticación, pero **no** ejecuta el SQL de archivado. Comprobar el esquema en cada instalación y aplicar la migración manual controlada cuando corresponda.
+- **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC, aislamiento, límites de ingesta y de pipelines y routers de anomalías, pipelines, métricas, chat y WebSocket implementados. Pendientes extracción de autenticación y auditoría integral.
 - **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial, PDF y gestión React de pipelines implementados. URL del backend centralizada. Pendientes accesibilidad y pruebas completas de navegador.
-- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 32 pruebas aisladas, ESLint y build aprobados. Pendientes CI con PostgreSQL real, pruebas HTTP y revisión de contenedores productivos.
+- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 41 pruebas aisladas, ESLint y build aprobados en el Pull Request #15. Pendientes CI con PostgreSQL real, pruebas HTTP, clon limpio y revisión de contenedores productivos.
 - **Evolución posterior:** conectores productivos, búsqueda histórica avanzada, alta disponibilidad, pruebas de carga y remediación, fuera del alcance comprobado.
 
 ## 8. Criterios de aceptación y evidencia
@@ -136,7 +136,7 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 - **CA-10:** Docker/README permiten repetir el arranque, los cambios de esquema se verifican sin destruir datos y las pruebas automatizadas son trazables.
 - **CA-11:** las decisiones y limitaciones de IA están documentadas sin atribuir monitoreo empresarial no demostrado.
 
-**Evidencia disponible y límites:** el repositorio contiene 49 pruebas: 32 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. Las 32 aisladas aprobaron en GitHub Actions y las otras 17 aprobaron localmente el 23 de octubre de 2026 con FastAPI, React y PostgreSQL disponibles. CI también aprobó ESLint y la compilación del frontend para el Pull Request #10. Las 17 pruebas HTTP no forman parte del workflow y estas verificaciones no sustituyen pruebas de carga, SMTP real, navegador o producción.
+**Evidencia disponible y límites:** el repositorio contiene 58 pruebas: 41 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. Las 41 aisladas, ESLint y la compilación del frontend aprobaron en GitHub Actions para el Pull Request #15. Las otras 17 habían aprobado localmente el 23 de octubre de 2026, **antes** de los últimos cambios de modularización; aún deben repetirse contra el estado actual. No se ejecutan en el workflow y estos resultados no sustituyen pruebas de carga, SMTP real, navegador o producción.
 
 Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, respuesta 429, aislamiento entre usuarios, WebSocket y rotación/revocación de pipelines. Esto no acredita pruebas exhaustivas de PostgreSQL, carga, navegador, SMTP y servicios externos. Las comprobaciones manuales documentadas de identidad, chat y dashboard son antecedentes locales, no una certificación empresarial.
 
@@ -146,9 +146,9 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - Simulación sintética y ausencia de conectores empresariales permanentes.
 - Dependencia de proveedores Groq/SMTP y cuotas de servicio.
 - Paginación: la primera consulta o el PDF puede no incluir todos los registros de la base de datos.
-- Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): no se ha confirmado a partir de los archivos aportados que se ejecute automáticamente en todos los entornos. Requiere prueba con volumen nuevo y volumen existente, previo respaldo.
-- Pendientes las pruebas manuales completas de portapapeles y los límites robustos de ingesta y cantidad de pipelines.
-- CI con SQLite en memoria para las 32 pruebas aisladas; ESLint y build activos. Pendiente incorporar pruebas HTTP/archivado con servicios al workflow.
+- Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): **no se ejecuta desde `schema_migrations.py`**. Su SQL incorpora columnas sin `IF NOT EXISTS`, por lo que no debe repetirse a ciegas. En una base de datos existente se debe verificar el esquema y hacer respaldo antes de aplicarlo manualmente si falta.
+- Pendientes pruebas manuales de portapapeles, concurrencia y resistencia bajo carga de los límites de ingesta y cantidad de pipelines.
+- CI con SQLite en memoria para las 41 pruebas aisladas; ESLint y build activos. Pendiente incorporar pruebas HTTP/archivado con servicios al workflow.
 - Dockerfiles todavía orientados a desarrollo; la preparación para producción no está demostrada.
 
 ## 10. Lista de verificación del producto
@@ -157,10 +157,12 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [x] Simulador, endpoints de ingesta y administración de pipelines en el backend.
 - [x] WebSocket por usuario, dashboard, archivado lógico, restauración, chat y PDF.
 - [x] Códigos con HMAC y claves de pipeline con SHA-256.
-- [x] CI con 32 pruebas aisladas y compilación de frontend; ejecución satisfactoria documentada.
+- [x] CI con 41 pruebas aisladas, ESLint y compilación de frontend; Pull Request #15 aprobado.
 - [x] Interfaz React de pipelines y configuración centralizada de API/WebSocket.
-- [ ] Modularización adicional, cuota de pipelines y rate limits de ingesta.
-- [ ] Migración de archivado validada automáticamente, sin daño a datos existentes.
+- [x] Cuota de hasta 20 pipelines activos por usuario y límites de 60 solicitudes de ingesta por minuto implementados.
+- [x] Routers de pipelines, métricas, chat, anomalías y WebSocket extraídos de `main.py`.
+- [ ] Extraer autenticación, modularizar `App.jsx` y centralizar el manejo de JWT/401 con interceptores Axios.
+- [ ] Verificar esquema y procedimiento manual de migración de archivado en instalaciones nuevas y existentes, sin pérdida de datos.
 - [ ] Ampliar CI con PostgreSQL y pruebas HTTP/seguridad; la ejecución en `main` y ESLint ya están configurados.
 - [ ] Conectores productivos, pruebas de carga, seguridad integral y eventual despliegue empresarial.
 
@@ -170,4 +172,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** documento actualizado conforme a los cambios integrados hasta `5b0fa07` y las verificaciones locales del 23 de octubre de 2026. Continúan pendientes las pruebas de producción y la aprobación formal de las sustituciones tecnológicas.
+**Estado:** actualizado conforme a los cambios integrados hasta `6e1d626` (PR #15) y la evidencia disponible hasta el 23 de octubre de 2026. Continúan pendientes la prueba completa desde un clon limpio, la validación del procedimiento de migración en otros entornos y la confirmación formal de las sustituciones tecnológicas.

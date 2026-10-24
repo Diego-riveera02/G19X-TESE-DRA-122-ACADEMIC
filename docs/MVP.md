@@ -1,9 +1,9 @@
 # Producto Mínimo Viable (MVP) — PluriOne
 
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
-- **Autor señalado en el documento original:** Diego Rivera Aguilar.
+- **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico del tercer corte, actualizado hasta el merge `5b0fa07` y las verificaciones del 23 de octubre de 2026.
+- **Versión:** MVP académico actualizado hasta el merge `6e1d626` (Pull Request #15, octubre de 2026).
 
 ## 1. Alcance del MVP
 
@@ -21,7 +21,7 @@ Las claves de pipeline tienen un mecanismo diferente: se muestran al emitirlas/r
 
 El simulador asíncrono de FastAPI genera métricas sintéticas aproximadamente cada 30 segundos para los usuarios activos, sin un botón de inyección manual. Utiliza el mismo servicio de clasificación que la ingesta autenticada. Las anomalías relevantes se guardan en PostgreSQL; las mediciones normales no se persisten como anomalías en el flujo actual.
 
-La API dispone de `POST /metricas/` con JWT y `POST /metricas/externas/` con `X-Pipeline-Key`. La creación, consulta, rotación y revocación de pipelines están implementadas en backend y React. Las rutas de administración se separaron en `backend/app/pipelines_router.py`.
+La API dispone de `POST /metricas/` con JWT y `POST /metricas/externas/` con `X-Pipeline-Key`. La creación, consulta, rotación y revocación de pipelines están implementadas en backend y React. Hay un límite de 20 pipelines activos por usuario y hasta 60 solicitudes por minuto para ingesta. Los endpoints de métricas y pipelines se separaron en `backend/app/metricas_router.py` y `backend/app/pipelines_router.py`.
 
 ### 1.3. Dashboard, historial y alertas
 
@@ -37,7 +37,7 @@ El frontend envía un contexto limitado de mensajes recientes, muestra Markdown 
 
 ### 1.5. Infraestructura
 
-FastAPI, PostgreSQL, WebSocket y React/Vite funcionan en un entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. Existe un workflow de GitHub Actions con pruebas aisladas y compilación de React. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
+FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. GitHub Actions ejecuta 41 pruebas aisladas, ESLint y compilación de React con Node.js 22. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
 
 ## 2. Estado verificable de las funcionalidades
 
@@ -48,7 +48,7 @@ FastAPI, PostgreSQL, WebSocket y React/Vite funcionan en un entorno local de des
 - **Pipelines:** creación, listado, rotación y revocación disponibles en backend y React. La copia de claves tiene alternativa manual; falta confirmar su funcionamiento en distintas condiciones del navegador.
 - **Persistencia de anomalías:** implementada en PostgreSQL, con marca de tiempo y estado; las métricas normales no se registran como anomalías en el flujo revisado.
 - **WebSocket y dashboard:** implementados, con recepción de eventos y gráficos; falta ampliar pruebas integrales de interfaz.
-- **Historial reversible:** archivado lógico, restauración y paginación disponibles. La migración correspondiente aún debe verificarse en una instalación nueva y una existente.
+- **Historial reversible:** archivado lógico, restauración y paginación disponibles. `schema_migrations.py` no aplica la migración SQL del archivado; su aplicación controlada requiere revisar antes las columnas y respaldar cualquier base existente.
 - **J.A.R.V.I.S.:** chat, consultas restringidas y diagnóstico orientativo implementados; sujeto a disponibilidad y límites de Groq.
 - **PDF, Markdown y onboarding:** disponibles para los registros y mensajes visibles.
 - **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación; la instalación limpia completa aún requiere evidencia independiente.
@@ -68,13 +68,13 @@ FastAPI, PostgreSQL, WebSocket y React/Vite funcionan en un entorno local de des
 
 ### Cobertura de pruebas y evidencia
 
-El repositorio revisado contiene **49 funciones de prueba**, pero no todas forman parte de la misma ejecución automática:
+El repositorio contiene **58 funciones de prueba**, pero no todas forman parte de la misma ejecución automática:
 
-- `backend/tests/test_flujos_aislados.py`: **32 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket y claves de pipelines. **Sí forman parte del workflow actual.**
+- `backend/tests/test_flujos_aislados.py`: **41 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket, claves de pipelines y regresiones de routers. **Sí forman parte del workflow actual.**
 - `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 23 de octubre de 2026; no se ejecutan en CI.**
 - `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 23 de octubre de 2026; no se ejecutan en CI.**
 
-GitHub Actions ejecuta 32 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. Los dos trabajos del Pull Request #10 finalizaron correctamente. El 23 de octubre de 2026 también aprobaron localmente 9 pruebas de integración HTTP y 8 de seguridad/archivado. No se afirma que todas las pruebas se ejecutaran juntas en CI.
+GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. Los dos trabajos del Pull Request #15 finalizaron correctamente. El 23 de octubre de 2026 también aprobaron localmente 9 pruebas de integración HTTP y 8 de seguridad/archivado; esas 17 pruebas **no se han repetido después de los últimos merges**. No se afirma que todas las pruebas se ejecutaran juntas en CI.
 
 Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranque local de FastAPI/PostgreSQL, compilación de React, recepción de eventos, chat, recuperación SMTP y rechazo de JWT no autorizados. La evidencia debe actualizarse después de las próximas modificaciones del frontend y backend.
 
@@ -86,20 +86,22 @@ Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranqu
 - [x] PostgreSQL, dashboard y eventos WebSocket segmentados por usuario.
 - [x] Archivado y restauración del historial, PDF de los registros visibles y onboarding.
 - [x] J.A.R.V.I.S. con Groq, herramientas autorizadas y respuestas Markdown.
-- [x] 32 pruebas aisladas aprobadas en CI, junto con ESLint y compilación de React; 17 pruebas HTTP/seguridad aprobadas localmente.
+- [x] 41 pruebas aisladas aprobadas en CI, junto con ESLint y compilación de React; 17 pruebas HTTP/seguridad aprobadas antes de los últimos merges.
 - [x] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo `frontend/.env.example`.
 - [ ] Prueba final del archivado con migraciones en esquemas antiguos y nuevos, con respaldo previo.
 - [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador.
-- [ ] Limitar frecuencia de ingesta y número de pipelines por usuario; continuar modularizando componentes distintos del router de pipelines.
+- [x] Límites de 60 solicitudes por minuto para ingesta y máximo de 20 pipelines activos por usuario.
+- [x] Routers de métricas, chat y WebSocket separados de `main.py`, además de anomalías y pipelines.
+- [ ] Extraer autenticación, separar componentes de `App.jsx` y centralizar JWT/401 mediante interceptores de Axios.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se completó la extracción del router de pipelines y la pantalla React correspondiente. Persisten tareas de modularización adicional, cuotas de uso y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Se verificó que las columnas de archivado existen en la base PostgreSQL actual, pero no se ha comprobado la ejecución de la migración en instalaciones nuevas o antiguas. Antes de migrar otro entorno, realizar un respaldo y comprobar su esquema.
+Se completó la extracción de routers de anomalías, pipelines, métricas, chat y WebSocket, y la pantalla React de pipelines. Persisten tareas de modularización de autenticación y frontend, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se habían comprobado en la base PostgreSQL local, pero `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
 
-**Uso de IA y tecnología elegida:** el backend implementa Groq; la auditoría menciona Azure como tecnología inicialmente prevista. La aprobación o justificación formal del cambio no está acreditada en la documentación examinada y corresponde confirmarla con el profesor o la empresa. Durante el desarrollo y las auditorías se utilizó asistencia de IA generativa para el análisis y la revisión documental; toda propuesta debe contrastarse con código y pruebas verificables.
+**Uso de IA y tecnología elegida:** el MVP implementa Groq para las respuestas de J.A.R.V.I.S. 2.0 y su llamada controlada a funciones backend. En la propuesta de referencia se plantean servicios Azure, que no se incorporaron al prototipo. Groq permite implementar el flujo conversacional previsto con la integración disponible en FastAPI; la aceptación académica formal de esta sustitución debe confirmarse con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo de análisis, programación y documentación; cada resultado requiere revisión y pruebas del equipo.
 
 ## 6. Conclusión y documentos relacionados
 
@@ -107,4 +109,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** actualizado con funcionalidades integradas hasta `5b0fa07` y resultados de pruebas del 23 de octubre de 2026. Las pruebas verifican escenarios concretos y no certifican un entorno de producción.
+**Estado documental:** actualizado con funcionalidades integradas hasta `6e1d626` (PR #15). Las pruebas verifican escenarios concretos; siguen pendientes el clon limpio y la comprobación completa de ingesta → clasificación → alerta en dashboard, además de las pruebas productivas.

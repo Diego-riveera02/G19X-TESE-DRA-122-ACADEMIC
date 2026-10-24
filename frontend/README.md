@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Documento consolidado para el tercer corte académico (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Documentación del frontend actualizada hasta el merge `6e1d626` (PR #15, octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -68,7 +68,7 @@ En la configuración local utilizada:
 - WebSocket: `ws://127.0.0.1:8000/ws/anomalias`
 - Frontend: `http://127.0.0.1:5173`
 
-La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. El backend puede configurarse sin modificar URL repetidas en los componentes.
+La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. Para desarrollo local, copiar el ejemplo a `frontend/.env` y ajustar `VITE_API_URL` cuando sea necesario; reiniciar Vite después de cambiarla. El backend puede configurarse sin modificar URL repetidas en los componentes. **Pendiente:** centralizar el encabezado `Authorization: Bearer` y la respuesta HTTP 401 mediante interceptores Axios en `api.js`, ya que la lógica sigue repartida entre pantallas.
 
 ### Rutas relevantes para la interfaz
 
@@ -107,13 +107,13 @@ Los códigos de verificación usan HMAC en el backend; las claves de pipeline us
 
 ## 6. Comprobaciones y cobertura de pruebas
 
-El repositorio contiene 49 funciones de prueba en backend:
+El repositorio contiene 58 funciones de prueba en backend:
 
-- **32 aisladas** en `test_flujos_aislados.py`, con SQLite en memoria: se ejecutan en el CI actual.
+- **41 aisladas** en `test_flujos_aislados.py`, con SQLite en memoria: se ejecutan en el CI actual.
 - **9 HTTP** en `test_integracion_http.py`: necesitan los servicios correspondientes y no se ejecutan en el workflow actual.
 - **8 de seguridad/archivado** en `test_seguridad_archivado.py`: fuera del workflow actual.
 
-GitHub Actions aprobó las 32 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #10. Además, el 23 de octubre de 2026 aprobaron localmente 9 pruebas HTTP de integración y 8 de seguridad/archivado. Esto no equivale a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
+GitHub Actions aprobó las 41 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #15. Además, el 23 de octubre de 2026 aprobaron localmente 9 pruebas HTTP de integración y 8 de seguridad/archivado, **antes** de los merges más recientes: estas 17 pruebas aún requieren nueva ejecución. Esto no equivale a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
 
 Comandos útiles desde la raíz:
 
@@ -130,6 +130,7 @@ La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las 
 ## 7. Seguridad, limitaciones y trabajo pendiente
 
 - La URL de API y WebSocket está centralizada; es necesario configurar `VITE_API_URL` correctamente en cada entorno.
+- El token JWT y las respuestas HTTP 401 todavía se manejan manualmente en distintas pantallas; falta un interceptor común de Axios.
 - La pantalla de pipelines existe; falta ampliar las pruebas manuales de copia, errores y accesibilidad.
 - El archivo `App.jsx` es grande; está pendiente extraer pantallas de verificación, recuperación y respuesta de J.A.R.V.I.S. sin modificar su comportamiento.
 - Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error; ESLint ya se ejecuta en CI.
@@ -137,7 +138,7 @@ La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las 
 - La interfaz no confirma incidentes productivos ni ejecuta acciones correctivas en sistemas externos.
 - La seguridad real de JWT, WebSocket, claves y aislamiento se valida en FastAPI y no debe depender de controles visuales.
 
-El proveedor de IA identificado es **Groq**. La auditoría menciona Azure como referencia prevista, pero no se acreditó una integración activa con Azure ni una aprobación formal del cambio. Durante el desarrollo y la revisión se utilizó asistencia de IA generativa como apoyo documental/técnico; los resultados deben validarse con código y pruebas.
+El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y permitir consultas de anomalías mediante una herramienta autorizada. La propuesta empresarial de referencia contempla servicios Azure, que no se integraron al prototipo; esta sustitución técnica debe justificarse y confirmarse académicamente con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo documental y técnico; los resultados se contrastan con el código y las pruebas.
 
 ## 8. Referencias y lista de verificación
 
@@ -151,6 +152,8 @@ El proveedor de IA identificado es **Groq**. La auditoría menciona Azure como r
 - [x] Compilación de producción del frontend confirmada en GitHub Actions.
 - [x] Pantalla de administración de pipelines.
 - [x] Centralización de API/WebSocket y creación de `frontend/.env.example`.
+- [x] ESLint y compilación de React aprobados en el CI del Pull Request #15.
+- [ ] Centralizar el token y la respuesta HTTP 401 mediante interceptores Axios.
 - [ ] Dividir componentes grandes y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** documentación actualizada hasta el merge `5b0fa07` y las verificaciones del 23 de octubre de 2026. No se considera una certificación de producción.
+**Estado:** documentación actualizada hasta el merge `6e1d626` (PR #15). Quedan pendientes pruebas de navegador y de extremo a extremo; no se considera una certificación de producción.

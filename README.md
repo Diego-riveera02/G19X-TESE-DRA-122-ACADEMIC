@@ -1,10 +1,10 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Documentación consolidada para el Corte 3 (octubre de 2026).**
+**Proyecto académico · Documentación del MVP actualizada hasta el commit `6e1d626` (PR #15, octubre de 2026).**
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
-**Alcance comprobado en el repositorio revisado:** existen endpoints de ingesta con JWT y clave de pipeline; **no** se ha demostrado una conexión permanente con AWS o con infraestructura empresarial productiva. El asistente propone hipótesis para investigar, no causas raíz confirmadas.
+**Alcance del MVP:** la ingesta por JWT o clave de pipeline está implementada. El proyecto no incluye conectores permanentes a AWS ni monitoreo de infraestructura empresarial productiva. J.A.R.V.I.S. propone hipótesis de investigación; no certifica causas raíz.
 
 ## 1. Funcionalidades implementadas
 
@@ -28,7 +28,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta 32 pruebas aisladas, ESLint y compilación de React en las ramas configuradas, incluida `main`.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Las dos verificaciones del PR #15 fueron exitosas.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -60,10 +60,10 @@ No compartir `.env`, claves JWT, claves de pipeline reales ni contraseñas en Gi
 - Los códigos de verificación y recuperación utilizan HMAC y `hmac.compare_digest` (`backend/app/verification_codes.py`).
 - **Mecanismo diferente:** las claves de pipeline se resumen con SHA-256 y se validan con `hmac.compare_digest` (`backend/app/pipeline_keys.py`). No describir estas claves como si usaran el mismo HMAC de los códigos.
 - La recuperación de cuenta evita revelar en su respuesta pública si un correo está registrado, según el comportamiento implementado y cubierto por pruebas aisladas.
-- Se aplican controles de intentos y limitación de solicitudes de autenticación; **todavía falta validar y fortalecer límites específicos de ingesta y cuotas de pipelines**.
+- Se aplican controles de intentos y límites a solicitudes sensibles. Los endpoints de ingesta tienen un límite de 60 solicitudes por minuto por origen y por usuario o pipeline, según la ruta. Cada usuario puede conservar hasta 20 pipelines activos; al intentar superar ese máximo, la API responde HTTP 409. El chat admite hasta seis solicitudes por minuto por usuario. Estas políticas tienen pruebas aisladas, pero aún requieren pruebas de carga y despliegue.
 - J.A.R.V.I.S. utiliza funciones backend permitidas; no ejecuta consultas SQL arbitrarias ni acciones correctivas sobre infraestructura externa.
 
-Ninguno de estos controles sustituye una auditoría exhaustiva de seguridad de producción.
+Estos controles forman parte de la seguridad del MVP. Una evaluación de seguridad para producción y pruebas de carga siguen fuera de las validaciones completadas.
 
 ## 5. Instalación y ejecución con Docker Compose
 
@@ -86,7 +86,7 @@ docker compose ps
 docker compose logs --tail 40 api
 ```
 
-La configuración revisada incluye `healthcheck` con `pg_isready` en PostgreSQL y dependencia de la API respecto de una base saludable. La documentación de FastAPI está disponible normalmente en `http://127.0.0.1:8000/docs`. El despliegue documentado es **de desarrollo/demostración**, no una configuración empresarial endurecida; el Dockerfile del backend todavía utiliza recarga de desarrollo.
+La configuración incluye `healthcheck` con `pg_isready` en PostgreSQL y dependencia de la API respecto de una base saludable. La documentación de FastAPI está disponible normalmente en `http://127.0.0.1:8000/docs`. El despliegue descrito es **de desarrollo/demostración**, no una configuración empresarial endurecida; el Dockerfile del backend utiliza recarga de desarrollo.
 
 ### 5.3. Ejecutar el frontend
 
@@ -134,9 +134,9 @@ npm run dev
 
 ### Esquema y migraciones
 
-SQLAlchemy crea tablas faltantes al iniciar la aplicación. `backend/app/schema_migrations.py` incluye migraciones documentadas para los campos de códigos `codigo_expira_en`, `codigo_intentos` y `codigo_proposito` y permite actualizar instalaciones anteriores sin perder los registros.
+SQLAlchemy crea tablas faltantes al iniciar la aplicación. `backend/app/schema_migrations.py` aplica automáticamente a PostgreSQL las actualizaciones de autenticación para `codigo_expira_en`, `codigo_intentos` y `codigo_proposito` cuando corresponden. Este módulo **no** migra las columnas de archivado lógico.
 
-**Archivado lógico:** existe además `backend/migrations/001_archivado_logico_anomalias.sql`, que añade `archived` y `archived_at` a `anomaly_logs`. La migración se aplicó en el entorno de desarrollo durante una auditoría anterior; **con los cuatro documentos recibidos no se pudo confirmar que esta migración específica se ejecute automáticamente en todas las instalaciones nuevas o antiguas**. Antes de aplicarla en otro entorno, comprobar el esquema y el arranque con datos de respaldo. No volver a ejecutar manualmente un SQL sin revisar si sus columnas ya existen.
+**Archivado lógico:** el archivo `backend/migrations/001_archivado_logico_anomalias.sql` incorpora `archived` y `archived_at` a una tabla `anomaly_logs` existente. **Este SQL no se ejecuta automáticamente al iniciar la API.** Las bases nuevas creadas a partir del modelo actual ya incluyen esas columnas; una base anterior al archivado debe revisar su esquema y aplicar la migración pendiente de forma controlada, con respaldo previo. El archivo SQL no es idempotente: no debe ejecutarse si las columnas ya existen. Sigue pendiente validar la instalación completa con una base nueva y una base antigua, sin pérdida de datos.
 
 El volumen PostgreSQL usado por Docker Compose debe conservarse. Para detener los servicios sin borrar sus datos:
 
@@ -180,9 +180,9 @@ curl -X POST 'http://127.0.0.1:8000/metricas/externas/' \
   -d '{"metrica":"latencia_ms","valor":850}'
 ```
 
-La clave mostrada es **ficticia e inválida**. Sustituirla por la clave real emitida al crear el pipeline y confirmar el esquema exacto del cuerpo en `http://127.0.0.1:8000/docs` o `backend/app/schemas.py` antes de probarlo: el ZIP aportado contiene documentos, no código para verificar el contrato del endpoint. Por tanto, este fragmento muestra el flujo esperado, **no una ejecución validada de extremo a extremo**.
+La clave mostrada es **ficticia e inválida**. Para una prueba real, reemplazarla por la clave emitida al crear el pipeline. Según `MetricaExternaEntrada` en `backend/app/schemas.py`, el cuerpo exige `metrica` (`latencia_ms`, `datos_corruptos_%` o `tasa_fallos_%`) y `valor` numérico entre 0 y 10000, con máximo de 100 para porcentajes. No admite propiedades extra: los datos inválidos reciben HTTP 422. El ejemplo de latencia 850 es válido como estructura, pero **no acredita por sí solo la prueba de punta a punta**; esta debe ejecutarse con una clave real y comprobarse en el dashboard.
 
-La ingesta autenticada tampoco implica la existencia de conectores automáticos a AWS u otros sistemas productivos. No está acreditado un límite de frecuencia para esas rutas ni una cuota máxima de pipelines por usuario.
+La ingesta autenticada no implica conectores automáticos a AWS ni otros sistemas productivos. La API aplica límites de 60 solicitudes por minuto a la ingesta y una cuota de 20 pipelines activos por usuario; las pruebas aisladas cubren estas restricciones. Quedan pendientes la validación integral con PostgreSQL y las pruebas de carga.
 
 ### 7.3. Archivado y restauración
 
@@ -195,15 +195,15 @@ Estas operaciones requieren JWT y filtran los registros por usuario. La API util
 
 ## 8. Pruebas, verificaciones e integración continua
 
-El repositorio revisado contiene **49 funciones de prueba** distribuidas en tres archivos:
+La versión `6e1d626` cuenta con **58 pruebas** distribuidas en tres archivos:
 
 | Archivo | Pruebas | Cobertura y ejecución |
 | --- | ---: | --- |
-| `backend/tests/test_flujos_aislados.py` | 32 | Flujos de identidad, seguridad, ingesta, WebSocket y pipelines con SQLite aislado. **Se ejecutan en CI.** |
+| `backend/tests/test_flujos_aislados.py` | 41 | Flujos de identidad, seguridad, límites de ingesta, chat, WebSocket y pipelines con SQLite aislado. **Se ejecutan en CI.** |
 | `backend/tests/test_integracion_http.py` | 9 | Pruebas HTTP y disponibilidad de API, frontend, CORS y PostgreSQL. **No se ejecutan en el CI actual.** |
 | `backend/tests/test_seguridad_archivado.py` | 8 | Rechazo de accesos no autorizados y rutas de historial. **No se ejecutan en el CI actual.** |
 
-El 23 de octubre de 2026 se aprobaron localmente las 9 pruebas de integración HTTP y las 8 pruebas de seguridad/archivado. Las 32 pruebas aisladas fueron aprobadas en CI. Son ejecuciones diferenciadas: no se afirma que las 49 pruebas se ejecutaron juntas en un mismo proceso.
+En el corte actual, las **41 pruebas aisladas** aprobaron localmente y el PR #15 obtuvo dos verificaciones exitosas en GitHub Actions. Las nueve pruebas HTTP y las ocho de seguridad/archivado aprobaron en ejecuciones locales anteriores del 23 de octubre de 2026, pero **no se han vuelto a ejecutar todas juntas tras los últimos cambios**. No debe confundirse el total de pruebas disponibles con una validación integral en un solo proceso.
 
 ### Ejecución local
 
@@ -221,9 +221,9 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta las 32 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las comprobaciones del Pull Request #10.
+El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones del Pull Request #15.
 
-**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, y verificar migraciones en instalaciones nuevas y antiguas. El lint y la ejecución del workflow en `main` ya están configurados.
+**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, y verificar migraciones en instalaciones nuevas y antiguas. El lint y la ejecución del workflow en `main` están configurados.
 
 **Antecedentes de verificación local:** se reportaron arranque de FastAPI y PostgreSQL, `/docs` con HTTP 200, compilación de Vite, pruebas de acceso con JWT, recuperación mediante SMTP y funcionamiento del chat/WebSocket. Esas comprobaciones corresponden a distintas sesiones de desarrollo, no a una campaña integral de pruebas de producción.
 
@@ -231,7 +231,7 @@ El workflow `.github/workflows/ci.yml` ejecuta las 32 pruebas aisladas con Pytho
 
 - El simulador usa telemetría sintética y la API puede aceptar entradas externas autenticadas; no hay prueba de monitoreo continuo en AWS ni de integración automática con sistemas corporativos.
 - La interfaz permite administrar pipelines y utiliza una URL de API centralizada. Continúan pendientes las pruebas completas de navegador y la modularización adicional de componentes grandes.
-- No se han demostrado cuotas para ingesta/pipelines, pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
+- Los límites de ingesta y cuota de pipelines están implementados y cubiertos por pruebas aisladas; no se han realizado pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
 - La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
 - J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
 - Las dependencias de Groq y SMTP están sujetas a disponibilidad y límites de sus proveedores.
@@ -239,16 +239,16 @@ El workflow `.github/workflows/ci.yml` ejecuta las 32 pruebas aisladas con Pytho
 
 ### Transparencia sobre inteligencia artificial
 
-El backend utiliza **Groq**, mientras que la revisión académica identifica **Azure** como tecnología contemplada en una propuesta anterior. No se identificó una integración Azure en el código revisado; la justificación y aceptación formal de la alternativa deben confirmarse con el profesor o la empresa. No se atribuyen beneficios de costo, rendimiento o aprobación sin evidencia.
+Para el MVP académico se integró **Groq** como proveedor de inferencia del asistente J.A.R.V.I.S. 2.0, con una API que permite generar respuestas y coordinar herramientas de consulta autorizadas en FastAPI. Esta decisión implementa el flujo conversacional previsto sin incorporar Azure OpenAI Service, Azure AI Search, Microsoft Purview ni Azure Monitor, que figuran en la propuesta empresarial pero **no forman parte de este prototipo**. La sustitución no significa equivalencia funcional con esos servicios ni demuestra una ventaja de costo o rendimiento. La justificación técnica debe contrastarse con la decisión y aceptación del equipo y del profesor; no se afirma una aprobación formal no documentada.
 
-Durante el desarrollo y la auditoría se utilizó **asistencia de IA generativa** para analizar problemas, proponer cambios y revisar documentación. El equipo sigue siendo responsable del código, las decisiones y la verificación de pruebas: ninguna respuesta generada por IA constituye, por sí sola, evidencia de funcionamiento.
+Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar problemas, proponer cambios y mejorar la documentación. El equipo conserva la responsabilidad sobre las decisiones, el código y la verificación de pruebas; las respuestas generadas no sustituyen la evidencia de ejecución.
 
 ## 10. Documentación y pendientes principales
 
 - [`docs/PRD.md`](docs/PRD.md): objetivos, requisitos funcionales y criterios de aceptación.
 - [`docs/MVP.md`](docs/MVP.md): alcance, estado verificable y exclusiones.
 - [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
-- `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos referidos en la documentación previa; su contenido no formó parte del ZIP revisado.
+- `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos empresariales y académicos de referencia, sujetos a disponibilidad en la entrega.
 
 ### Lista de verificación
 
@@ -256,12 +256,13 @@ Durante el desarrollo y la auditoría se utilizó **asistencia de IA generativa*
 - [x] Simulador automático e ingesta por JWT o clave de pipeline en la API.
 - [x] Alta, listado, rotación y revocación de pipelines desde el backend.
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
-- [x] CI con 32 pruebas aisladas y compilación de React, con ejecución satisfactoria documentada.
+- [x] CI con 41 pruebas aisladas, ESLint y compilación de React, con verificaciones satisfactorias del PR #15.
 - [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
-- [x] Extracción de las rutas de pipelines a `backend/app/pipelines_router.py`; permanece pendiente modularizar otros componentes extensos.
-- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado aprobaron localmente; sigue pendiente integrarlas en CI con los servicios correspondientes.
+- [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py` y `websocket_router.py`, además del router de anomalías. La autenticación aún permanece en `main.py`.
+- [x] Límites de ingesta y chat y máximo de 20 pipelines activos por usuario, con pruebas aisladas.
+- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado aprobaron previamente de forma local; sigue pendiente integrarlas en CI con los servicios correspondientes y repetirlas en la versión actual.
 - [ ] Verificar migración de archivado en instalaciones nuevas y antiguas, y realizar una instalación limpia completa con evidencia reproducible.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** actualización del tercer corte tras los Pull Requests #9 y #10, tomando como referencia `main` en `5b0fa07` y las pruebas locales del 23 de octubre de 2026. No equivale a una certificación de producción.
+**Estado documental:** versión alineada con `main` en `6e1d626` (Pull Requests #12 al #15 integrados). Persisten pruebas de instalación limpia, migración de archivado, navegador y PostgreSQL completo; la entrega sigue siendo un MVP académico, no una certificación de producción.
