@@ -1940,5 +1940,32 @@ class PruebasFlujosAislados(unittest.TestCase):
             sin_clave.text,
         )
 
+
+    def test_41_router_websocket_modularizado(self):
+        from app.websocket_router import ConnectionManager
+
+        self.assertIs(
+            self.main.ConnectionManager,
+            ConnectionManager,
+        )
+
+        self.assertIsInstance(
+            self.main.manager,
+            ConnectionManager,
+        )
+
+        rutas = [
+            ruta
+            for ruta in self.main.app.routes
+            if getattr(ruta, "path", None) == "/ws/anomalias"
+        ]
+
+        self.assertEqual(len(rutas), 1)
+
+        self.assertEqual(
+            rutas[0].endpoint.__module__,
+            "app.websocket_router",
+        )
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
