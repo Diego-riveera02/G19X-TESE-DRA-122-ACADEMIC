@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico basado en el merge `305f2bd` (PR #16) y actualizado con los interceptores Axios de esta revisión (octubre de 2026).
+- **Versión:** MVP académico sobre `main` en `e13d0fd` (PR #17), con la extracción de autenticación revisada en la rama `refactor/auth-router-corte4` (24 de octubre de 2026).
 
 ## 1. Alcance del MVP
 
@@ -14,6 +14,8 @@ La API recibe métricas con JWT o clave de pipeline; esto es distinto de afirmar
 ### 1.1. Autenticación y seguridad
 
 Registro con contraseñas protegidas mediante hash, verificación de seis dígitos por SMTP, reenvío de códigos, activación de cuentas, inicio de sesión JWT y recuperación de contraseña desde React. Los códigos vencen después de 10 minutos, permiten hasta cinco intentos y se protegen con HMAC. El backend rechaza cuentas inexistentes o inactivas y comprueba el acceso a rutas y eventos WebSocket por usuario.
+
+Las seis rutas HTTP de identidad están agrupadas en `backend/app/auth_router.py`: registro, verificación, reenvío, solicitud de recuperación, restablecimiento e inicio de sesión. `main.py` conserva la configuración global y el montaje del router. Se mantuvieron las rutas públicas y los controles existentes; no se introdujo un nuevo mecanismo de autenticación.
 
 Las claves de pipeline tienen un mecanismo diferente: se muestran al emitirlas/rotarlas, se almacenan como hash SHA-256 y se verifican usando comparación segura. Su administración en el backend requiere autenticación JWT.
 
@@ -41,12 +43,12 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 
 ## 2. Estado verificable de las funcionalidades
 
-- **Usuarios, verificación y recuperación:** implementados; se reportaron pruebas manuales del código SMTP, recuperación y nuevo acceso. Códigos con HMAC y separación por propósito.
+- **Usuarios, verificación y recuperación:** implementados y comprobados manualmente de nuevo después del refactor, incluyendo recepción del código SMTP, cambio de contraseña y acceso posterior. Códigos con HMAC y separación por propósito.
 - **JWT y aislamiento:** implementados; se probaron respuestas HTTP 401 y existen pruebas aisladas para casos de usuarios distintos y WebSocket. No equivale a una auditoría integral.
-- **Autorización frontend:** `api.js` adjunta JWT a solicitudes Axios privadas y limpia la sesión cuando el token vigente recibe un 401; las rutas públicas de identidad no desencadenan esa redirección. Pendiente prueba completa en navegador.
+- **Autorización frontend:** `api.js` adjunta JWT a solicitudes Axios privadas y limpia la sesión cuando el token vigente recibe un 401; las rutas públicas de identidad no desencadenan esa redirección. Los flujos habituales se comprobaron manualmente en navegador; siguen pendientes pruebas automatizadas de expiración, concurrencia y escenarios de error.
 - **Simulador automático:** implementado con frecuencia aproximada de 30 segundos, no garantizada.
 - **Ingesta autenticada:** implementada en la API con JWT o clave de pipeline, validación y clasificación; sin integración continua con sistemas empresariales.
-- **Pipelines:** creación, listado, rotación y revocación disponibles en backend y React. La copia de claves tiene alternativa manual; falta confirmar su funcionamiento en distintas condiciones del navegador.
+- **Pipelines:** creación, listado, rotación y revocación disponibles en backend y React, comprobadas en escenarios manuales con cuentas distintas. La copia de claves tiene alternativa manual; falta cubrir diferentes permisos y condiciones de navegador.
 - **Persistencia de anomalías:** implementada en PostgreSQL, con marca de tiempo y estado; las métricas normales no se registran como anomalías en el flujo revisado.
 - **WebSocket y dashboard:** implementados, con recepción de eventos y gráficos; falta ampliar pruebas integrales de interfaz.
 - **Historial reversible:** archivado lógico, restauración y paginación disponibles. `schema_migrations.py` no aplica la migración SQL del archivado; su aplicación controlada requiere revisar antes las columnas y respaldar cualquier base existente.
@@ -69,15 +71,15 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 
 ### Cobertura de pruebas y evidencia
 
-El repositorio contiene **58 funciones de prueba**, pero no todas forman parte de la misma ejecución automática:
+El repositorio contiene **58 funciones de prueba**, pero no todas forman parte de una misma ejecución automática:
 
 - `backend/tests/test_flujos_aislados.py`: **41 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket, claves de pipelines y regresiones de routers. **Sí forman parte del workflow actual.**
-- `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 23 de octubre de 2026; no se ejecutan en CI.**
-- `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 23 de octubre de 2026; no se ejecutan en CI.**
+- `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
+- `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
 
-GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. Los dos trabajos del Pull Request #15 finalizaron correctamente. El 23 de octubre de 2026 también aprobaron localmente 9 pruebas de integración HTTP y 8 de seguridad/archivado; esas 17 pruebas **no se han repetido después de los últimos merges**. No se afirma que todas las pruebas se ejecutaran juntas en CI.
+GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. Los dos trabajos del Pull Request #17 finalizaron correctamente **antes** del refactor de autenticación. El 24 de octubre de 2026, en la rama del refactor, aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
 
-Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranque local de FastAPI/PostgreSQL, compilación de React, recepción de eventos, chat, recuperación SMTP y rechazo de JWT no autorizados. La evidencia debe actualizarse después de las próximas modificaciones del frontend y backend.
+Se confirmaron manualmente cinco puntos funcionales después del refactor: entrada con cuenta activa, rechazo de contraseña errónea/cierre de sesión, recepción de código SMTP, recuperación y nuevo acceso, y separación de pipelines entre dos usuarios. También se registró una métrica externa autenticada con HTTP 201 en un entorno local. Estas evidencias no son pruebas automáticas de navegador ni certificación de seguridad productiva; deben repetirse cuando cambie el código pertinente.
 
 ## 4. Lista de comprobación del MVP
 
@@ -87,21 +89,22 @@ Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranqu
 - [x] PostgreSQL, dashboard y eventos WebSocket segmentados por usuario.
 - [x] Archivado y restauración del historial, PDF de los registros visibles y onboarding.
 - [x] J.A.R.V.I.S. con Groq, herramientas autorizadas y respuestas Markdown.
-- [x] 41 pruebas aisladas aprobadas en CI, junto con ESLint y compilación de React; 17 pruebas HTTP/seguridad aprobadas antes de los últimos merges.
+- [x] 41 pruebas aisladas, 9 HTTP y 8 de seguridad/archivado aprobadas localmente después del refactor; CI del PR #17 aprobado previamente para la base integrada.
 - [x] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo `frontend/.env.example`.
 - [ ] Prueba final del archivado con migraciones en esquemas antiguos y nuevos, con respaldo previo.
-- [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador.
+- [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador automatizado.
 - [x] Límites de 60 solicitudes por minuto para ingesta y máximo de 20 pipelines activos por usuario.
 - [x] Routers de métricas, chat y WebSocket separados de `main.py`, además de anomalías y pipelines.
 - [x] Centralizar JWT y HTTP 401 de solicitudes Axios protegidas, manteniendo públicas las rutas de identidad.
-- [ ] Extraer autenticación, separar componentes de `App.jsx` y validar el interceptor en navegador.
+- [x] Extraer seis endpoints de autenticación a `backend/app/auth_router.py`, manteniendo la configuración compartida en `main.py` y verificando regresiones.
+- [ ] Separar componentes de `App.jsx` y automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se completó la extracción de routers de anomalías, pipelines, métricas, chat y WebSocket, y la pantalla React de pipelines. Persisten tareas de modularización de autenticación y frontend, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se habían comprobado en la base PostgreSQL local, pero `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
+Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, y la pantalla React de pipelines. Persisten tareas de modularización del frontend, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se habían comprobado en la base PostgreSQL local, pero `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
 
 **Uso de IA y tecnología elegida:** el MVP implementa Groq para las respuestas de J.A.R.V.I.S. 2.0 y su llamada controlada a funciones backend. En la propuesta de referencia se plantean servicios Azure, que no se incorporaron al prototipo. Groq permite implementar el flujo conversacional previsto con la integración disponible en FastAPI; la aceptación académica formal de esta sustitución debe confirmarse con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo de análisis, programación y documentación; cada resultado requiere revisión y pruebas del equipo.
 
@@ -111,4 +114,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** basado en `main` en `305f2bd` (PR #16) y ampliado con el interceptor Axios de esta revisión. Siguen pendientes el clon limpio, las pruebas de sesión en navegador y la comprobación completa de ingesta → clasificación → alerta, además de las pruebas productivas.
+**Estado documental:** base `e13d0fd` (PR #17) con router de autenticación validado localmente en `refactor/auth-router-corte4`. Siguen pendientes una instalación limpia reproducible, pruebas automatizadas de sesión en navegador y verificaciones integrales de ingesta/alertas en distintos entornos, además de las pruebas productivas.

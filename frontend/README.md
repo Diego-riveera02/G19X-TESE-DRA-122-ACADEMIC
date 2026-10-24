@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Documentación del frontend basada en el merge `305f2bd` (PR #16) e incorporando los interceptores Axios de esta revisión (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Documentación del frontend basada en `main` en `e13d0fd` (PR #17), con verificación manual posterior al refactor del router de autenticación en `refactor/auth-router-corte4` (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -68,7 +68,7 @@ En la configuración local utilizada:
 - WebSocket: `ws://127.0.0.1:8000/ws/anomalias`
 - Frontend: `http://127.0.0.1:5173`
 
-La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. Para desarrollo local, copiar el ejemplo a `frontend/.env` y ajustar `VITE_API_URL` cuando sea necesario; reiniciar Vite después de cambiarla. Un interceptor Axios añade `Authorization: Bearer` a las solicitudes privadas cuando existe un token y otro limpia la sesión y redirige a `/login` si ese token recibe HTTP 401. Se excluyen las rutas públicas de registro, verificación, login y recuperación; también se evita enviar el token a otro origen o cerrar una sesión nueva por la respuesta tardía de un token anterior. **Pendiente:** confirmar el flujo real desde el navegador.
+La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. Para desarrollo local, copiar el ejemplo a `frontend/.env` y ajustar `VITE_API_URL` cuando sea necesario; reiniciar Vite después de cambiarla. Un interceptor Axios añade `Authorization: Bearer` a las solicitudes privadas cuando existe un token y otro limpia la sesión y redirige a `/login` si ese token recibe HTTP 401. Se excluyen las rutas públicas de registro, verificación, login y recuperación; también se evita enviar el token a otro origen o cerrar una sesión nueva por la respuesta tardía de un token anterior. Se comprobaron manualmente login y recuperación en navegador después del refactor del backend; siguen pendientes pruebas automatizadas de tokens expirados, respuestas tardías y errores de red.
 
 ### Rutas relevantes para la interfaz
 
@@ -95,7 +95,7 @@ El backend valida el JWT antes de distribuir anomalías asociadas al usuario. El
 3. Consultar el mensaje SMTP más reciente y enviar el código de seis dígitos con la nueva contraseña.
 4. Volver a iniciar sesión con la contraseña actualizada.
 
-El flujo fue probado manualmente en un entorno local durante revisiones anteriores. Los códigos tienen vencimiento, máximo de cinco intentos y separación por propósito, implementados en FastAPI.
+El flujo se comprobó nuevamente de forma manual en el entorno local el 24 de octubre de 2026: recepción del código SMTP, establecimiento de contraseña nueva e inicio de sesión posterior. Los códigos tienen vencimiento, máximo de cinco intentos y separación por propósito, implementados en FastAPI. Las seis rutas de identidad ahora se encuentran en `backend/app/auth_router.py`, montado desde `backend/app/main.py`; el frontend conserva las mismas URLs públicas.
 
 ## 5. Dashboard, IA y alcance de pipelines
 
@@ -113,7 +113,7 @@ El repositorio contiene 58 funciones de prueba en backend:
 - **9 HTTP** en `test_integracion_http.py`: necesitan los servicios correspondientes y no se ejecutan en el workflow actual.
 - **8 de seguridad/archivado** en `test_seguridad_archivado.py`: fuera del workflow actual.
 
-GitHub Actions aprobó las 41 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #15. Además, el 23 de octubre de 2026 aprobaron localmente 9 pruebas HTTP de integración y 8 de seguridad/archivado, **antes** de los merges más recientes: estas 17 pruebas aún requieren nueva ejecución. Esto no equivale a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
+GitHub Actions aprobó las 41 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #17, antes del refactor de autenticación. Con el refactor, el 24 de octubre de 2026 aprobaron localmente y por separado las 41 pruebas aisladas, 9 de integración HTTP y 8 de seguridad/archivado: **58 casos satisfactorios**. También se verificaron manualmente cinco flujos principales de identidad y separación de cuentas. Las 17 pruebas HTTP/seguridad no forman parte del workflow actual; estos resultados no equivalen a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
 
 Comandos útiles desde la raíz:
 
@@ -130,7 +130,7 @@ La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las 
 ## 7. Seguridad, limitaciones y trabajo pendiente
 
 - La URL de API y WebSocket está centralizada; es necesario configurar `VITE_API_URL` correctamente en cada entorno.
-- El token JWT y las respuestas HTTP 401 de solicitudes Axios están centralizados en `api.js`; el WebSocket mantiene su autenticación inicial por mensaje JWT. Falta probar expiración y recuperación de sesión en navegador.
+- El token JWT y las respuestas HTTP 401 de solicitudes Axios están centralizados en `api.js`; el WebSocket mantiene su autenticación inicial por mensaje JWT. El inicio de sesión y la recuperación funcionaron manualmente después de la extracción del router; faltan pruebas automatizadas de expiración, recuperación de sesión y respuestas concurrentes.
 - La pantalla de pipelines existe; falta ampliar las pruebas manuales de copia, errores y accesibilidad.
 - El archivo `App.jsx` es grande; está pendiente extraer pantallas de verificación, recuperación y respuesta de J.A.R.V.I.S. sin modificar su comportamiento.
 - Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error; ESLint ya se ejecuta en CI.
@@ -152,9 +152,10 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [x] Compilación de producción del frontend confirmada en GitHub Actions.
 - [x] Pantalla de administración de pipelines.
 - [x] Centralización de API/WebSocket y creación de `frontend/.env.example`.
-- [x] ESLint y compilación de React aprobados en el CI del Pull Request #15.
+- [x] ESLint y compilación de React aprobados en el CI del Pull Request #17, antes del refactor de autenticación.
 - [x] Centralizar el token y la respuesta HTTP 401 mediante interceptores Axios.
-- [ ] Verificar en navegador que el login público y la recuperación de contraseña no provocan una redirección involuntaria.
+- [x] Verificar manualmente en navegador login, rechazo de contraseña incorrecta, recuperación SMTP y acceso con contraseña nueva tras el refactor de autenticación.
+- [ ] Automatizar las pruebas de navegador del interceptor, expiración de JWT y recuperación de sesión.
 - [ ] Dividir componentes grandes y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** documentación basada en `305f2bd` (PR #16) e incluye el refactor Axios de esta revisión. Quedan pendientes pruebas de navegador y de extremo a extremo; no se considera una certificación de producción.
+**Estado:** documentación basada en `e13d0fd` (PR #17) con validación funcional del nuevo router de autenticación en `refactor/auth-router-corte4`. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción.
