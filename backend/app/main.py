@@ -40,6 +40,7 @@ from .verification_codes import crear_hash_codigo, verificar_codigo_guardado
 from .anomalias_router import crear_router_anomalias
 from .pipelines_router import crear_router_pipelines
 from .chat_router import crear_router_chat, ChatRequest
+from .metricas_router import crear_router_metricas
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -819,76 +820,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 # =================================================================
 
 
-@app.post("/metricas/externas/", status_code=201)
-async def ingestar_metrica_externa(
-    metrica: schemas.MetricaExternaEntrada,
-    x_pipeline_key: str | None = Header(
-        default=None,
-        alias="X-Pipeline-Key"
-    ),
-    db: Session = Depends(get_db),
-):
-    pipeline = autenticar_clave(
-        db,
-        x_pipeline_key
+app.include_router(
+    crear_router_metricas(
+        get_current_user,
+        consumir_limite_solicitudes,
+        registrar_metrica,
+        manager,
     )
-
-    if pipeline is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Clave de pipeline invalida"
-        )
-
-    usuario = db.query(models.User).filter(
-        models.User.id == pipeline.user_id,
-        models.User.is_active.is_(True)
-    ).first()
-
-    if usuario is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Clave de pipeline invalida"
-        )
-
-    consumir_limite_solicitudes(
-        db,
-        f"/metricas/externas/|pipeline:{pipeline.id}",
-        60,
-        60,
-    )
-
-    return await registrar_metrica(
-        db=db,
-        user_id=usuario.id,
-        pipeline=pipeline.nombre,
-        metrica=metrica.metrica,
-        valor=metrica.valor,
-        enviar_ws=manager.send_to_user,
-    )
-
-
-@app.post("/metricas/", status_code=201)
-async def ingestar_metrica(
-    metrica: schemas.MetricaEntrada,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    """Registra telemetria de la cuenta autenticada."""
-    consumir_limite_solicitudes(
-        db,
-        f"/metricas/|usuario:{current_user.id}",
-        60,
-        60,
-    )
-
-    return await registrar_metrica(
-        db=db,
-        user_id=current_user.id,
-        pipeline=metrica.pipeline,
-        metrica=metrica.metrica,
-        valor=metrica.valor,
-        enviar_ws=manager.send_to_user,
-    )
+)
 
 
 app.include_router(crear_router_anomalias(get_current_user))
