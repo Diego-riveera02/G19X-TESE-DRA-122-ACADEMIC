@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Documentación del frontend basada en `main` en `e13d0fd` (PR #17), con verificación manual posterior al refactor del router de autenticación en `refactor/auth-router-corte4` (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Documentación del frontend integrada en `main` en `73bccce` (PR #18), que incluye el refactor del router de autenticación y las verificaciones manuales del 24 de octubre de 2026.** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -113,7 +113,7 @@ El repositorio contiene 58 funciones de prueba en backend:
 - **9 HTTP** en `test_integracion_http.py`: necesitan los servicios correspondientes y no se ejecutan en el workflow actual.
 - **8 de seguridad/archivado** en `test_seguridad_archivado.py`: fuera del workflow actual.
 
-GitHub Actions aprobó las 41 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #17, antes del refactor de autenticación. Con el refactor, el 24 de octubre de 2026 aprobaron localmente y por separado las 41 pruebas aisladas, 9 de integración HTTP y 8 de seguridad/archivado: **58 casos satisfactorios**. También se verificaron manualmente cinco flujos principales de identidad y separación de cuentas. Las 17 pruebas HTTP/seguridad no forman parte del workflow actual; estos resultados no equivalen a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
+GitHub Actions aprobó las 41 pruebas aisladas del backend y las comprobaciones de ESLint y compilación React para el Pull Request #18, que incorporó el refactor de autenticación. Con ese refactor, el 24 de octubre de 2026 aprobaron localmente y por separado las 41 pruebas aisladas, 9 de integración HTTP y 8 de seguridad/archivado: **58 casos satisfactorios**. También se verificaron manualmente cinco flujos principales de identidad y separación de cuentas. Las 17 pruebas HTTP/seguridad no forman parte del workflow actual; estos resultados no equivalen a pruebas exhaustivas de navegador, SMTP, carga o accesibilidad.
 
 Comandos útiles desde la raíz:
 
@@ -152,10 +152,10 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [x] Compilación de producción del frontend confirmada en GitHub Actions.
 - [x] Pantalla de administración de pipelines.
 - [x] Centralización de API/WebSocket y creación de `frontend/.env.example`.
-- [x] ESLint y compilación de React aprobados en el CI del Pull Request #17, antes del refactor de autenticación.
+- [x] ESLint y compilación de React aprobados en el CI del Pull Request #18, que incorporó el refactor de autenticación.
 - [x] Centralizar el token y la respuesta HTTP 401 mediante interceptores Axios.
 - [x] Verificar manualmente en navegador login, rechazo de contraseña incorrecta, recuperación SMTP y acceso con contraseña nueva tras el refactor de autenticación.
 - [ ] Automatizar las pruebas de navegador del interceptor, expiración de JWT y recuperación de sesión.
 - [ ] Dividir componentes grandes y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** documentación basada en `e13d0fd` (PR #17) con validación funcional del nuevo router de autenticación en `refactor/auth-router-corte4`. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción.
+**Estado:** documentación integrada en `73bccce` (PR #18), con validación funcional del router de autenticación ya incorporado a `main`. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción. El README principal describe además las dos verificaciones limitadas del esquema PostgreSQL en contenedores temporales.
