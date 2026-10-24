@@ -1617,5 +1617,220 @@ class PruebasFlujosAislados(unittest.TestCase):
             self.assertEqual(activos, 20)
 
 
+    def test_34_limite_ip_ingesta_solicitud_61(self):
+        cuerpo = {
+            "pipeline": "Prueba de limite",
+            "metrica": "latencia_ms",
+            "valor": 50,
+        }
+
+        for _ in range(60):
+            respuesta = self.client.post(
+                "/metricas/",
+                json=cuerpo,
+            )
+            self.assertEqual(
+                respuesta.status_code,
+                401,
+                respuesta.text,
+            )
+
+        bloqueada = self.client.post(
+            "/metricas/",
+            json=cuerpo,
+        )
+
+        self.assertEqual(bloqueada.status_code, 429)
+        self.assertIn("retry-after", bloqueada.headers)
+
+    def test_35_limite_ingesta_aislado_por_usuario(self):
+        correo_a = "limite35a@example.invalid"
+        correo_b = "limite35b@example.invalid"
+
+        self.activar(correo_a)
+        self.activar(correo_b)
+
+        token_a = self.token(correo_a)
+        token_b = self.token(correo_b)
+
+        cuerpo = {
+            "pipeline": "Fuente autenticada",
+            "metrica": "latencia_ms",
+            "valor": 50,
+        }
+
+        # Se amplía solamente el límite IP de esta prueba
+        # para comprobar el límite independiente del usuario.
+        with patch.dict(
+            self.main.LIMITES_POR_IP,
+            {"/metricas/": (1000, 60)},
+        ):
+            for _ in range(60):
+                respuesta = self.client.post(
+                    "/metricas/",
+                    headers={
+                        "Authorization": "Bearer " + token_a
+                    },
+                    json=cuerpo,
+                )
+                self.assertEqual(
+                    respuesta.status_code,
+                    201,
+                    respuesta.text,
+                )
+
+            bloqueada = self.client.post(
+                "/metricas/",
+                headers={
+                    "Authorization": "Bearer " + token_a
+                },
+                json=cuerpo,
+            )
+
+            self.assertEqual(bloqueada.status_code, 429)
+            self.assertIn("retry-after", bloqueada.headers)
+
+            otro_usuario = self.client.post(
+                "/metricas/",
+                headers={
+                    "Authorization": "Bearer " + token_b
+                },
+                json=cuerpo,
+            )
+
+            self.assertEqual(
+                otro_usuario.status_code,
+                201,
+                otro_usuario.text,
+            )
+
+    def test_36_limite_ingesta_aislado_por_pipeline(self):
+        correo = "limite36@example.invalid"
+
+        self.activar(correo)
+        token = self.token(correo)
+
+        headers = {
+            "Authorization": "Bearer " + token
+        }
+
+        primero = self.client.post(
+            "/pipelines/",
+            headers=headers,
+            json={"nombre": "Fuente Principal"},
+        )
+
+        segundo = self.client.post(
+            "/pipelines/",
+            headers=headers,
+            json={"nombre": "Fuente Secundaria"},
+        )
+
+        self.assertEqual(primero.status_code, 201, primero.text)
+        self.assertEqual(segundo.status_code, 201, segundo.text)
+
+        clave_a = primero.json()["clave_api"]
+        clave_b = segundo.json()["clave_api"]
+
+        cuerpo = {
+            "metrica": "latencia_ms",
+            "valor": 50,
+        }
+
+        with patch.dict(
+            self.main.LIMITES_POR_IP,
+            {"/metricas/externas/": (1000, 60)},
+        ):
+            for _ in range(60):
+                respuesta = self.client.post(
+                    "/metricas/externas/",
+                    headers={"X-Pipeline-Key": clave_a},
+                    json=cuerpo,
+                )
+
+                self.assertEqual(
+                    respuesta.status_code,
+                    201,
+                    respuesta.text,
+                )
+
+            bloqueada = self.client.post(
+                "/metricas/externas/",
+                headers={"X-Pipeline-Key": clave_a},
+                json=cuerpo,
+            )
+
+            self.assertEqual(bloqueada.status_code, 429)
+            self.assertIn("retry-after", bloqueada.headers)
+
+            otra_fuente = self.client.post(
+                "/metricas/externas/",
+                headers={"X-Pipeline-Key": clave_b},
+                json=cuerpo,
+            )
+
+            self.assertEqual(
+                otra_fuente.status_code,
+                201,
+                otra_fuente.text,
+            )
+
+    def test_37_limite_ip_pipelines_solicitud_61(self):
+        cuerpo = {"nombre": "Pipeline Sin Token"}
+
+        for _ in range(60):
+            respuesta = self.client.post(
+                "/pipelines/",
+                json=cuerpo,
+            )
+            self.assertEqual(
+                respuesta.status_code,
+                401,
+                respuesta.text,
+            )
+
+        bloqueada = self.client.post(
+            "/pipelines/",
+            json=cuerpo,
+        )
+
+        self.assertEqual(bloqueada.status_code, 429)
+        self.assertIn("retry-after", bloqueada.headers)
+
+    def test_38_limite_chat_conservado(self):
+        from fastapi import HTTPException
+
+        correo = "limite38@example.invalid"
+        self.activar(correo)
+
+        with self.Session() as db:
+            usuario = db.query(
+                self.models.User
+            ).filter_by(correo=correo).one()
+
+            for _ in range(6):
+                self.main.limitar_chat_por_usuario(
+                    db=db,
+                    current_user=usuario,
+                )
+
+            with self.assertRaises(
+                HTTPException
+            ) as resultado:
+                self.main.limitar_chat_por_usuario(
+                    db=db,
+                    current_user=usuario,
+                )
+
+            self.assertEqual(
+                resultado.exception.status_code,
+                429,
+            )
+
+            self.assertIn(
+                "Retry-After",
+                resultado.exception.headers,
+            )
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
