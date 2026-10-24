@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 
-import { api, WS_URL } from './api';
+import { api, WS_URL, limpiarSesion } from './api';
 import Pipelines from './Pipelines';
 
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
@@ -408,11 +408,14 @@ function PluriOneApp() {
 
     if (!token) { navigate('/login'); return; }
 
-    api.get('/anomalias/', { headers: { Authorization: `Bearer ${token}` } }).then(res => {
+    api.get('/anomalias/').then(res => {
 
       setAnomalias(res.data.filter(item => item.id > idOcultosHasta).sort((a, b) => b.id - a.id));
 
-    }).catch(() => navigate('/login'));
+    }).catch(() => {
+      // La expiracion del JWT se gestiona en el interceptor de api.js.
+      console.error('No se pudo cargar el historial de anomalias.');
+    });
 
     // Conexion WebSocket autenticada mediante JWT
 
@@ -640,16 +643,6 @@ const irAlFinalChat = () => {
 
           historial: historialChat
 
-        },
-
-        {
-
-          headers: {
-
-            Authorization: `Bearer ${token}`
-
-          }
-
         }
 
       );
@@ -684,17 +677,14 @@ const irAlFinalChat = () => {
     );
     if (!confirmar) return;
 
-    const tokenActual = localStorage.getItem("token_plurione");
-    if (!tokenActual) {
+    if (!localStorage.getItem("token_plurione")) {
       navigate('/login');
       return;
     }
 
     setProcesandoHistorial(true);
     try {
-      await api.delete("/anomalias/", {
-        headers: { Authorization: `Bearer ${tokenActual}` }
-      });
+      await api.delete("/anomalias/");
 
       localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
       setIdOcultosHasta(0);
@@ -716,24 +706,19 @@ const irAlFinalChat = () => {
     );
     if (!confirmar) return;
 
-    const tokenActual = localStorage.getItem("token_plurione");
-    if (!tokenActual) {
+    if (!localStorage.getItem("token_plurione")) {
       navigate('/login');
       return;
     }
 
     setProcesandoHistorial(true);
     try {
-      await api.post("/anomalias/restaurar/", {}, {
-        headers: { Authorization: `Bearer ${tokenActual}` }
-      });
+      await api.post("/anomalias/restaurar/", {});
 
       localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
       setIdOcultosHasta(0);
 
-      const respuesta = await api.get("/anomalias/", {
-        headers: { Authorization: `Bearer ${tokenActual}` }
-      });
+      const respuesta = await api.get("/anomalias/");
 
       setAnomalias(
         respuesta.data.sort((a, b) => b.id - a.id)
@@ -749,9 +734,7 @@ const irAlFinalChat = () => {
 
   const cerrarSesion = () => {
 
-    localStorage.removeItem('token_plurione');
-
-    localStorage.removeItem('usuario_nombre');
+    limpiarSesion();
 
     navigate('/login');
 

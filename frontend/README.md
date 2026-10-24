@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Documentación del frontend actualizada hasta el merge `6e1d626` (PR #15, octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Documentación del frontend basada en el merge `305f2bd` (PR #16) e incorporando los interceptores Axios de esta revisión (octubre de 2026).** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -68,7 +68,7 @@ En la configuración local utilizada:
 - WebSocket: `ws://127.0.0.1:8000/ws/anomalias`
 - Frontend: `http://127.0.0.1:5173`
 
-La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. Para desarrollo local, copiar el ejemplo a `frontend/.env` y ajustar `VITE_API_URL` cuando sea necesario; reiniciar Vite después de cambiarla. El backend puede configurarse sin modificar URL repetidas en los componentes. **Pendiente:** centralizar el encabezado `Authorization: Bearer` y la respuesta HTTP 401 mediante interceptores Axios en `api.js`, ya que la lógica sigue repartida entre pantallas.
+La conexión HTTP y WebSocket está centralizada en `frontend/src/api.js` mediante `import.meta.env.VITE_API_URL`, con valor de ejemplo en `frontend/.env.example`. Para desarrollo local, copiar el ejemplo a `frontend/.env` y ajustar `VITE_API_URL` cuando sea necesario; reiniciar Vite después de cambiarla. Un interceptor Axios añade `Authorization: Bearer` a las solicitudes privadas cuando existe un token y otro limpia la sesión y redirige a `/login` si ese token recibe HTTP 401. Se excluyen las rutas públicas de registro, verificación, login y recuperación; también se evita enviar el token a otro origen o cerrar una sesión nueva por la respuesta tardía de un token anterior. **Pendiente:** confirmar el flujo real desde el navegador.
 
 ### Rutas relevantes para la interfaz
 
@@ -130,7 +130,7 @@ La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las 
 ## 7. Seguridad, limitaciones y trabajo pendiente
 
 - La URL de API y WebSocket está centralizada; es necesario configurar `VITE_API_URL` correctamente en cada entorno.
-- El token JWT y las respuestas HTTP 401 todavía se manejan manualmente en distintas pantallas; falta un interceptor común de Axios.
+- El token JWT y las respuestas HTTP 401 de solicitudes Axios están centralizados en `api.js`; el WebSocket mantiene su autenticación inicial por mensaje JWT. Falta probar expiración y recuperación de sesión en navegador.
 - La pantalla de pipelines existe; falta ampliar las pruebas manuales de copia, errores y accesibilidad.
 - El archivo `App.jsx` es grande; está pendiente extraer pantallas de verificación, recuperación y respuesta de J.A.R.V.I.S. sin modificar su comportamiento.
 - Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error; ESLint ya se ejecuta en CI.
@@ -153,7 +153,8 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [x] Pantalla de administración de pipelines.
 - [x] Centralización de API/WebSocket y creación de `frontend/.env.example`.
 - [x] ESLint y compilación de React aprobados en el CI del Pull Request #15.
-- [ ] Centralizar el token y la respuesta HTTP 401 mediante interceptores Axios.
+- [x] Centralizar el token y la respuesta HTTP 401 mediante interceptores Axios.
+- [ ] Verificar en navegador que el login público y la recuperación de contraseña no provocan una redirección involuntaria.
 - [ ] Dividir componentes grandes y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** documentación actualizada hasta el merge `6e1d626` (PR #15). Quedan pendientes pruebas de navegador y de extremo a extremo; no se considera una certificación de producción.
+**Estado:** documentación basada en `305f2bd` (PR #16) e incluye el refactor Axios de esta revisión. Quedan pendientes pruebas de navegador y de extremo a extremo; no se considera una certificación de producción.

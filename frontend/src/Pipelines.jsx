@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from './api';
+import { api, limpiarSesion } from './api';
 
 const tarjeta = {
   background: '#111217',
@@ -34,14 +34,6 @@ function obtenerMensajeError(error) {
   return 'No se pudo completar la solicitud. Verifica la conexion con el servidor.';
 }
 
-function opcionesAutenticadas() {
-  return {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token_plurione') || ''}`,
-    },
-  };
-}
-
 export default function Pipelines() {
   const navigate = useNavigate();
   const claveInputRef = useRef(null);
@@ -65,9 +57,7 @@ export default function Pipelines() {
 
     let activo = true;
 
-    api.get('/pipelines/', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    api.get('/pipelines/')
       .then(({ data }) => {
         if (!activo) return;
 
@@ -79,13 +69,6 @@ export default function Pipelines() {
       })
       .catch((fallo) => {
         if (!activo) return;
-
-        if (fallo.response?.status === 401) {
-          localStorage.removeItem('token_plurione');
-          localStorage.removeItem('usuario_nombre');
-          navigate('/login', { replace: true });
-          return;
-        }
 
         setError(obtenerMensajeError(fallo));
       })
@@ -99,13 +82,6 @@ export default function Pipelines() {
   }, [navigate]);
 
   function manejarError(fallo) {
-    if (fallo.response?.status === 401) {
-      localStorage.removeItem('token_plurione');
-      localStorage.removeItem('usuario_nombre');
-      navigate('/login', { replace: true });
-      return;
-    }
-
     setError(obtenerMensajeError(fallo));
   }
 
@@ -133,8 +109,7 @@ export default function Pipelines() {
     try {
       const { data } = await api.post(
         '/pipelines/',
-        { nombre: nombreLimpio },
-        opcionesAutenticadas()
+        { nombre: nombreLimpio }
       );
 
       setPipelines((anteriores) => [
@@ -184,8 +159,7 @@ export default function Pipelines() {
     try {
       const { data } = await api.post(
         `/pipelines/${pipeline.id}/rotar/`,
-        {},
-        opcionesAutenticadas()
+        {}
       );
 
       setEstadoCopia('');
@@ -218,8 +192,7 @@ export default function Pipelines() {
     try {
       await api.post(
         `/pipelines/${pipeline.id}/revocar/`,
-        {},
-        opcionesAutenticadas()
+        {}
       );
 
       setPipelines((anteriores) =>
@@ -281,8 +254,7 @@ export default function Pipelines() {
   }
 
   function cerrarSesion() {
-    localStorage.removeItem('token_plurione');
-    localStorage.removeItem('usuario_nombre');
+    limpiarSesion();
     navigate('/login', { replace: true });
   }
 

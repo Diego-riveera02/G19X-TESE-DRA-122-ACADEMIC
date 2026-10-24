@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico actualizado hasta el merge `6e1d626` (Pull Request #15, octubre de 2026).
+- **Versión:** MVP académico basado en el merge `305f2bd` (PR #16) y actualizado con los interceptores Axios de esta revisión (octubre de 2026).
 
 ## 1. Alcance del MVP
 
@@ -43,6 +43,7 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 
 - **Usuarios, verificación y recuperación:** implementados; se reportaron pruebas manuales del código SMTP, recuperación y nuevo acceso. Códigos con HMAC y separación por propósito.
 - **JWT y aislamiento:** implementados; se probaron respuestas HTTP 401 y existen pruebas aisladas para casos de usuarios distintos y WebSocket. No equivale a una auditoría integral.
+- **Autorización frontend:** `api.js` adjunta JWT a solicitudes Axios privadas y limpia la sesión cuando el token vigente recibe un 401; las rutas públicas de identidad no desencadenan esa redirección. Pendiente prueba completa en navegador.
 - **Simulador automático:** implementado con frecuencia aproximada de 30 segundos, no garantizada.
 - **Ingesta autenticada:** implementada en la API con JWT o clave de pipeline, validación y clasificación; sin integración continua con sistemas empresariales.
 - **Pipelines:** creación, listado, rotación y revocación disponibles en backend y React. La copia de claves tiene alternativa manual; falta confirmar su funcionamiento en distintas condiciones del navegador.
@@ -92,7 +93,8 @@ Las comprobaciones manuales descritas en iteraciones anteriores incluyen arranqu
 - [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador.
 - [x] Límites de 60 solicitudes por minuto para ingesta y máximo de 20 pipelines activos por usuario.
 - [x] Routers de métricas, chat y WebSocket separados de `main.py`, además de anomalías y pipelines.
-- [ ] Extraer autenticación, separar componentes de `App.jsx` y centralizar JWT/401 mediante interceptores de Axios.
+- [x] Centralizar JWT y HTTP 401 de solicitudes Axios protegidas, manteniendo públicas las rutas de identidad.
+- [ ] Extraer autenticación, separar componentes de `App.jsx` y validar el interceptor en navegador.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
@@ -109,4 +111,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** actualizado con funcionalidades integradas hasta `6e1d626` (PR #15). Las pruebas verifican escenarios concretos; siguen pendientes el clon limpio y la comprobación completa de ingesta → clasificación → alerta en dashboard, además de las pruebas productivas.
+**Estado documental:** basado en `main` en `305f2bd` (PR #16) y ampliado con el interceptor Axios de esta revisión. Siguen pendientes el clon limpio, las pruebas de sesión en navegador y la comprobación completa de ingesta → clasificación → alerta, además de las pruebas productivas.
