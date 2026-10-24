@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Documentación del MVP basada en `main` en `305f2bd` (PR #16) e incluye la centralización de Axios de esta revisión (octubre de 2026).**
+**Proyecto académico · Corte de documentación de octubre de 2026. Base integrada en `main`: `e13d0fd` (PR #17). Esta revisión describe la extracción del router de autenticación desarrollada en `refactor/auth-router-corte4`, todavía pendiente de integración.**
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -9,6 +9,7 @@ PluriOne es un prototipo de observabilidad de datos construido con FastAPI, Post
 ## 1. Funcionalidades implementadas
 
 - **Identidad:** registro, verificación por correo SMTP, reenvío de códigos, inicio de sesión JWT, recuperación de contraseña y rechazo de cuentas inexistentes o inactivas. Los códigos temporales tienen un propósito específico, vencen después de 10 minutos y admiten hasta cinco intentos.
+- **Router de autenticación:** las seis rutas públicas de identidad (`/registro/`, `/verificar/`, `/reenviar-verificacion/`, `/solicitar-recuperacion/`, `/recuperar-password/` y `/login/`) se agrupan en `backend/app/auth_router.py`. `backend/app/main.py` conserva la creación de la aplicación, sus dependencias compartidas y el montaje del router. La extracción no pretende cambiar los contratos HTTP ni las reglas de seguridad.
 - **Ingesta autenticada:** `POST /metricas/` recibe métricas con JWT y `POST /metricas/externas/` las recibe con `X-Pipeline-Key`. El servidor valida los datos y los procesa mediante una función compartida de registro y clasificación.
 - **Administración de pipelines:** creación, listado, rotación y revocación mediante FastAPI y la pantalla React `frontend/src/Pipelines.jsx`. Las claves se almacenan como hash y se muestran al emitirlas o rotarlas. La copia mediante navegador requiere comprobación manual.
 - **Simulador:** un proceso asíncrono en FastAPI genera métricas de demostración aproximadamente cada 30 segundos para usuarios activos, reutilizando la función que procesa la ingesta. La periodicidad no es una garantía de tiempo real estricto.
@@ -29,7 +30,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Las dos verificaciones del PR #15 fueron exitosas.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Las dos verificaciones del PR #17 fueron exitosas; el refactor de autenticación requiere verificaciones propias cuando se publique su Pull Request.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -183,7 +184,7 @@ curl -X POST 'http://127.0.0.1:8000/metricas/externas/' \
 
 La clave mostrada es **ficticia e inválida**. Para una prueba real, reemplazarla por la clave emitida al crear el pipeline. Según `MetricaExternaEntrada` en `backend/app/schemas.py`, el cuerpo exige `metrica` (`latencia_ms`, `datos_corruptos_%` o `tasa_fallos_%`) y `valor` numérico entre 0 y 10000, con máximo de 100 para porcentajes. No admite propiedades extra: los datos inválidos reciben HTTP 422. El ejemplo de latencia 850 es válido como estructura, pero **no acredita por sí solo la prueba de punta a punta**; esta debe ejecutarse con una clave real y comprobarse en el dashboard.
 
-La ingesta autenticada no implica conectores automáticos a AWS ni otros sistemas productivos. La API aplica límites de 60 solicitudes por minuto a la ingesta y una cuota de 20 pipelines activos por usuario; las pruebas aisladas cubren estas restricciones. Quedan pendientes la validación integral con PostgreSQL y las pruebas de carga.
+La ingesta autenticada no implica conectores automáticos a AWS ni otros sistemas productivos. La API aplica límites de 60 solicitudes por minuto a la ingesta y una cuota de 20 pipelines activos por usuario; las pruebas aisladas cubren estas restricciones. Una prueba local de ingesta externa con una clave válida devolvió HTTP 201 y generó una anomalía crítica en PostgreSQL (`id` 42654); esto no sustituye las pruebas de carga o la integración continua con fuentes empresariales.
 
 ### 7.3. Archivado y restauración
 
@@ -196,7 +197,7 @@ Estas operaciones requieren JWT y filtran los registros por usuario. La API util
 
 ## 8. Pruebas, verificaciones e integración continua
 
-La base integrada en `305f2bd` cuenta con **58 pruebas** distribuidas en tres archivos:
+La base integrada en `e13d0fd` y la rama del refactor de autenticación cuentan con **58 pruebas** distribuidas en tres archivos:
 
 | Archivo | Pruebas | Cobertura y ejecución |
 | --- | ---: | --- |
@@ -204,11 +205,24 @@ La base integrada en `305f2bd` cuenta con **58 pruebas** distribuidas en tres ar
 | `backend/tests/test_integracion_http.py` | 9 | Pruebas HTTP y disponibilidad de API, frontend, CORS y PostgreSQL. **No se ejecutan en el CI actual.** |
 | `backend/tests/test_seguridad_archivado.py` | 8 | Rechazo de accesos no autorizados y rutas de historial. **No se ejecutan en el CI actual.** |
 
-En el corte actual, las **41 pruebas aisladas** aprobaron localmente y el PR #15 obtuvo dos verificaciones exitosas en GitHub Actions. Las nueve pruebas HTTP y las ocho de seguridad/archivado aprobaron en ejecuciones locales anteriores del 23 de octubre de 2026, pero **no se han vuelto a ejecutar todas juntas tras los últimos cambios**. No debe confundirse el total de pruebas disponibles con una validación integral en un solo proceso.
+**Validación local del refactor (24 de octubre de 2026):** aprobaron 41 pruebas aisladas, 8 pruebas de seguridad/archivado y 9 pruebas de integración HTTP (incluida conexión y estructura PostgreSQL). Las tres suites se ejecutaron por separado y aprobaron: **58 de 58 casos**, no en un único proceso ni dentro del CI. Además, se confirmaron manualmente cinco flujos de autenticación y aislamiento entre cuentas: login, rechazo de contraseña incorrecta, recuperación mediante código SMTP, acceso con contraseña nueva y separación de pipelines entre usuarios. Antes de reiniciar la API reconstruida se generó y verificó un respaldo local de PostgreSQL; la verificación no equivale a una restauración probada.
 
 ### Ejecución local
 
-Para ejecutar exclusivamente las pruebas HTTP, con API, React y PostgreSQL levantados y configurados, utilizar el archivo `backend/tests/test_integracion_http.py` según sus requisitos. El comando amplio siguiente descubre las distintas suites y **puede requerir preparación adicional de servicios/entornos**, por lo que no se presenta como una validación que ya haya pasado completa:
+Para repetir la suite aislada, desde `backend/` y con las dependencias Python instaladas:
+
+```powershell
+python -m unittest discover -s tests -p "test_flujos_aislados.py" -v
+```
+
+Desde la **raíz del repositorio**, con API, React y PostgreSQL levantados y configurados para las pruebas HTTP:
+
+```powershell
+python -m unittest discover -s backend/tests -p "test_seguridad_archivado.py" -v
+python -m unittest discover -s backend/tests -p "test_integracion_http.py" -v
+```
+
+La segunda suite HTTP incluye una comprobación mediante `docker compose exec -T api` y requiere Docker. No es apropiado invocarlas contra un entorno de producción. El comando amplio siguiente descubre las distintas suites, pero **puede requerir preparación adicional de servicios/entornos** y no representa las tres ejecuciones separadas ya verificadas:
 
 ```powershell
 python -m unittest discover -s backend/tests -p "test_*.py" -v
@@ -222,11 +236,11 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones del Pull Request #15.
+El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones del Pull Request #17, antes de esta extracción del router de autenticación.
 
 **Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, y verificar migraciones en instalaciones nuevas y antiguas. El lint y la ejecución del workflow en `main` están configurados.
 
-**Antecedentes de verificación local:** se reportaron arranque de FastAPI y PostgreSQL, `/docs` con HTTP 200, compilación de Vite, pruebas de acceso con JWT, recuperación mediante SMTP y funcionamiento del chat/WebSocket. Esas comprobaciones corresponden a distintas sesiones de desarrollo, no a una campaña integral de pruebas de producción.
+**Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
 
 ## 9. Limitaciones, riesgos y uso de IA
 
@@ -257,14 +271,14 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Simulador automático e ingesta por JWT o clave de pipeline en la API.
 - [x] Alta, listado, rotación y revocación de pipelines desde el backend.
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
-- [x] CI con 41 pruebas aisladas, ESLint y compilación de React, con verificaciones satisfactorias del PR #15.
+- [x] CI con 41 pruebas aisladas, ESLint y compilación de React, con verificaciones satisfactorias del PR #17.
 - [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
-- [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; falta comprobar el flujo real en navegador.
-- [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py` y `websocket_router.py`, además del router de anomalías. La autenticación aún permanece en `main.py`.
+- [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; se comprobaron manualmente los flujos principales de identidad, pero faltan pruebas automatizadas de navegador y expiración de sesión.
+- [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py`, `websocket_router.py`, router de anomalías y `auth_router.py` para las seis operaciones de identidad. `main.py` conserva el montaje de routers y configuración compartida.
 - [x] Límites de ingesta y chat y máximo de 20 pipelines activos por usuario, con pruebas aisladas.
-- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado aprobaron previamente de forma local; sigue pendiente integrarlas en CI con los servicios correspondientes y repetirlas en la versión actual.
+- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado se repitieron localmente y aprobaron tras el refactor; sigue pendiente integrarlas en CI con los servicios correspondientes.
 - [ ] Verificar migración de archivado en instalaciones nuevas y antiguas, y realizar una instalación limpia completa con evidencia reproducible.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** actualización de la base `305f2bd` (PR #16) con centralización de Axios incluida en esta revisión. Persisten pruebas de instalación limpia, migración de archivado, navegador y PostgreSQL completo; la entrega sigue siendo un MVP académico, no una certificación de producción.
+**Estado documental:** base `e13d0fd` (PR #17), con extracción de autenticación validada en la rama `refactor/auth-router-corte4`. Están pendientes una instalación completamente limpia, migraciones de archivado en bases nuevas y antiguas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
