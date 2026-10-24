@@ -285,3 +285,13 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
 **Estado documental:** base `73bccce` (PR #18), con autenticación modularizada y dos escenarios de esquema PostgreSQL validados en entornos temporales. Están pendientes una instalación completamente limpia, variantes de migración no simuladas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
+
+## Evidencias tecnicas de validacion
+
+Las comprobaciones locales de instalacion limpia, Docker,
+frontend y autenticacion de la fase 12.48 se documentan en
+[Validacion tecnica de la fase 12.48](docs/VALIDACION_TECNICA_12_48.md).
+
+Estas pruebas incluyen verificaciones manuales y automatizadas
+aisladas. La entrega real de correo SMTP y las pruebas de navegador
+automatizadas continuan pendientes.
