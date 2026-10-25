@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico con evidencia integrada en `main` hasta `f95e9e1` (PR #24). Incluye autenticación modularizada y una prueba E2E aislada; la separación posterior de componentes frontend se presenta como cambio adicional.
+- **Versión:** MVP académico integrado en `main` hasta `1f7208a` (PR #25), con autenticación modularizada, prueba E2E aislada y componentes frontend separados.
 
 ## 1. Alcance del MVP
 
@@ -54,7 +54,7 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 - **Historial reversible:** archivado lógico, restauración y paginación disponibles. `schema_migrations.py` no aplica la migración SQL del archivado; su aplicación controlada requiere revisar antes las columnas y respaldar cualquier base existente. El SQL se probó en una tabla antigua mínima simulada; el modelo actual se probó en una base temporal nueva. No se probó una migración integral de todos los esquemas históricos.
 - **J.A.R.V.I.S.:** chat, consultas restringidas y diagnóstico orientativo implementados; sujeto a disponibilidad y límites de Groq.
 - **PDF, Markdown y onboarding:** disponibles para los registros y mensajes visibles.
-- **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación; la instalación limpia completa aún requiere evidencia independiente.
+- **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación. Un clon nuevo de `main` inició PostgreSQL, FastAPI y React en un entorno Docker independiente con puertos alternativos y variables ficticias; todavía no se comprobó una instalación literal sin ajustes ni la sesión React–API desde el puerto alternativo.
 - **Conectores empresariales, remediación y despliegue de producción:** no demostrados o fuera del MVP.
 
 ## 3. Criterios de validación
@@ -85,6 +85,8 @@ Se confirmaron manualmente cinco puntos funcionales después del refactor: entra
 
 El cuarto corte cuenta además con una [prueba E2E documentada](PRUEBA_E2E_CORTE4.md) en un clon con Docker Compose aislado: pipeline creado desde React, envío externo con HTTP 201, incremento de anomalías de 27 a 28 en PostgreSQL y alerta visible en el dashboard. Se utilizó una cuenta de prueba activada directamente, sin verificar el circuito SMTP; el entorno requirió preparación adicional a las instrucciones estándar del README.
 
+En una [segunda instalación desde un clon nuevo](VALIDACION_CLON_LIMPIO_CORTE4.md), se confirmó HTTP 200 para FastAPI y React, PostgreSQL saludable y cuatro tablas principales. Los puertos de la instalación habitual estaban ocupados, por lo que se adaptó únicamente el Compose de prueba: CORS autorizó el origen estándar `5173` y rechazó el alternativo `5175`. La instalación de componentes sí quedó comprobada; la comunicación completa desde la interfaz alternativa no.
+
 ## 4. Lista de comprobación del MVP
 
 - [x] Registro, verificación, JWT, recuperación y protección de códigos mediante HMAC.
@@ -96,6 +98,7 @@ El cuarto corte cuenta además con una [prueba E2E documentada](PRUEBA_E2E_CORTE
 - [x] 41 pruebas aisladas, 9 HTTP y 8 de seguridad/archivado aprobadas localmente después del refactor; ambos trabajos de CI del PR #18 aprobados.
 - [x] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo `frontend/.env.example`.
 - [x] Flujo E2E de pipeline, ingesta externa, PostgreSQL y dashboard validado en entorno aislado, con evidencia escrita y visual en el PR #24.
+- [x] Construcción y arranque desde clon nuevo con PostgreSQL, FastAPI y React, empleando puertos independientes; prueba de CORS y limitaciones registradas.
 - [x] Prueba limitada del SQL de archivado en una tabla antigua mínima simulada y de creación de esquema nuevo mediante SQLAlchemy, usando dos PostgreSQL 16 temporales y aislados.
 - [ ] Probar variantes adicionales de esquemas anteriores, restaurar un respaldo de prueba y repetir una instalación completa desde un clon limpio.
 - [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador automatizado.
@@ -121,4 +124,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md), [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** evidencia integrada hasta `f95e9e1` (PR #24), con autenticación modularizada, dos escenarios limitados de esquema PostgreSQL comprobados en contenedores temporales y una prueba E2E con alerta observada. La separación de componentes frontend es un cambio adicional sujeto a integración. Siguen pendientes una instalación sin preparación adicional siguiendo solamente el README, variantes de migración históricas, restauración del respaldo y pruebas automatizadas de sesión en navegador.
+**Estado documental:** código integrado hasta `1f7208a` (PR #25), con autenticación modularizada, dos escenarios limitados de esquema PostgreSQL, prueba E2E con alerta observada, frontend separado y arranque de servicios desde clon nuevo. Siguen pendientes una instalación sin adaptaciones siguiendo literalmente el README, variantes de migración históricas, restauración del respaldo y pruebas automatizadas de sesión en navegador.
