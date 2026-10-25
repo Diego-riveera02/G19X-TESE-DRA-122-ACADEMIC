@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from . import models
+from .origin_utils import get_cors_origins
 
 
 class ConnectionManager:
@@ -43,10 +44,7 @@ def crear_router_websocket(
     @router.websocket("/ws/anomalias")
     async def websocket_endpoint(websocket: WebSocket):
         origen = websocket.headers.get("origin")
-        permitidos = {
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        }
+        permitidos = set(get_cors_origins())
 
         if origen is not None and origen not in permitidos:
             await websocket.close(code=1008)

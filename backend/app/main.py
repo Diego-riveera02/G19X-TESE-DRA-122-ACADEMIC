@@ -46,6 +46,7 @@ from .pipelines_router import crear_router_pipelines
 from .chat_router import crear_router_chat, ChatRequest
 from .metricas_router import crear_router_metricas
 from .websocket_router import ConnectionManager, crear_router_websocket
+from .origin_utils import get_cors_origins
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -218,7 +219,7 @@ async def limitar_solicitudes_autenticacion(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
