@@ -1,5 +1,6 @@
 """Funciones auxiliares de correo SMTP."""
 
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -31,8 +32,10 @@ def _enviar_correo_verificacion_impl(destinatario, codigo, *, smtp_server, smtp_
 
         msg.attach(MIMEText(body, 'html'))
         server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(sender_email, sender_password)
+        if os.getenv("SMTP_STARTTLS", "true").strip().lower() != "false":
+            server.starttls()
+        if os.getenv("SMTP_AUTH", "true").strip().lower() != "false":
+            server.login(sender_email, sender_password)
         server.send_message(msg)
         server.quit()
     except Exception as e:
@@ -48,8 +51,10 @@ def _enviar_alerta_correo_consolidado_impl(destinatario, lat_v, lat_s, cal_v, ca
         body = f'\n        <html>\n            <body style="font-family: Arial, sans-serif; background-color: #0b0c10; color: #c5c6c7; padding: 20px;">\n                <div style="border: 2px solid #8B0000; border-radius: 8px; padding: 20px; background-color: #1a1a1d;">\n                    <h2 style="color: #E63946; margin-top: 0;">SISTEMA CENTRAL PLURIONE - REPORTE DE ESTADO</h2>\n                    <p>Se ha registrado un evento crítico. A continuación se presenta el estado consolidado de los tres componentes del sistema:</p>\n\n                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background-color: #111217;">\n                        <tr style="background-color: #333; color: #fff;">\n                            <th style="padding: 10px; text-align: left;">Componente / Métrica</th>\n                            <th style="padding: 10px; text-align: left;">Valor</th>\n                            <th style="padding: 10px; text-align: left;">Estado</th>\n                        </tr>\n                        <tr>\n                            <td style="padding: 10px; border-bottom: 1px solid #333;">Latencia de Red (API Gateway)</td>\n                            <td style="padding: 10px; border-bottom: 1px solid #333;">{lat_v}</td>\n                            <td style="padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: {get_color(lat_s)};">{lat_s}</td>\n                        </tr>\n                        <tr>\n                            <td style="padding: 10px; border-bottom: 1px solid #333;">Calidad de Datos (Ventas MX)</td>\n                            <td style="padding: 10px; border-bottom: 1px solid #333;">{cal_v}</td>\n                            <td style="padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: {get_color(cal_s)};">{cal_s}</td>\n                        </tr>\n                        <tr>\n                            <td style="padding: 10px; border-bottom: 1px solid #333;">Tasa de Fallos (Migración AWS)</td>\n                            <td style="padding: 10px; border-bottom: 1px solid #333;">{fal_v}</td>\n                            <td style="padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: {get_color(fal_s)};">{fal_s}</td>\n                        </tr>\n                    </table>\n\n                    <h4 style="color: #E5B80B; margin-top: 25px; margin-bottom: 5px;">DIAGNÓSTICO DE CAUSA RAÍZ (J.A.R.V.I.S.)</h4>\n                    <div style="background-color: rgba(212, 160, 23, 0.1); border-left: 3px solid #E5B80B; padding: 12px; color: #e0e0e0; line-height: 1.5;">\n                        {diag_general}\n                    </div>\n                </div>\n            </body>\n        </html>\n        '
         msg.attach(MIMEText(body, 'html'))
         server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(sender_email, sender_password)
+        if os.getenv("SMTP_STARTTLS", "true").strip().lower() != "false":
+            server.starttls()
+        if os.getenv("SMTP_AUTH", "true").strip().lower() != "false":
+            server.login(sender_email, sender_password)
         server.send_message(msg)
         server.quit()
     except Exception as e:
