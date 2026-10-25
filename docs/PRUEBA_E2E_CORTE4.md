@@ -75,3 +75,14 @@ ni todas las pruebas de seguridad del sistema.
 Se verifico satisfactoriamente la integracion principal
 React - FastAPI - PostgreSQL mediante una metrica real
 enviada al endpoint de ingesta externa.
+
+
+## 9. Evidencia visual
+
+La siguiente captura muestra la alerta critica registrada
+en el dashboard de PluriOne durante la prueba E2E.
+
+La alerta corresponde al pipeline de prueba y a la
+metrica latencia_ms con valor 9500.
+
+![Alerta critica de la prueba E2E](evidencias/alerta_e2e_corte4.jpeg)
