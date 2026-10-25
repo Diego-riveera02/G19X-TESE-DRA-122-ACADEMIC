@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Corte de documentación de octubre de 2026. Base integrada en `main`: `73bccce` (PR #18), que incorpora el router de autenticación, los interceptores Axios y la documentación de sus verificaciones.**
+**Proyecto académico · Octubre de 2026. Evidencia funcional integrada en `main` hasta `f95e9e1` (PR #24): autenticación modularizada, interceptores Axios, administración de pipelines y prueba E2E documentada.** La separación posterior de componentes de React forma parte de una corrección en revisión.
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -30,7 +30,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Las dos verificaciones del PR #18, correspondiente al refactor de autenticación, fueron exitosas.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, ESLint y compilación de React en las ramas configuradas, incluida `main`. Los trabajos de backend y frontend terminaron correctamente en los PR #18 y #24.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -195,7 +195,7 @@ La ingesta autenticada no implica conectores automáticos a AWS ni otros sistema
 - `GET /anomalias/archivadas/`: consultar su historial archivado.
 - `POST /anomalias/restaurar/`: restaurar sus anomalías archivadas.
 
-Estas operaciones requieren JWT y filtran los registros por usuario. La API utiliza paginación; la documentación anterior señala un límite predeterminado de hasta 100 registros por consulta, por lo que una página no equivale necesariamente a todo el historial.
+Estas operaciones requieren JWT y filtran los registros por usuario. La API utiliza `skip` y `limit`, con 100 registros por consulta de manera predeterminada y un máximo de 500, según `backend/app/anomalias_router.py`. Una página no equivale necesariamente a todo el historial.
 
 ## 8. Pruebas, verificaciones e integración continua
 
@@ -238,16 +238,16 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones del Pull Request #18, que integró la extracción del router de autenticación.
+El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones de los Pull Requests #18 y #24; este último incorporó la evidencia E2E de ingesta.
 
-**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas completas de navegador, carga y seguridad, verificar variantes adicionales de esquemas históricos y ejecutar una instalación completa desde un clon limpio. El lint y la ejecución del workflow en `main` están configurados.
+**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas automatizadas de navegador, carga y seguridad, verificar variantes adicionales de esquemas históricos y ejecutar una instalación completa siguiendo exclusivamente este README. Ya se realizó una prueba E2E en un clon aislado con configuración de Docker Compose y cuenta ficticia preparadas expresamente; no equivale a una instalación sin intervenciones adicionales. El lint y la ejecución del workflow en `main` están configurados.
 
-**Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
+**Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. Posteriormente, la prueba E2E del cuarto corte confirmó `POST /metricas/externas/` con HTTP 201, el aumento de anomalías de 27 a 28 en PostgreSQL aislado y la alerta visual en React; véase [el informe y su captura](docs/PRUEBA_E2E_CORTE4.md). No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
 
 ## 9. Limitaciones, riesgos y uso de IA
 
 - El simulador usa telemetría sintética y la API puede aceptar entradas externas autenticadas; no hay prueba de monitoreo continuo en AWS ni de integración automática con sistemas corporativos.
-- La interfaz permite administrar pipelines y utiliza URL, token JWT y respuesta HTTP 401 centralizados en `api.js` para peticiones Axios. Continúan pendientes las pruebas completas de navegador y la modularización adicional de componentes grandes.
+- La interfaz permite administrar pipelines y utiliza URL, token JWT y respuesta HTTP 401 centralizados en `api.js` para peticiones Axios. Las pantallas de verificación, recuperación y dashboard, así como el formato de respuestas J.A.R.V.I.S., se separaron de `App.jsx` en sus propios módulos. Continúan pendientes las pruebas automatizadas de navegador y una división adicional de la lógica extensa de `Dashboard.jsx`.
 - Los límites de ingesta y cuota de pipelines están implementados y cubiertos por pruebas aisladas; no se han realizado pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
 - La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
 - J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
@@ -264,6 +264,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 
 - [`docs/PRD.md`](docs/PRD.md): objetivos, requisitos funcionales y criterios de aceptación.
 - [`docs/MVP.md`](docs/MVP.md): alcance, estado verificable y exclusiones.
+- [`docs/PRUEBA_E2E_CORTE4.md`](docs/PRUEBA_E2E_CORTE4.md): ingesta externa E2E en clon aislado, resultados HTTP/PostgreSQL y captura del dashboard.
 - [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
 - `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos empresariales y académicos de referencia, sujetos a disponibilidad en la entrega.
 
@@ -279,12 +280,14 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py`, `websocket_router.py`, router de anomalías y `auth_router.py` para las seis operaciones de identidad. `main.py` conserva el montaje de routers y configuración compartida.
 - [x] Límites de ingesta y chat y máximo de 20 pipelines activos por usuario, con pruebas aisladas.
 - [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado se repitieron localmente y aprobaron tras el refactor; sigue pendiente integrarlas en CI con los servicios correspondientes.
+- [x] Prueba E2E aislada de pipeline, ingesta externa HTTP 201, registro de anomalía y alerta en React, documentada con captura en el PR #24.
+- [x] Separación de `App.jsx` en componentes `Verificar.jsx`, `RecuperarPassword.jsx`, `Dashboard.jsx` y `RespuestaJarvis.jsx`; ESLint y compilación aprobados en la copia revisada.
 - [x] Verificar la migración sobre una tabla antigua simulada y la creación de esquema nuevo mediante SQLAlchemy, ambas en PostgreSQL 16 temporal y aislado.
 - [ ] Verificar variantes históricas adicionales, restauración de respaldo e instalación completa desde un clon limpio con evidencia reproducible.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** base `73bccce` (PR #18), con autenticación modularizada y dos escenarios de esquema PostgreSQL validados en entornos temporales. Están pendientes una instalación completamente limpia, variantes de migración no simuladas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
+**Estado documental:** evidencia integrada en `main` hasta `f95e9e1` (PR #24), con autenticación modularizada, dos escenarios de esquema PostgreSQL validados en entornos temporales y la prueba E2E aislada documentada. La separación posterior de componentes frontend se entrega como cambio adicional sujeto a revisión y CI. Están pendientes una instalación siguiendo solamente el README, variantes de migración no simuladas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
 
 ## Evidencias tecnicas de validacion
 
@@ -303,3 +306,7 @@ automatizadas continuan pendientes.
 ## Validacion de correos diferenciados - Fase 12.50
 
 - [Evidencias de correos de verificacion y recuperacion](docs/VALIDACION_CORREOS_12_50.md)
+
+## Prueba de ingesta E2E - Cuarto corte
+
+- [Informe de la prueba y captura de alerta en el dashboard](docs/PRUEBA_E2E_CORTE4.md)
