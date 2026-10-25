@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Documentación del frontend integrada en `main` en `73bccce` (PR #18), que incluye el refactor del router de autenticación y las verificaciones manuales del 24 de octubre de 2026.** La interfaz React permite registrar y autenticar usuarios, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Frontend del MVP académico · Octubre de 2026.** La evidencia E2E está integrada en `main` hasta `f95e9e1` (PR #24) y la extracción posterior de componentes se entrega para revisión. La interfaz React permite registrar y autenticar usuarios, administrar pipelines, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -132,7 +132,7 @@ La suite HTTP requiere API, frontend y PostgreSQL iniciados; ejecutar todas las 
 - La URL de API y WebSocket está centralizada; es necesario configurar `VITE_API_URL` correctamente en cada entorno.
 - El token JWT y las respuestas HTTP 401 de solicitudes Axios están centralizados en `api.js`; el WebSocket mantiene su autenticación inicial por mensaje JWT. El inicio de sesión y la recuperación funcionaron manualmente después de la extracción del router; faltan pruebas automatizadas de expiración, recuperación de sesión y respuestas concurrentes.
 - La pantalla de pipelines existe; falta ampliar las pruebas manuales de copia, errores y accesibilidad.
-- El archivo `App.jsx` es grande; está pendiente extraer pantallas de verificación, recuperación y respuesta de J.A.R.V.I.S. sin modificar su comportamiento.
+- `App.jsx` contiene solamente las rutas. Las pantallas `Verificar.jsx`, `RecuperarPassword.jsx`, `Dashboard.jsx` y `RespuestaJarvis.jsx` se separaron manteniendo sus llamadas API y comportamiento. La lógica interna del dashboard todavía es extensa y puede simplificarse en futuros cambios.
 - Faltan pruebas automatizadas completas de navegador, accesibilidad y estados de error; ESLint ya se ejecuta en CI.
 - El historial PDF puede reflejar solo una página de registros.
 - La interfaz no confirma incidentes productivos ni ejecuta acciones correctivas en sistemas externos.
@@ -145,6 +145,7 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [`../README.md`](../README.md): descripción general, variables, instalación y API.
 - [`../docs/PRD.md`](../docs/PRD.md): requisitos y criterios de aceptación.
 - [`../docs/MVP.md`](../docs/MVP.md): alcance y evidencia del prototipo.
+- [`../docs/PRUEBA_E2E_CORTE4.md`](../docs/PRUEBA_E2E_CORTE4.md): ingesta E2E con pipeline, PostgreSQL y alerta en React, más captura.
 
 - [x] Registro, verificación, recuperación y acceso JWT.
 - [x] Dashboard, alertas, WebSocket por usuario y chat Markdown.
@@ -154,8 +155,9 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [x] Centralización de API/WebSocket y creación de `frontend/.env.example`.
 - [x] ESLint y compilación de React aprobados en el CI del Pull Request #18, que incorporó el refactor de autenticación.
 - [x] Centralizar el token y la respuesta HTTP 401 mediante interceptores Axios.
+- [x] Extraer verificación, recuperación, dashboard y formato de respuestas de J.A.R.V.I.S. de `App.jsx`; ESLint y compilación aprobados en la copia revisada.
 - [x] Verificar manualmente en navegador login, rechazo de contraseña incorrecta, recuperación SMTP y acceso con contraseña nueva tras el refactor de autenticación.
 - [ ] Automatizar las pruebas de navegador del interceptor, expiración de JWT y recuperación de sesión.
-- [ ] Dividir componentes grandes y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
+- [ ] Reducir la complejidad interna de `Dashboard.jsx` y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** documentación integrada en `73bccce` (PR #18), con validación funcional del router de autenticación ya incorporado a `main`. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción. El README principal describe además las dos verificaciones limitadas del esquema PostgreSQL en contenedores temporales.
+**Estado:** evidencia funcional del cuarto corte integrada hasta `f95e9e1` (PR #24) y separación posterior de componentes frontend preparada para revisión. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción. El README principal describe además las dos verificaciones limitadas del esquema PostgreSQL en contenedores temporales.

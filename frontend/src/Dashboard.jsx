@@ -1,0 +1,918 @@
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { api, WS_URL, limpiarSesion } from './api';
+import JarvisOnboarding from './JarvisOnboarding';
+import RespuestaJarvis from './RespuestaJarvis';
+
+export default function Dashboard() {
+
+  const [vista, setVista] = useState('dashboard');
+
+  const [anomalias, setAnomalias] = useState([]);
+
+  const [metricasEnVivo, setMetricasEnVivo] = useState({});
+
+  const [procesandoHistorial, setProcesandoHistorial] = useState(false);
+
+  const [idOcultosHasta, setIdOcultosHasta] = useState(() => {
+
+    const userId = localStorage.getItem('usuario_nombre');
+
+    return parseInt(localStorage.getItem(`plurione_id_ocultos_${userId}`) || '0', 10);
+
+  });
+
+  const [mensajes, setMensajes] = useState([{ role: 'jarvis', text: 'Sistemas en línea. Escuchando telemetría automáticamente. Listo para diagnósticos.' }]);
+
+  const [pregunta, setPregunta] = useState('');
+
+  const chatContainerRef = useRef(null);
+
+  const nombreUsuario = localStorage.getItem('usuario_nombre') || 'Usuario';
+
+  const token = localStorage.getItem('token_plurione');
+
+  const navigate = useNavigate();
+
+  // Conexión WebSockets y carga inicial
+
+  useEffect(() => {
+
+    if (!token) { navigate('/login'); return; }
+
+    api.get('/anomalias/').then(res => {
+
+      setAnomalias(res.data.filter(item => item.id > idOcultosHasta).sort((a, b) => b.id - a.id));
+
+    }).catch(() => {
+      // La expiracion del JWT se gestiona en el interceptor de api.js.
+      console.error('No se pudo cargar el historial de anomalias.');
+    });
+
+    // Conexion WebSocket autenticada mediante JWT
+
+    const ws = new WebSocket(`${WS_URL}/ws/anomalias`);
+
+    // Enviar el token al establecer la conexion
+
+    ws.onopen = () => {
+
+      ws.send(JSON.stringify({
+
+        type: 'auth',
+
+        token: token
+
+      }));
+
+    };
+
+    // Recibir solamente las anomalias del usuario autenticado
+
+    // Mantener lecturas recientes fuera del historial persistente.
+    const actualizarMetricaEnVivo = (nueva) => {
+      if (
+        !nueva ||
+        typeof nueva !== 'object' ||
+        !['latencia_ms', 'datos_corruptos_%', 'tasa_fallos_%'].includes(nueva.metric_type) ||
+        !['Normal', 'Alerta', 'Critico'].includes(nueva.status) ||
+        !Number.isFinite(nueva.value) ||
+        typeof nueva.timestamp !== 'string'
+      ) {
+        return;
+      }
+
+      const instante = Date.parse(nueva.timestamp);
+      if (!Number.isFinite(instante)) return;
+
+      setMetricasEnVivo(prev => {
+        const anterior = prev[nueva.metric_type];
+
+        if (
+          anterior &&
+          Date.parse(anterior.timestamp) > instante
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [nueva.metric_type]: nueva
+        };
+      });
+    };
+
+    ws.onmessage = (event) => {
+
+      try {
+
+        const nueva = JSON.parse(event.data);
+
+        // Confirmacion de autenticacion del servidor
+
+        if (nueva.type === 'auth_ok') {
+
+          console.log('WebSocket autenticado correctamente');
+
+          return;
+
+        }
+
+        // Lectura temporal: actualiza indicadores sin crear historial.
+        if (nueva.type === 'metrica_normal') {
+          if (
+            nueva.id === null &&
+            nueva.registrada === false &&
+            nueva.status === 'Normal'
+          ) {
+            actualizarMetricaEnVivo(nueva);
+          }
+          return;
+        }
+
+        // Ignorar mensajes que no sean anomalias validas
+
+        if (typeof nueva.id !== 'number') {
+
+          return;
+
+        }
+
+        // Respetar el historial oculto del usuario
+
+        if (nueva.id <= idOcultosHasta) {
+
+          return;
+
+        }
+
+        // Una alerta guardada tambien actualiza el estado actual.
+        actualizarMetricaEnVivo(nueva);
+
+        setAnomalias(prev => {
+
+          // Evitar registros duplicados
+
+          if (prev.some(a => a.id === nueva.id)) {
+
+            return prev;
+
+          }
+
+          return [nueva, ...prev].sort((a, b) => b.id - a.id);
+
+        });
+
+      } catch {
+
+        console.error('Error al procesar mensaje WebSocket');
+
+      }
+
+    };
+
+    // Detectar cierre por autenticacion o politica de seguridad
+
+    ws.onclose = (event) => {
+
+      if (event.code === 1008) {
+
+        console.warn('Conexion WebSocket rechazada o expirada');
+
+      }
+
+    };
+
+    // Cerrar la conexion al desmontar el componente
+
+    return () => ws.close();
+
+  }, [idOcultosHasta, token, navigate]);
+
+  useEffect(() => {
+
+    if (chatContainerRef.current) {
+
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+
+    }
+
+  }, [mensajes]);
+
+const irAlFinalChat = () => {
+
+  if (chatContainerRef.current) {
+
+    chatContainerRef.current.scrollTop =
+
+      chatContainerRef.current.scrollHeight;
+
+  }
+
+};
+
+  const enviarPregunta = async () => {
+
+    if (!pregunta.trim()) return;
+
+    const textoPregunta = pregunta.trim();
+
+    const ultimoCritico = anomalias.find(
+
+      a => a.status === 'Critico'
+
+    ) || { id: 0, ai_recommendation: '' };
+
+    // Preparar los últimos mensajes de la conversación.
+
+    const historialChat = mensajes
+
+      .slice(1)
+
+      .filter(m =>
+
+        (m.role === 'user' || m.role === 'jarvis') &&
+
+        typeof m.text === 'string'
+
+      )
+
+      .slice(-10)
+
+      .map(m => ({
+
+        role: m.role === 'jarvis' ? 'assistant' : 'user',
+
+        content: m.text.slice(0, 1200)
+
+      }));
+
+    // Mostrar la pregunta en el chat.
+
+    setMensajes(prev => [
+
+      ...prev,
+
+      { role: 'user', text: textoPregunta }
+
+    ]);
+
+    setPregunta('');
+
+    try {
+
+      const response = await api.post(
+
+        '/chat/',
+
+        {
+
+          anomaly_id: ultimoCritico.id,
+
+          pregunta: textoPregunta,
+
+          contexto_anomalia: ultimoCritico.ai_recommendation,
+
+          historial: historialChat
+
+        }
+
+      );
+
+      setMensajes(prev => [
+
+        ...prev,
+
+        { role: 'jarvis', text: response.data.respuesta }
+
+      ]);
+
+    } catch {
+
+      setMensajes(prev => [
+
+        ...prev,
+
+        { role: 'jarvis', text: 'Error de red.' }
+
+      ]);
+
+    }
+
+  };
+
+  const limpiarHistorial = async () => {
+    if (procesandoHistorial) return;
+
+    const confirmar = window.confirm(
+      'Se archivaran TODAS las anomalias de tu cuenta, incluso las no visibles. Podras restaurarlas. Deseas continuar?'
+    );
+    if (!confirmar) return;
+
+    if (!localStorage.getItem("token_plurione")) {
+      navigate('/login');
+      return;
+    }
+
+    setProcesandoHistorial(true);
+    try {
+      await api.delete("/anomalias/");
+
+      localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
+      setIdOcultosHasta(0);
+      setAnomalias([]);
+      setMetricasEnVivo({});
+      window.alert('Historial archivado. Puedes restaurarlo cuando quieras.');
+    } catch {
+      window.alert('No fue posible archivar el historial. Los datos visibles no se modificaron.');
+    } finally {
+      setProcesandoHistorial(false);
+    }
+  };
+
+  const restaurarHistorial = async () => {
+    if (procesandoHistorial) return;
+
+    const confirmar = window.confirm(
+      'Se restauraran las anomalias archivadas de tu cuenta. Deseas continuar?'
+    );
+    if (!confirmar) return;
+
+    if (!localStorage.getItem("token_plurione")) {
+      navigate('/login');
+      return;
+    }
+
+    setProcesandoHistorial(true);
+    try {
+      await api.post("/anomalias/restaurar/", {});
+
+      localStorage.removeItem(`plurione_id_ocultos_${nombreUsuario}`);
+      setIdOcultosHasta(0);
+
+      const respuesta = await api.get("/anomalias/");
+
+      setAnomalias(
+        respuesta.data.sort((a, b) => b.id - a.id)
+      );
+      setMetricasEnVivo({});
+      window.alert('Historial restaurado correctamente.');
+    } catch {
+      window.alert('No se pudo completar la restauracion. Actualiza la pagina para consultar el estado actual.');
+    } finally {
+      setProcesandoHistorial(false);
+    }
+  };
+
+  const cerrarSesion = () => {
+
+    limpiarSesion();
+
+    navigate('/login');
+
+  };
+
+  const exportarPDF = async () => {
+
+    if (anomalias.length === 0) {
+
+      alert("No hay datos en el historial para exportar.");
+
+      return;
+
+    }
+
+
+    let jsPDF;
+    let autoTable;
+
+    try {
+      const [pdfModule, tableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+
+      jsPDF = pdfModule.default;
+      autoTable = tableModule.default;
+
+      if (
+        typeof jsPDF !== 'function' ||
+        typeof autoTable !== 'function'
+      ) {
+        throw new Error('Modulos PDF invalidos');
+      }
+    } catch (error) {
+      console.error('Error al cargar bibliotecas PDF:', error);
+      alert('No se pudo preparar el PDF. Intenta nuevamente.');
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+
+    doc.text("Bitácora de Anomalías - Sistema PluriOne", 14, 15);
+
+    doc.setFontSize(11);
+
+    const fechaActual = new Date().toLocaleString();
+
+    doc.text(`Reporte generado el: ${fechaActual}`, 14, 22);
+
+    const columnas = ["ID", "Pipeline", "Métrica", "Valor", "Estado", "Diagnóstico IA"];
+
+    const filas = anomalias.map(row => [
+
+      row.id,
+
+      row.pipeline_name,
+
+      row.metric_type,
+
+      row.value,
+
+      row.status,
+
+      row.ai_recommendation || "Sin diagnóstico"
+
+    ]);
+
+    autoTable(doc, {
+
+      startY: 28,
+
+      head: [columnas],
+
+      body: filas,
+
+      theme: 'grid',
+
+      headStyles: { fillColor: [229, 184, 11] },
+
+      styles: { fontSize: 9 },
+
+      columnStyles: { 5: { cellWidth: 70 } }
+
+    });
+
+    const fechaArchivo = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
+
+    doc.save(`Bitacora_PluriOne_${fechaArchivo}.pdf`);
+
+  };
+
+  const latenciasHistoricas = [...anomalias].reverse().filter(a => a.metric_type === "latencia_ms").slice(-10);
+
+  const latencias = metricasEnVivo.latencia_ms?.type === 'metrica_normal'
+    ? [...latenciasHistoricas.slice(-9), metricasEnVivo.latencia_ms]
+    : latenciasHistoricas;
+
+  const calidadHistoricas = [...anomalias].reverse().filter(a => a.metric_type === "datos_corruptos_%").slice(-10);
+
+  const calidad = metricasEnVivo["datos_corruptos_%"]?.type === 'metrica_normal'
+    ? [...calidadHistoricas.slice(-9), metricasEnVivo["datos_corruptos_%"]]
+    : calidadHistoricas;
+
+  const fallosTotal = anomalias.filter(a => a.metric_type === "tasa_fallos_%").length;
+
+  const fallosCriticos = anomalias.filter(a => a.metric_type === "tasa_fallos_%" && a.status === "Critico").length;
+
+  const datosDona = [
+
+    { name: 'Éxito', value: Math.max(1, fallosTotal - fallosCriticos) },
+
+    { name: 'Fallos Críticos', value: fallosCriticos }
+
+  ];
+
+  const coloresDona = ['#457B9D', '#E63946'];
+
+  const ultimoLatencia = metricasEnVivo.latencia_ms || anomalias.find(a => a.metric_type === "latencia_ms");
+
+  const ultimoCalidad = metricasEnVivo["datos_corruptos_%"] || anomalias.find(a => a.metric_type === "datos_corruptos_%");
+
+  const ultimoFallo = metricasEnVivo["tasa_fallos_%"] || anomalias.find(a => a.metric_type === "tasa_fallos_%");
+
+  return (
+
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden', backgroundColor: '#0b0c10', color: '#c5c6c7', fontFamily: '"Segoe UI", Roboto, sans-serif' }}>
+
+      <style>{`
+
+        .plurione-dashboard-grid {
+
+          display: grid;
+
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+
+          align-items: start;
+
+          gap: 20px;
+
+        }
+
+        .plurione-chart-card { grid-column: span 2; }
+
+        .plurione-feed-panel, .plurione-chat-panel { grid-column: span 3; }
+
+        @media (max-width: 1000px) {
+
+          .plurione-chart-card { grid-column: span 3; }
+
+          .plurione-feed-panel, .plurione-chat-panel { grid-column: span 6; }
+
+        }
+
+        @media (max-width: 620px) {
+
+          .plurione-chart-card { grid-column: span 6; }
+
+        }
+
+      `}</style>
+
+            {/* 1. CABECERA */}
+
+      <div style={{ height: '70px', padding: '0 30px', backgroundColor: '#111217', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+
+          <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: '#457B9D', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', color: '#fff' }}>
+
+            {nombreUsuario.charAt(0).toUpperCase()}
+
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+            <span style={{ fontWeight: 'bold', color: '#E5B80B', fontSize: '0.9em' }}>{nombreUsuario}</span>
+
+            <button onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', padding: 0, fontSize: '0.75em', textAlign: 'left' }}>Cerrar Sesión</button>
+
+          </div>
+
+        </div>
+
+        <div style={{ display: 'flex', gap: '20px' }}>
+
+          <button onClick={() => setVista('dashboard')} style={{ background: vista === 'dashboard' ? 'rgba(229,184,11,0.1)' : 'transparent', color: vista === 'dashboard' ? '#E5B80B' : '#888', border: 'none', borderBottom: vista === 'dashboard' ? '2px solid #E5B80B' : '2px solid transparent', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em' }}>Datos (Dashboard)</button>
+
+          <Link
+            to="/pipelines"
+            style={{
+              color: '#E5B80B',
+              textDecoration: 'none',
+              padding: '10px 12px',
+              fontWeight: 'bold'
+            }}
+          >
+            Pipelines
+          </Link>
+          <button onClick={() => setVista('historial')} style={{ background: vista === 'historial' ? 'rgba(229,184,11,0.1)' : 'transparent', color: vista === 'historial' ? '#E5B80B' : '#888', border: 'none', borderBottom: vista === 'historial' ? '2px solid #E5B80B' : '2px solid transparent', padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em' }}>Historial</button>
+
+        </div>
+
+        <h2 style={{ margin: 0, color: '#E5B80B', letterSpacing: '2px', textTransform: 'uppercase' }}>PLURIONE</h2>
+
+      </div>
+
+      {/* 2. ÁREA DE TRABAJO */}
+
+      <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+
+        {vista === 'dashboard' && (
+
+          <div className="plurione-dashboard-grid" style={{ width: '100%', minWidth: 0 }}>
+
+            {/* LATENCIA */}
+
+            <div className="plurione-chart-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
+
+              <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
+
+                <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Latencia de Red (ms)</h4>
+
+                <ResponsiveContainer width="100%" height="85%">
+
+                  <LineChart data={latencias}>
+
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+
+                    <XAxis dataKey="id" hide />
+
+                    <YAxis stroke="#a8a8a8" fontSize={10} width={30} />
+
+                    <Tooltip contentStyle={{ backgroundColor: '#1a1a1d', border: '1px solid #333' }} />
+
+                    <Line type="monotone" dataKey="value" stroke="#E5B80B" strokeWidth={2} dot={{r:3}} isAnimationActive={false} />
+
+                  </LineChart>
+
+                </ResponsiveContainer>
+
+              </div>
+
+              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
+
+                <span style={{ background: ultimoLatencia?.status === 'Critico' ? '#8B0000' : ultimoLatencia?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
+
+                  ESTADO: {ultimoLatencia ? ultimoLatencia.status : 'Normal'}
+
+                </span>
+
+              </div>
+
+              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
+
+                <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Latencia): </strong>
+
+                <span style={{ color: '#a8a8a8' }}>{ultimoLatencia ? ultimoLatencia.ai_recommendation : 'Esperando datos...'}</span>
+
+              </div>
+
+            </div>
+
+            {/* CALIDAD */}
+
+            <div className="plurione-chart-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
+
+              <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
+
+                <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Calidad (% Corruptos)</h4>
+
+                <ResponsiveContainer width="100%" height="85%">
+
+                  <BarChart data={calidad}>
+
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+
+                    <XAxis dataKey="id" hide />
+
+                    <YAxis stroke="#a8a8a8" fontSize={10} width={30} />
+
+                    <Tooltip contentStyle={{ backgroundColor: '#1a1a1d', border: '1px solid #333' }} />
+
+                    <Bar dataKey="value" fill="#457B9D" isAnimationActive={false} />
+
+                  </BarChart>
+
+                </ResponsiveContainer>
+
+              </div>
+
+              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
+
+                <span style={{ background: ultimoCalidad?.status === 'Critico' ? '#8B0000' : ultimoCalidad?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
+
+                  ESTADO: {ultimoCalidad ? ultimoCalidad.status : 'Normal'}
+
+                </span>
+
+              </div>
+
+              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
+
+                <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Calidad): </strong>
+
+                <span style={{ color: '#a8a8a8' }}>{ultimoCalidad ? ultimoCalidad.ai_recommendation : 'Esperando datos...'}</span>
+
+              </div>
+
+            </div>
+
+            {/* TASA DE FALLOS */}
+
+            <div className="plurione-chart-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
+
+              <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
+
+                <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Tasa de Fallos</h4>
+
+                <ResponsiveContainer width="100%" height="85%">
+
+                  <PieChart>
+
+                    <Pie data={datosDona} innerRadius={40} outerRadius={60} dataKey="value" stroke="none">
+
+                      {datosDona.map((entry, index) => <Cell key={`cell-${index}`} fill={coloresDona[index]} />)}
+
+                    </Pie>
+
+                    <Tooltip />
+
+                  </PieChart>
+
+                </ResponsiveContainer>
+
+              </div>
+
+              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
+
+                <span style={{ background: ultimoFallo?.status === 'Critico' ? '#8B0000' : ultimoFallo?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
+
+                  ESTADO: {ultimoFallo ? ultimoFallo.status : 'Normal'}
+
+                </span>
+
+              </div>
+
+              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
+
+                <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Fallos): </strong>
+
+                <span style={{ color: '#a8a8a8' }}>{ultimoFallo ? ultimoFallo.ai_recommendation : 'Esperando datos...'}</span>
+
+              </div>
+
+            </div>
+
+            {/* FEED DE ALERTAS */}
+
+            <div className="plurione-feed-panel" style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '450px', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+
+              <h4 style={{ margin: '0 0 10px 0', color: '#E5B80B' }}>Feed de Alertas Recientes</h4>
+
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85em' }}>
+
+                {anomalias.slice(0, 5).map(a => (
+
+                  <div key={a.id} style={{ borderBottom: '1px solid #1a1a1d', paddingBottom: '5px' }}>
+
+                    <span style={{ color: '#888' }}>{a.timestamp ? new Date(a.timestamp).toLocaleTimeString() : '—'}</span> |
+
+                    <strong style={{ color: a.status === 'Critico' ? '#E63946' : a.status === 'Alerta' ? '#D4A017' : '#4BB543', marginLeft: '5px' }}>{a.status}</strong> en {a.pipeline_name}: {a.metric_type} = {a.value}
+
+                  </div>
+
+                ))}
+
+                {anomalias.length === 0 && <div style={{ color: '#888' }}>Sin alertas registradas.</div>}
+
+              </div>
+
+            </div>
+
+            {/* JARVIS PANEL */}
+
+<div className="plurione-chat-panel" style={{ background: '#111217', padding: '16px', borderRadius: '8px', border: '1px solid #E5B80B', height: '450px', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+
+                <strong style={{ color: '#E5B80B', fontSize: '0.9em' }}>J.A.R.V.I.S.</strong>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+                  <button
+
+                    type="button"
+
+                    onClick={irAlFinalChat}
+
+                    title="Ir al último mensaje"
+
+                    style={{ background: '#22252d', color: '#E5B80B', border: '1px solid #494026', borderRadius: '5px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75em' }}
+
+                  >
+
+                    ↓ Último
+
+                  </button>
+
+                  <span style={{ color: '#4BB543', fontSize: '0.7em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: '#4BB543', borderRadius: '50%' }}></span>
+
+                    ● EN VIVO
+
+                  </span>
+
+                </div>
+
+              </div>
+
+              <div ref={chatContainerRef} style={{ flex: 1, minHeight: 0, minWidth: 0, maxWidth: '100%', overflowY: 'auto', overflowX: 'hidden', overscrollBehaviorY: 'contain', background: '#0b0c10', padding: '12px', borderRadius: '6px', marginBottom: '10px', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box' }}>
+
+{mensajes.map((m, i) => (
+
+                  <div key={i} style={{ alignSelf: m.role === 'jarvis' ? 'stretch' : 'flex-end', flexShrink: 0, maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+
+                    {m.role === 'jarvis' ? (
+
+                      <RespuestaJarvis texto={m.text} />
+
+                    ) : (
+
+                      <div style={{ color: '#f2f3f4', background: '#28323b', border: '1px solid #3d4852', padding: '9px 12px', borderRadius: '10px 10px 3px 10px', overflowWrap: 'break-word', textAlign: 'left' }}>
+
+                        {m.text}
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                ))}
+
+              </div>
+
+              <div style={{ display: 'flex', gap: '5px' }}>
+
+                <input type="text" value={pregunta} onChange={(e) => setPregunta(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && enviarPregunta()} placeholder="Preguntar..." style={{ flex: 1, padding: '5px', background: '#1a1a1d', color: '#fff', border: '1px solid #333', borderRadius: '4px', fontSize: '0.8em' }} />
+
+                <button onClick={enviarPregunta} style={{ background: '#E5B80B', border: 'none', padding: '0 10px', borderRadius: '4px', fontWeight: 'bold' }}>&gt;</button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        )}
+
+        {/* PESTAÑA HISTORIAL */}
+
+        {vista === 'historial' && (
+
+          <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+
+              <h4 style={{ margin: 0, color: '#E5B80B' }}>Registro Detallado (Auditoría)</h4>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+
+                <button onClick={exportarPDF} style={{ background: 'transparent', color: '#457B9D', border: '1px solid #457B9D', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>📄 Descargar PDF</button>
+
+                <button onClick={limpiarHistorial} disabled={procesandoHistorial} title="Archivar sin borrar registros" style={{ background: 'transparent', color: '#E63946', border: '1px solid #E63946', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Vaciar Tabla</button>
+                <button
+                  onClick={restaurarHistorial}
+                  disabled={procesandoHistorial}
+                  style={{
+                    background: 'transparent',
+                    color: '#2A9D8F',
+                    border: '1px solid #2A9D8F',
+                    padding: '5px 15px',
+                    borderRadius: '4px',
+                    cursor: procesandoHistorial ? 'wait' : 'pointer'
+                  }}
+                >
+                  Restaurar historial
+                </button>
+
+              </div>
+
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9em' }}>
+
+              <thead>
+
+                <tr style={{ borderBottom: '2px solid #333', color: '#888' }}>
+
+                  <th style={{ padding: '10px' }}>ID</th><th>Pipeline</th><th>Métrica</th><th>Valor</th><th>Estado</th><th>IA Diagnóstico</th>
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {anomalias.map(a => (
+
+                  <tr key={a.id} style={{ borderBottom: '1px solid #1a1a1d' }}>
+
+                    <td style={{ padding: '10px', color: '#E5B80B' }}>#{a.id}</td>
+
+                    <td>{a.pipeline_name}</td>
+
+                    <td style={{ color: '#888' }}>{a.metric_type}</td>
+
+                    <td style={{ color: '#E63946', fontWeight: 'bold' }}>{a.value}</td>
+
+                    <td><span style={{ background: a.status === 'Critico' ? '#8B0000' : a.status === 'Alerta' ? '#D4A017' : '#006400', padding: '4px 8px', borderRadius: '4px', color: '#fff', fontSize: '0.8em' }}>{a.status}</span></td>
+
+                    <td style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#a8a8a8' }}>{a.ai_recommendation}</td>
+
+                  </tr>
+
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        )}
+
+        <JarvisOnboarding />
+
+      </div>
+
+    </div>
+
+  );
+
+}

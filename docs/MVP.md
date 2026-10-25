@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico integrado en `main` en `73bccce` (PR #18), con autenticación modularizada y verificaciones locales del 24 de octubre de 2026.
+- **Versión:** MVP académico con evidencia integrada en `main` hasta `f95e9e1` (PR #24). Incluye autenticación modularizada y una prueba E2E aislada; la separación posterior de componentes frontend se presenta como cambio adicional.
 
 ## 1. Alcance del MVP
 
@@ -83,6 +83,8 @@ GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de 
 
 Se confirmaron manualmente cinco puntos funcionales después del refactor: entrada con cuenta activa, rechazo de contraseña errónea/cierre de sesión, recepción de código SMTP, recuperación y nuevo acceso, y separación de pipelines entre dos usuarios. También se registró una métrica externa autenticada con HTTP 201 en un entorno local. Estas evidencias no son pruebas automáticas de navegador ni certificación de seguridad productiva; deben repetirse cuando cambie el código pertinente.
 
+El cuarto corte cuenta además con una [prueba E2E documentada](PRUEBA_E2E_CORTE4.md) en un clon con Docker Compose aislado: pipeline creado desde React, envío externo con HTTP 201, incremento de anomalías de 27 a 28 en PostgreSQL y alerta visible en el dashboard. Se utilizó una cuenta de prueba activada directamente, sin verificar el circuito SMTP; el entorno requirió preparación adicional a las instrucciones estándar del README.
+
 ## 4. Lista de comprobación del MVP
 
 - [x] Registro, verificación, JWT, recuperación y protección de códigos mediante HMAC.
@@ -93,6 +95,7 @@ Se confirmaron manualmente cinco puntos funcionales después del refactor: entra
 - [x] J.A.R.V.I.S. con Groq, herramientas autorizadas y respuestas Markdown.
 - [x] 41 pruebas aisladas, 9 HTTP y 8 de seguridad/archivado aprobadas localmente después del refactor; ambos trabajos de CI del PR #18 aprobados.
 - [x] Pantalla React de pipelines, configuración `VITE_API_URL` y ejemplo `frontend/.env.example`.
+- [x] Flujo E2E de pipeline, ingesta externa, PostgreSQL y dashboard validado en entorno aislado, con evidencia escrita y visual en el PR #24.
 - [x] Prueba limitada del SQL de archivado en una tabla antigua mínima simulada y de creación de esquema nuevo mediante SQLAlchemy, usando dos PostgreSQL 16 temporales y aislados.
 - [ ] Probar variantes adicionales de esquemas anteriores, restaurar un respaldo de prueba y repetir una instalación completa desde un clon limpio.
 - [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador automatizado.
@@ -100,14 +103,15 @@ Se confirmaron manualmente cinco puntos funcionales después del refactor: entra
 - [x] Routers de métricas, chat y WebSocket separados de `main.py`, además de anomalías y pipelines.
 - [x] Centralizar JWT y HTTP 401 de solicitudes Axios protegidas, manteniendo públicas las rutas de identidad.
 - [x] Extraer seis endpoints de autenticación a `backend/app/auth_router.py`, manteniendo la configuración compartida en `main.py` y verificando regresiones.
-- [ ] Separar componentes de `App.jsx` y automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador.
+- [x] Separar `Verificar`, `RecuperarPassword`, el dashboard y el formato de respuestas J.A.R.V.I.S. de `App.jsx`; ESLint y compilación aprobados en la copia revisada.
+- [ ] Automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador; simplificar la lógica interna extensa de `Dashboard.jsx`.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, y la pantalla React de pipelines. Persisten tareas de modularización del frontend, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
+Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, la pantalla React de pipelines y la separación de las pantallas principales de `App.jsx`. Persisten tareas de simplificación interna del dashboard, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
 
 **Uso de IA y tecnología elegida:** el MVP implementa Groq para las respuestas de J.A.R.V.I.S. 2.0 y su llamada controlada a funciones backend. En la propuesta de referencia se plantean servicios Azure, que no se incorporaron al prototipo. Groq permite implementar el flujo conversacional previsto con la integración disponible en FastAPI; la aceptación académica formal de esta sustitución debe confirmarse con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo de análisis, programación y documentación; cada resultado requiere revisión y pruebas del equipo.
 
@@ -115,6 +119,6 @@ Se completó la extracción de routers de autenticación, anomalías, pipelines,
 
 El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, administración de pipelines desde React y asistencia conversacional controlada. Su madurez operativa aún está limitada por la ausencia de conectores productivos, pruebas completas de navegador y validación de despliegue empresarial.
 
-Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md) y [`../frontend/README.md`](../frontend/README.md).
+Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md), [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** base integrada `73bccce` (PR #18), con autenticación modularizada y dos escenarios limitados de esquema PostgreSQL comprobados en contenedores temporales. Siguen pendientes una instalación limpia reproducible, variantes de migración históricas, restauración del respaldo, pruebas automatizadas de sesión en navegador y verificaciones integrales de ingesta/alertas en distintos entornos.
+**Estado documental:** evidencia integrada hasta `f95e9e1` (PR #24), con autenticación modularizada, dos escenarios limitados de esquema PostgreSQL comprobados en contenedores temporales y una prueba E2E con alerta observada. La separación de componentes frontend es un cambio adicional sujeto a integración. Siguen pendientes una instalación sin preparación adicional siguiendo solamente el README, variantes de migración históricas, restauración del respaldo y pruebas automatizadas de sesión en navegador.
