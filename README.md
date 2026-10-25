@@ -299,3 +299,7 @@ automatizadas continuan pendientes.
 ## Validacion SMTP - Fase 12.49
 
 - [Evidencias de validacion SMTP y recuperacion](docs/VALIDACION_SMTP_12_49.md)
+
+## Validacion de correos diferenciados - Fase 12.50
+
+- [Evidencias de correos de verificacion y recuperacion](docs/VALIDACION_CORREOS_12_50.md)
