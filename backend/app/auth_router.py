@@ -40,6 +40,7 @@ def crear_router_auth(
     generar_codigo: Callable[[], str],
     enviar_correo: Callable[[str, str], None],
     emitir_token: Callable[..., str],
+    enviar_correo_recuperacion: Callable[[str, str], None] | None = None,
 ):
     """Crea las rutas sin duplicar configuracion ni utilidades de seguridad."""
     router = APIRouter()
@@ -284,7 +285,7 @@ def crear_router_auth(
         db.commit()
 
         background_tasks.add_task(
-            enviar_correo,
+            enviar_correo_recuperacion or enviar_correo,
             user.correo,
             codigo_secreto
         )

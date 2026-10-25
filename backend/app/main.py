@@ -266,8 +266,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # =================================================================
 #                SISTEMA DE CORREOS E IA
 # =================================================================
-def enviar_correo_verificacion(destinatario: str, codigo: str):
-    return _enviar_correo_verificacion_impl(destinatario, codigo, smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT, sender_email=SENDER_EMAIL, sender_password=SENDER_PASSWORD)
+def enviar_correo_verificacion(destinatario: str, codigo: str, proposito: str = "verificacion"):
+    return _enviar_correo_verificacion_impl(
+        destinatario,
+        codigo,
+        proposito=proposito,
+        smtp_server=SMTP_SERVER,
+        smtp_port=SMTP_PORT,
+        sender_email=SENDER_EMAIL,
+        sender_password=SENDER_PASSWORD,
+    )
 
 def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, cal_v: str, cal_s: str, fal_v: str, fal_s: str, diag_general: str):
     return _enviar_alerta_correo_consolidado_impl(destinatario, lat_v, lat_s, cal_v, cal_s, fal_v, fal_s, diag_general, smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT, sender_email=SENDER_EMAIL, sender_password=SENDER_PASSWORD)
@@ -364,6 +372,9 @@ app.include_router(
         generar_codigo=lambda: generar_codigo_seguro(),
         enviar_correo=lambda destinatario, codigo: enviar_correo_verificacion(
             destinatario, codigo
+        ),
+        enviar_correo_recuperacion=lambda destinatario, codigo: enviar_correo_verificacion(
+            destinatario, codigo, proposito="recuperacion"
         ),
         emitir_token=lambda data, expires_delta: create_access_token(
             data=data, expires_delta=expires_delta
