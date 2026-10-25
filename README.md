@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Octubre de 2026. Evidencia funcional integrada en `main` hasta `f95e9e1` (PR #24): autenticación modularizada, interceptores Axios, administración de pipelines y prueba E2E documentada.** La separación posterior de componentes de React forma parte de una corrección en revisión.
+**Proyecto académico · Octubre de 2026. Versión integrada en `main` hasta `1f7208a` (PR #25): autenticación modularizada, interceptores Axios, administración de pipelines, prueba E2E y componentes React separados.**
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -238,11 +238,13 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones de los Pull Requests #18 y #24; este último incorporó la evidencia E2E de ingesta.
+El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones de los Pull Requests #18, #24 y #25; estos dos últimos incorporaron la evidencia E2E de ingesta y la modularización de React, respectivamente.
 
 **Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas automatizadas de navegador, carga y seguridad, verificar variantes adicionales de esquemas históricos y ejecutar una instalación completa siguiendo exclusivamente este README. Ya se realizó una prueba E2E en un clon aislado con configuración de Docker Compose y cuenta ficticia preparadas expresamente; no equivale a una instalación sin intervenciones adicionales. El lint y la ejecución del workflow en `main` están configurados.
 
 **Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. Posteriormente, la prueba E2E del cuarto corte confirmó `POST /metricas/externas/` con HTTP 201, el aumento de anomalías de 27 a 28 en PostgreSQL aislado y la alerta visual en React; véase [el informe y su captura](docs/PRUEBA_E2E_CORTE4.md). No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
+
+**Instalación desde clon nuevo:** en una prueba posterior se clonó `main` en `1f7208a`, se crearon variables ficticias y se iniciaron PostgreSQL, FastAPI y React en un proyecto Docker independiente. PostgreSQL estuvo saludable, la API y React respondieron HTTP 200 y se comprobaron cuatro tablas principales. Como los puertos del README estaban ocupados, se utilizó una copia temporal de Compose con puertos alternativos. El origen CORS estándar `127.0.0.1:5173` fue autorizado y el alternativo `127.0.0.1:5175` fue rechazado, conforme a la configuración actual. Esta prueba valida el arranque, no una sesión funcional en el puerto alternativo; véase [el informe de instalación](docs/VALIDACION_CLON_LIMPIO_CORTE4.md).
 
 ## 9. Limitaciones, riesgos y uso de IA
 
@@ -265,6 +267,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [`docs/PRD.md`](docs/PRD.md): objetivos, requisitos funcionales y criterios de aceptación.
 - [`docs/MVP.md`](docs/MVP.md): alcance, estado verificable y exclusiones.
 - [`docs/PRUEBA_E2E_CORTE4.md`](docs/PRUEBA_E2E_CORTE4.md): ingesta externa E2E en clon aislado, resultados HTTP/PostgreSQL y captura del dashboard.
+- [`docs/VALIDACION_CLON_LIMPIO_CORTE4.md`](docs/VALIDACION_CLON_LIMPIO_CORTE4.md): construcción, arranque y comprobación de CORS desde un clon nuevo, con limitaciones documentadas.
 - [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
 - `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos empresariales y académicos de referencia, sujetos a disponibilidad en la entrega.
 
@@ -282,12 +285,13 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado se repitieron localmente y aprobaron tras el refactor; sigue pendiente integrarlas en CI con los servicios correspondientes.
 - [x] Prueba E2E aislada de pipeline, ingesta externa HTTP 201, registro de anomalía y alerta en React, documentada con captura en el PR #24.
 - [x] Separación de `App.jsx` en componentes `Verificar.jsx`, `RecuperarPassword.jsx`, `Dashboard.jsx` y `RespuestaJarvis.jsx`; ESLint y compilación aprobados en la copia revisada.
+- [x] Clon nuevo del commit `1f7208a`: PostgreSQL, API y React iniciados en Compose independiente; API y frontend HTTP 200, cuatro tablas creadas y CORS estándar verificado.
 - [x] Verificar la migración sobre una tabla antigua simulada y la creación de esquema nuevo mediante SQLAlchemy, ambas en PostgreSQL 16 temporal y aislado.
 - [ ] Verificar variantes históricas adicionales, restauración de respaldo e instalación completa desde un clon limpio con evidencia reproducible.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** evidencia integrada en `main` hasta `f95e9e1` (PR #24), con autenticación modularizada, dos escenarios de esquema PostgreSQL validados en entornos temporales y la prueba E2E aislada documentada. La separación posterior de componentes frontend se entrega como cambio adicional sujeto a revisión y CI. Están pendientes una instalación siguiendo solamente el README, variantes de migración no simuladas, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico, no una certificación empresarial.
+**Estado documental:** código integrado en `main` hasta `1f7208a` (PR #25), con la prueba E2E y el arranque desde un clon nuevo documentados. Para preservar los servicios en uso, la instalación de prueba cambió exclusivamente puertos y variables de entorno en el clon; no demuestra ejecución sin adaptaciones siguiendo literalmente el README, ni una sesión funcional en el puerto alternativo bloqueado por CORS. Permanecen pendientes variantes de migración no simuladas, restauración de respaldo, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico.
 
 ## Evidencias tecnicas de validacion
 
@@ -310,3 +314,7 @@ automatizadas continuan pendientes.
 ## Prueba de ingesta E2E - Cuarto corte
 
 - [Informe de la prueba y captura de alerta en el dashboard](docs/PRUEBA_E2E_CORTE4.md)
+
+## Prueba de instalación desde clon nuevo - Cuarto corte
+
+- [Construcción, arranque y verificación de CORS en entorno Docker aislado](docs/VALIDACION_CLON_LIMPIO_CORTE4.md)

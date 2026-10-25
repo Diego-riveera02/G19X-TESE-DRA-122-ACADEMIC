@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Frontend del MVP académico · Octubre de 2026.** La evidencia E2E está integrada en `main` hasta `f95e9e1` (PR #24) y la extracción posterior de componentes se entrega para revisión. La interfaz React permite registrar y autenticar usuarios, administrar pipelines, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Frontend del MVP académico · Octubre de 2026.** El código está integrado en `main` hasta `1f7208a` (PR #25), con evidencia E2E y extracción de componentes. La interfaz React permite registrar y autenticar usuarios, administrar pipelines, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -146,6 +146,7 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [`../docs/PRD.md`](../docs/PRD.md): requisitos y criterios de aceptación.
 - [`../docs/MVP.md`](../docs/MVP.md): alcance y evidencia del prototipo.
 - [`../docs/PRUEBA_E2E_CORTE4.md`](../docs/PRUEBA_E2E_CORTE4.md): ingesta E2E con pipeline, PostgreSQL y alerta en React, más captura.
+- [`../docs/VALIDACION_CLON_LIMPIO_CORTE4.md`](../docs/VALIDACION_CLON_LIMPIO_CORTE4.md): arranque del frontend desde clon nuevo y limitación CORS del puerto alternativo.
 
 - [x] Registro, verificación, recuperación y acceso JWT.
 - [x] Dashboard, alertas, WebSocket por usuario y chat Markdown.
@@ -160,4 +161,4 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [ ] Automatizar las pruebas de navegador del interceptor, expiración de JWT y recuperación de sesión.
 - [ ] Reducir la complejidad interna de `Dashboard.jsx` y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** evidencia funcional del cuarto corte integrada hasta `f95e9e1` (PR #24) y separación posterior de componentes frontend preparada para revisión. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción. El README principal describe además las dos verificaciones limitadas del esquema PostgreSQL en contenedores temporales.
+**Estado:** código integrado hasta `1f7208a` (PR #25), con separación de componentes y prueba E2E. React respondió HTTP 200 desde un clon nuevo en `5175`, pero el backend rechazó ese origen alternativo por CORS; el puerto estándar `5173` sí fue autorizado. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción.
