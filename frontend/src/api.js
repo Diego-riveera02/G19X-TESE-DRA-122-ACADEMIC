@@ -37,6 +37,7 @@ function esSolicitudProtegida(config) {
 export function limpiarSesion() {
   localStorage.removeItem("token_plurione");
   localStorage.removeItem("usuario_nombre");
+  sessionStorage.removeItem("plurione_jarvis_mostrada");
 }
 
 api.interceptors.request.use((config) => {

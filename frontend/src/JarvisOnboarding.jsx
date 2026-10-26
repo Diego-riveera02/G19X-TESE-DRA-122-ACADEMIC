@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const JarvisOnboarding = () => {
   const [isVisible, setIsVisible] = useState(() => {
     const token = localStorage.getItem('token_plurione');
     const nombre = localStorage.getItem('usuario_nombre');
-    return Boolean(token && nombre);
+    return Boolean(token && nombre && sessionStorage.getItem('plurione_jarvis_mostrada') !== '1');
   });
+
+  useEffect(() => {
+    if (isVisible) {
+      sessionStorage.setItem('plurione_jarvis_mostrada', '1');
+    }
+  }, [isVisible]);
 
   const nombreUsuario = localStorage.getItem('usuario_nombre') || 'Ingeniero';
 

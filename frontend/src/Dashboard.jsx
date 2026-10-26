@@ -871,7 +871,7 @@ const irAlFinalChat = () => {
 
                 <tr style={{ borderBottom: '2px solid #333', color: '#888' }}>
 
-                  <th style={{ padding: '10px' }}>ID</th><th>Pipeline</th><th>Métrica</th><th>Valor</th><th>Estado</th><th>IA Diagnóstico</th>
+                  <th style={{ padding: '10px' }}>N.º</th><th>Pipeline</th><th>Métrica</th><th>Valor</th><th>Estado</th><th>IA Diagnóstico</th>
 
                 </tr>
 
@@ -879,11 +879,11 @@ const irAlFinalChat = () => {
 
               <tbody>
 
-                {anomalias.map(a => (
+                {anomalias.map((a, indice) => (
 
                   <tr key={a.id} style={{ borderBottom: '1px solid #1a1a1d' }}>
 
-                    <td style={{ padding: '10px', color: '#E5B80B' }}>#{a.id}</td>
+                    <td style={{ padding: '10px', color: '#E5B80B' }}>#{indice + 1}</td>
 
                     <td>{a.pipeline_name}</td>
 

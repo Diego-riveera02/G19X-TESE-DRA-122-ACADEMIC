@@ -21,6 +21,7 @@ export default function Login() {
       const response = await api.post('/login/', formData, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
       localStorage.setItem('token_plurione', response.data.access_token);
       localStorage.setItem('usuario_nombre', response.data.nombre);
+      sessionStorage.removeItem('plurione_jarvis_mostrada');
       navigate('/app');
     } catch (err) { 
       if (err.response?.status === 403) {
