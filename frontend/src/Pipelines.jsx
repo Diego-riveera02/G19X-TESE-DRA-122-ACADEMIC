@@ -47,6 +47,13 @@ export default function Pipelines() {
   const [mensaje, setMensaje] = useState('');
   const [estadoCopia, setEstadoCopia] = useState('');
 
+  // Numeracion visual por usuario; no modifica los IDs reales.
+  const numeroVisiblePorId = Object.fromEntries(
+    [...pipelines]
+      .sort((a, b) => a.id - b.id)
+      .map((pipeline, indice) => [pipeline.id, indice + 1])
+  );
+
   useEffect(() => {
     const token = localStorage.getItem('token_plurione');
 
@@ -281,10 +288,10 @@ export default function Pipelines() {
           }}
         >
           <div>
-            <h1 style={{ color: '#E5B80B', marginBottom: '6px' }}>
+            <h1 style={{ color: '#E5B80B', fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', lineHeight: 1.25, margin: '0 0 12px' }}>
               Administracion de pipelines
             </h1>
-            <p style={{ color: '#aaa', margin: 0 }}>
+            <p style={{ color: '#aaa', margin: 0, lineHeight: 1.5 }}>
               Configura fuentes externas de metricas para PluriOne.
             </p>
           </div>
@@ -389,7 +396,7 @@ export default function Pipelines() {
             }}
           >
             <h2 style={{ color: '#E5B80B', marginTop: 0 }}>
-              Clave de ingesta — Pipeline #{claveVisible.id}
+              Clave de ingesta — Pipeline #{numeroVisiblePorId[claveVisible.id] ?? '-'}
             </h2>
 
             <p>
@@ -490,7 +497,7 @@ export default function Pipelines() {
                     </strong>
 
                     <div style={{ fontSize: '0.85rem', marginTop: '5px' }}>
-                      ID: {pipeline.id} ·{' '}
+                      ID visible: {numeroVisiblePorId[pipeline.id]} ·{' '}
                       <span
                         style={{
                           color: pipeline.revocado ? '#ff929b' : '#8de098',
