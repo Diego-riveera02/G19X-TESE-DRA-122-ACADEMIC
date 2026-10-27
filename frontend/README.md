@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Frontend del MVP académico · Octubre de 2026.** El código está integrado en `main` hasta `1f7208a` (PR #25), con evidencia E2E y extracción de componentes. La interfaz React permite registrar y autenticar usuarios, administrar pipelines, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Frontend del MVP académico · Octubre de 2026.** El código de referencia está integrado en `main` hasta `657499b` (26 de octubre de 2026), con evidencia E2E, componentes separados y mejoras verificadas en Historial y J.A.R.V.I.S. La interfaz React permite registrar y autenticar usuarios, administrar pipelines, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -161,4 +161,4 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [ ] Automatizar las pruebas de navegador del interceptor, expiración de JWT y recuperación de sesión.
 - [ ] Reducir la complejidad interna de `Dashboard.jsx` y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
 
-**Estado:** código integrado hasta `1f7208a` (PR #25), con separación de componentes y prueba E2E. React respondió HTTP 200 desde un clon nuevo en `5175`, pero el backend rechazó ese origen alternativo por CORS; el puerto estándar `5173` sí fue autorizado. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción.
+**Estado:** código de referencia integrado hasta `657499b`, con separación de componentes y prueba E2E documentada. Durante la validación histórica del clon nuevo, React respondió HTTP 200 en el puerto `5175`, pero el backend rechazó `http://127.0.0.1:5175` porque no estaba incluido en `CORS_ORIGINS`. Ese origen puede autorizarse agregándolo a la variable y reiniciando la API. El origen estándar `http://127.0.0.1:5173` estaba autorizado. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción.

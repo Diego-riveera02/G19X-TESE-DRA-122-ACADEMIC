@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico integrado en `main` hasta `1f7208a` (PR #25), con autenticación modularizada, prueba E2E aislada y componentes frontend separados.
+- **Versión:** MVP académico con código de referencia integrado en `main` hasta `657499b` (26 de octubre de 2026), con autenticación modularizada, evidencia E2E y componentes frontend separados.
 
 ## 1. Alcance del MVP
 
@@ -39,7 +39,7 @@ El frontend envía un contexto limitado de mensajes recientes, muestra Markdown 
 
 ### 1.5. Infraestructura
 
-FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. GitHub Actions ejecuta 41 pruebas aisladas, ESLint y compilación de React con Node.js 22. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
+FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. GitHub Actions ejecuta 41 pruebas aisladas, las pruebas de CORS mediante pytest, ESLint y compilación de React con Node.js 22. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
 
 ## 2. Estado verificable de las funcionalidades
 
@@ -71,13 +71,16 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 
 ### Cobertura de pruebas y evidencia
 
-El repositorio contiene **58 funciones de prueba**, pero no todas forman parte de una misma ejecución automática:
+La validación local del 24 de octubre de 2026 reunió **58 casos** en tres suites ejecutadas por separado. El repositorio de referencia `657499b` contiene **seis archivos de pruebas**, incluidos los de CORS y correo:
 
 - `backend/tests/test_flujos_aislados.py`: **41 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket, claves de pipelines y regresiones de routers. **Sí forman parte del workflow actual.**
 - `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
 - `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
+- `backend/tests/test_cors_config.py`: 4 funciones de prueba parametrizadas. **Sí se ejecuta en CI.**
+- `backend/tests/test_smtp_config.py`: 1 función con 3 casos. **Todavía no se ejecuta en CI.**
+- `backend/tests/test_plantillas_correo.py`: 4 pruebas. **Todavía no se ejecuta en CI.**
 
-GitHub Actions ejecuta 41 pruebas aisladas y comprueba ESLint y compilación de React con Node.js 22. **Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.** El 24 de octubre de 2026 aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
+GitHub Actions ejecuta 41 pruebas aisladas y `test_cors_config.py`, además de comprobar ESLint y compilación de React con Node.js 22. Las pruebas SMTP y de plantillas de correo todavía no forman parte del CI en el commit de referencia. **Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.** El 24 de octubre de 2026 aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
 
 **Pruebas aisladas adicionales de esquema (24 de octubre de 2026):** en un PostgreSQL 16 temporal, el archivo `001_archivado_logico_anomalias.sql` agregó las columnas de archivado a una tabla antigua mínima simulada y conservó su único registro ficticio activo. En otro PostgreSQL 16 temporal se comprobó que SQLAlchemy crea desde cero las tablas `users`, `anomaly_logs`, `auth_rate_limits` y `pipelines` con las columnas de archivado esperadas. Ambos contenedores se eliminaron. En la base principal solo se consultaron las columnas existentes; no se aplicó allí una migración. Faltan pruebas de variantes históricas reales, restauración del respaldo e instalación completa desde un clon limpio.
 
@@ -85,7 +88,7 @@ Se confirmaron manualmente cinco puntos funcionales después del refactor: entra
 
 El cuarto corte cuenta además con una [prueba E2E documentada](PRUEBA_E2E_CORTE4.md) en un clon con Docker Compose aislado: pipeline creado desde React, envío externo con HTTP 201, incremento de anomalías de 27 a 28 en PostgreSQL y alerta visible en el dashboard. Se utilizó una cuenta de prueba activada directamente, sin verificar el circuito SMTP; el entorno requirió preparación adicional a las instrucciones estándar del README.
 
-En una [segunda instalación desde un clon nuevo](VALIDACION_CLON_LIMPIO_CORTE4.md), se confirmó HTTP 200 para FastAPI y React, PostgreSQL saludable y cuatro tablas principales. Los puertos de la instalación habitual estaban ocupados, por lo que se adaptó únicamente el Compose de prueba: CORS autorizó el origen estándar `5173` y rechazó el alternativo `5175`. La instalación de componentes sí quedó comprobada; la comunicación completa desde la interfaz alternativa no.
+En una [segunda instalación desde un clon nuevo](VALIDACION_CLON_LIMPIO_CORTE4.md), se confirmó HTTP 200 para FastAPI y React, PostgreSQL saludable y cuatro tablas principales. Los puertos de la instalación habitual estaban ocupados, por lo que se adaptó únicamente el Compose de prueba: CORS autorizó el origen estándar `5173` y rechazó el alternativo `5175`, que no estaba incluido en `CORS_ORIGINS` durante esa prueba. El origen alternativo puede autorizarse configurando esa variable y reiniciando la API. La instalación de componentes sí quedó comprobada; la comunicación completa desde la interfaz alternativa no.
 
 ## 4. Lista de comprobación del MVP
 
@@ -124,4 +127,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md), [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** código integrado hasta `1f7208a` (PR #25), con autenticación modularizada, dos escenarios limitados de esquema PostgreSQL, prueba E2E con alerta observada, frontend separado y arranque de servicios desde clon nuevo. Siguen pendientes una instalación sin adaptaciones siguiendo literalmente el README, variantes de migración históricas, restauración del respaldo y pruebas automatizadas de sesión en navegador.
+**Estado documental:** código de referencia integrado hasta `657499b`, con autenticación modularizada, seis archivos de pruebas, dos escenarios limitados de esquema PostgreSQL, evidencia E2E, frontend separado y arranque de servicios desde clon nuevo. Siguen pendientes una instalación sin adaptaciones siguiendo literalmente el README, variantes de migración históricas, restauración del respaldo y pruebas automatizadas de sesión en navegador.

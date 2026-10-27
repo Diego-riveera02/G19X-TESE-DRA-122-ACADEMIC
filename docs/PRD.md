@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** integrada en `main` en `73bccce` (Pull Request #18), con el router de autenticación modularizado y validaciones locales del 24 de octubre de 2026.
+- **Versión:** código integrado en `main` hasta `657499b` (26 de octubre de 2026), con routers modularizados y validaciones documentadas.
 
 ## 1. Propósito, problemática y visión general
 
@@ -38,7 +38,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - Dashboard React/Vite, gráficas, feed con marca temporal de backend y WebSocket autenticado por usuario.
 - Consulta, archivado lógico y restauración de historial con filtrado por cuenta y paginación.
 - Asistente Groq con function calling limitado a herramientas backend autorizadas, Markdown, onboarding y exportación PDF de registros cargados.
-- Docker Compose para demostración y CI con 41 pruebas aisladas, ESLint y compilación de React en Node.js 22.
+- Docker Compose para demostración y CI con 41 pruebas aisladas, pruebas CORS mediante pytest, ESLint y compilación de React en Node.js 22.
 
 **Fuera del alcance comprobado o pendiente de trabajo:**
 
@@ -80,7 +80,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
 - **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles, máximo de 20 pipelines activos por usuario y límite de 60 solicitudes por minuto para ingesta; falta validar su eficacia bajo carga y concurrencia reales.
 - **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
-- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para autenticación, anomalías, pipelines, chat, métricas y WebSocket. `main.py` conserva la configuración compartida y registra los routers. Pendiente reducir `App.jsx` y ampliar pruebas automatizadas de interfaz.
+- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para autenticación, anomalías, pipelines, chat, métricas y WebSocket. `main.py` conserva la configuración compartida y registra los routers. `App.jsx` ya está modularizado; sigue pendiente dividir `Dashboard.jsx` y ampliar las pruebas automatizadas de interfaz.
 
 ## 5. Arquitectura y flujo de datos
 
@@ -103,7 +103,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - `POST /pipelines/{pipeline_id}/rotar/` y `POST /pipelines/{pipeline_id}/revocar/` — rotar o revocar con JWT.
 - `GET /anomalias/`, `DELETE /anomalias/`, `GET /anomalias/archivadas/`, `POST /anomalias/restaurar/` — historial protegido y reversible.
 
-Estas rutas forman parte del código del MVP; la prueba completa de extremo a extremo con una instalación desde cero continúa pendiente.
+Estas rutas forman parte del código del MVP. La ingesta y las alertas ya tienen una prueba E2E documentada en [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md). Continúa pendiente una instalación desde cero siguiendo literalmente el README, sin activar cuentas directamente en PostgreSQL.
 
 ## 6. Seguridad y uso responsable de inteligencia artificial
 
@@ -137,7 +137,7 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 - **CA-10:** Docker/README permiten repetir el arranque, los cambios de esquema se verifican sin destruir datos y las pruebas automatizadas son trazables.
 - **CA-11:** las decisiones y limitaciones de IA están documentadas sin atribuir monitoreo empresarial no demostrado.
 
-**Evidencia disponible y límites:** el repositorio contiene 58 pruebas: 41 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. Las 41 aisladas, ESLint y compilación del frontend aprobaron en GitHub Actions para el Pull Request #18, que incorporó la extracción de autenticación. Después del refactor, las tres suites aprobaron localmente el 24 de octubre de 2026: **58 de 58 casos en ejecuciones separadas**. Las 17 pruebas HTTP/seguridad no se ejecutan en el workflow actual y la evidencia local no sustituye pruebas de carga, navegador automatizado o producción.
+**Evidencia disponible y límites:** la validación histórica reunió 58 casos en tres suites: 41 aisladas, 9 de integración HTTP y 8 de seguridad/archivado. El repositorio de referencia contiene seis archivos de pruebas, incluyendo los de CORS, SMTP y plantillas de correo. Las 41 aisladas, ESLint y compilación del frontend aprobaron en GitHub Actions para el Pull Request #18, que incorporó la extracción de autenticación. Después del refactor, las tres suites aprobaron localmente el 24 de octubre de 2026: **58 de 58 casos en ejecuciones separadas**. Las 17 pruebas HTTP/seguridad no se ejecutan en el workflow actual y la evidencia local no sustituye pruebas de carga, navegador automatizado o producción.
 
 Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, respuesta 429, aislamiento entre usuarios, WebSocket y rotación/revocación de pipelines. Además, con la API reconstruida en Docker se validaron sus rutas y la conexión con PostgreSQL. Se confirmaron manualmente cinco flujos: login, rechazo de credenciales erróneas, recuperación por correo, inicio de sesión con contraseña nueva y separación de pipelines entre cuentas. Esto no acredita pruebas exhaustivas de PostgreSQL, carga, navegador automatizado, SMTP a gran escala y servicios externos; tampoco constituye certificación empresarial.
 
@@ -151,7 +151,7 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - Paginación: la primera consulta o el PDF puede no incluir todos los registros de la base de datos.
 - Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): **no se ejecuta desde `schema_migrations.py`**. Su SQL incorpora columnas sin `IF NOT EXISTS`, por lo que no debe repetirse a ciegas. Aprobó una simulación limitada con una tabla antigua mínima, pero faltan verificaciones de otras versiones históricas y restauración de respaldo. En una base de datos existente se debe verificar el esquema y hacer respaldo antes de aplicarlo manualmente si falta.
 - Pendientes pruebas manuales de portapapeles, concurrencia y resistencia bajo carga de los límites de ingesta y cantidad de pipelines.
-- CI con SQLite en memoria para las 41 pruebas aisladas; ESLint y build activos. Pendiente incorporar pruebas HTTP/archivado con servicios al workflow.
+- CI con SQLite en memoria para las 41 pruebas aisladas y ejecución adicional de pruebas CORS mediante pytest; ESLint y build activos. Pendiente incorporar pruebas SMTP, plantillas de correo y pruebas HTTP/archivado con los servicios correspondientes.
 - Dockerfiles todavía orientados a desarrollo; la preparación para producción no está demostrada.
 
 ## 10. Lista de verificación del producto
@@ -160,13 +160,14 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [x] Simulador, endpoints de ingesta y administración de pipelines en el backend.
 - [x] WebSocket por usuario, dashboard, archivado lógico, restauración, chat y PDF.
 - [x] Códigos con HMAC y claves de pipeline con SHA-256.
-- [x] CI con 41 pruebas aisladas, ESLint y compilación de frontend; los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.
+- [x] CI con 41 pruebas aisladas, pruebas CORS, ESLint y compilación de frontend. Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación; las pruebas CORS se incorporaron posteriormente.
 - [x] Interfaz React de pipelines y configuración centralizada de API/WebSocket.
 - [x] Cuota de hasta 20 pipelines activos por usuario y límites de 60 solicitudes de ingesta por minuto implementados.
 - [x] Routers de autenticación, pipelines, métricas, chat, anomalías y WebSocket extraídos de `main.py`, con configuración compartida preservada.
 - [x] Centralizar la autorización JWT y el cierre por HTTP 401 de solicitudes Axios protegidas, sin redirigir ante un 401 de login público.
 - [x] Extraer las seis rutas de identidad a `auth_router.py` y repetir las 58 pruebas locales y los flujos esenciales de autenticación.
-- [ ] Modularizar `App.jsx`; automatizar pruebas del interceptor, sesión y accesibilidad en navegador.
+- [x] Modularizar `App.jsx` en componentes independientes.
+- [ ] Automatizar pruebas del interceptor, sesión y accesibilidad en navegador.
 - [x] Verificar el SQL de archivado en una tabla antigua mínima simulada y el esquema nuevo generado por SQLAlchemy, con PostgreSQL 16 temporal aislado en ambos casos.
 - [ ] Verificar variantes históricas adicionales, restaurar un respaldo en un entorno de prueba e instalar todo el sistema desde un clon limpio.
 - [ ] Ampliar CI con PostgreSQL y pruebas HTTP/seguridad; la ejecución en `main` y ESLint ya están configurados.
@@ -178,4 +179,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** integrado en `main` en `73bccce` (PR #18), con autenticación modularizada y dos escenarios limitados de migración/creación de esquema comprobados sobre PostgreSQL 16 temporal. Continúan pendientes la instalación completa desde un clon limpio, pruebas automatizadas de sesión en navegador, variantes históricas de migración, restauración de respaldo y confirmación formal de las sustituciones tecnológicas.
+**Estado:** código integrado en `main` hasta `657499b`, con autenticación modularizada, evidencia E2E documentada y dos escenarios limitados de migración/creación de esquema comprobados sobre PostgreSQL 16 temporal. Continúan pendientes la instalación completa desde un clon limpio, pruebas automatizadas de sesión en navegador, variantes históricas de migración, restauración de respaldo y confirmación formal de las sustituciones tecnológicas.
