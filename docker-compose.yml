@@ -41,6 +41,14 @@ services:
     depends_on:
       - api
 
+  # 4. Correo local de pruebas (opcional)
+  mailpit:
+    image: axllent/mailpit
+    profiles: ["correo-local"]
+    ports:
+      - "127.0.0.1:8025:8025"
+    # SMTP 1025 disponible dentro de la red de Docker
+
 # Almacenamiento persistente de PostgreSQL
 volumes:
   plurione_postgres_data:

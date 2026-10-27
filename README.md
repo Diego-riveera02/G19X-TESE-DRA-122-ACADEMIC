@@ -68,6 +68,21 @@ No compartir `.env`, claves JWT, claves de pipeline reales ni contraseñas en Gi
 
 Los valores son ejemplos de configuración. Para servidores locales de pruebas como Mailpit se deben ajustar el servidor, el puerto, STARTTLS y la autenticación. Nunca se deben publicar contraseñas reales.
 
+**Configuración opcional de Mailpit en `backend/.env`:**
+
+Para probar el registro sin Gmail, sustituir temporalmente las variables SMTP por:
+
+```dotenv
+SMTP_SERVER=mailpit
+SMTP_PORT=1025
+SMTP_STARTTLS=false
+SMTP_AUTH=false
+SENDER_EMAIL=no-responder@plurione.local
+SENDER_PASSWORD=
+```
+
+Conservar `SECRET_KEY`, `DATABASE_URL` y las demás variables necesarias. No publicar el archivo privado `backend/.env`. Guardar una copia privada de su configuración anterior para poder restaurarla después de las pruebas.
+
 ### Controles implementados
 
 - Los endpoints privados verifican JWT y usuario activo; el backend filtra las anomalías y eventos WebSocket por cuenta.
@@ -80,6 +95,22 @@ Los valores son ejemplos de configuración. Para servidores locales de pruebas c
 Estos controles forman parte de la seguridad del MVP. Una evaluación de seguridad para producción y pruebas de carga siguen fuera de las validaciones completadas.
 
 ## 5. Instalación y ejecución con Docker Compose
+
+**Correo de pruebas sin Gmail (perfil opcional `correo-local`):**
+
+Después de configurar las variables SMTP indicadas en la sección 4, ejecutar desde la raíz del proyecto:
+
+```powershell
+docker compose --profile correo-local up -d --build
+docker compose --profile correo-local ps
+```
+
+Abrir la bandeja local en `http://127.0.0.1:8025`. Los códigos de verificación y recuperación enviados por la aplicación se pueden consultar allí, incluso usando direcciones ficticias de prueba. Mailpit captura los correos localmente y no los envía a Gmail.
+
+El puerto SMTP `1025` se utiliza dentro de la red de Docker mediante el nombre de servicio `mailpit`; no necesita publicarse en Windows.
+
+Para iniciar los servicios habituales en una instalación nueva, sin activar el correo de pruebas, utilizar `docker compose up -d`. Mailpit solo se incorpora al arranque cuando se solicita su perfil.
+
 
 ### 5.1. Clonar y preparar el proyecto
 
@@ -286,6 +317,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [`docs/VALIDACION_TECNICA_12_48.md`](docs/VALIDACION_TECNICA_12_48.md): evidencias de validación local de Docker, frontend y autenticación.
 - [`docs/VALIDACION_SMTP_12_49.md`](docs/VALIDACION_SMTP_12_49.md): evidencias de configuración SMTP y recuperación de contraseñas.
 - [`docs/VALIDACION_CORREOS_12_50.md`](docs/VALIDACION_CORREOS_12_50.md): evidencias de correos de verificación y recuperación.
+- [`docs/VALIDACION_MAILPIT_CORTE5.md`](docs/VALIDACION_MAILPIT_CORTE5.md): prueba de registro, verificación y acceso mediante Mailpit sin Gmail, con restauración del entorno.
 - [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
 - `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos empresariales y académicos de referencia, sujetos a disponibilidad en la entrega.
 
