@@ -30,7 +30,7 @@ def get_cors_origins():
 
         try:
             partes = urlsplit(origen)
-            puerto = partes.port
+            partes.port
         except ValueError as error:
             raise ValueError(
                 f"Origen CORS invalido: {origen}"

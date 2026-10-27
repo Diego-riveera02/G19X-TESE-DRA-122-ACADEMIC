@@ -35,11 +35,6 @@ def crear_router_chat(
         db: Session = Depends(get_db),
         _limite_chat: None = Depends(limitar_chat_por_usuario)
     ):
-        contexto = (
-            chat_req.contexto_anomalia
-            if chat_req.contexto_anomalia
-            else "Sin diagnóstico previo."
-        )
 
         # Preparar un historial de conversación seguro y limitado.
         historial_seguro = []

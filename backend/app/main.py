@@ -1,49 +1,28 @@
-from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException, status, WebSocket, WebSocketDisconnect, Request
-from fastapi import Query, Header
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import case
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from typing import List
 import os
-import json
-import smtplib
-import random
 import secrets
 import hmac
 import hashlib
 import asyncio
-import time
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from groq import Groq
 from dotenv import load_dotenv
 
-from passlib.context import CryptContext
-from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
-from . import models, schemas
-from .jarvis_tools import (
-    consultar_anomalias_usuario,
-    HERRAMIENTAS_JARVIS
-)
+from . import models
 from .database import engine, get_db, SessionLocal
 from .schema_migrations import migrate_legacy_auth_schema
-from .color_utils import get_color
 from .metricas_service import registrar_metrica, simular_metrica_usuario
-from .pipeline_keys import autenticar_clave
-from .auth_router import (
-    crear_router_auth,
-    VerificarRequest,
-    SolicitarCodigoRequest,
-    RecuperarRequest,
-)
+from .auth_router import crear_router_auth
 from .anomalias_router import crear_router_anomalias
 from .pipelines_router import crear_router_pipelines
-from .chat_router import crear_router_chat, ChatRequest
+from .chat_router import crear_router_chat
 from .metricas_router import crear_router_metricas
 from .websocket_router import ConnectionManager, crear_router_websocket
 from .origin_utils import get_cors_origins
@@ -82,7 +61,6 @@ def generar_codigo_seguro():
     return str(100000 + secrets.randbelow(900000))
 
 
-from .auth_utils import pwd_context, verify_password, get_password_hash
 from .jwt_utils import encode_access_token
 from .auth_dependencies import resolve_current_user
 from .email_utils import (

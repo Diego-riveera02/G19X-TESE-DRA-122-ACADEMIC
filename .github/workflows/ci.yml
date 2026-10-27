@@ -45,6 +45,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install pytest==9.1.1
+          python -m pip install ruff==0.14.2
+
+      - name: Check backend with Ruff
+        run: python -m ruff check app --select F
 
       - name: Check isolated environment
         run: |
@@ -56,6 +60,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_flujos_aislados.py" -v
           python -m pytest -q -p no:cacheprovider tests/test_cors_config.py
+          SMTP_STARTTLS=true SMTP_AUTH=true python -m pytest -q -p no:cacheprovider tests/test_smtp_config.py tests/test_plantillas_correo.py
 
   frontend-build:
     name: Frontend - production build
