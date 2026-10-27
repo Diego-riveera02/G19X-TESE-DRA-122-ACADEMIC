@@ -38,11 +38,11 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
     <>
             {/* LATENCIA */}
 
-            <div className="plurione-chart-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
+            <div className="plurione-chart-card">
 
-              <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
+              <div className="plurione-metric-chart">
 
-                <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Latencia de Red (ms)</h4>
+                <h4 className="plurione-metric-title">Latencia de Red (ms)</h4>
 
                 <ResponsiveContainer width="100%" height="85%">
 
@@ -64,7 +64,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               </div>
 
-              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
+              <div className="plurione-metric-state">
 
                 <span style={{ background: ultimoLatencia?.status === 'Critico' ? '#8B0000' : ultimoLatencia?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
 
@@ -74,7 +74,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               </div>
 
-              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
+              <div className="plurione-metric-details">
 
                 <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Latencia): </strong>
 
@@ -86,11 +86,11 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
             {/* CALIDAD */}
 
-            <div className="plurione-chart-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
+            <div className="plurione-chart-card">
 
-              <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
+              <div className="plurione-metric-chart">
 
-                <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Calidad (% Corruptos)</h4>
+                <h4 className="plurione-metric-title">Calidad (% Corruptos)</h4>
 
                 <ResponsiveContainer width="100%" height="85%">
 
@@ -112,7 +112,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               </div>
 
-              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
+              <div className="plurione-metric-state">
 
                 <span style={{ background: ultimoCalidad?.status === 'Critico' ? '#8B0000' : ultimoCalidad?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
 
@@ -122,7 +122,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               </div>
 
-              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
+              <div className="plurione-metric-details">
 
                 <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Calidad): </strong>
 
@@ -134,11 +134,11 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
             {/* TASA DE FALLOS */}
 
-            <div className="plurione-chart-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
+            <div className="plurione-chart-card">
 
-              <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '250px' }}>
+              <div className="plurione-metric-chart">
 
-                <h4 style={{ margin: '0 0 15px 0', color: '#fff', textAlign: 'center' }}>Tasa de Fallos</h4>
+                <h4 className="plurione-metric-title">Tasa de Fallos</h4>
 
                 <ResponsiveContainer width="100%" height="85%">
 
@@ -158,7 +158,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               </div>
 
-              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', textAlign: 'center' }}>
+              <div className="plurione-metric-state">
 
                 <span style={{ background: ultimoFallo?.status === 'Critico' ? '#8B0000' : ultimoFallo?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
 
@@ -168,7 +168,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               </div>
 
-              <div style={{ background: '#111217', padding: '15px', borderRadius: '8px', border: '1px solid #333', height: '110px', overflowY: 'auto', fontSize: '0.85em' }}>
+              <div className="plurione-metric-details">
 
                 <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Fallos): </strong>
 

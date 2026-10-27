@@ -1,0 +1,57 @@
+.plurione-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+.plurione-chart-card { grid-column: span 2; }
+.plurione-feed-panel, .plurione-chat-panel { grid-column: span 3; }
+@media (max-width: 1000px) {
+  .plurione-chart-card { grid-column: span 3; }
+  .plurione-feed-panel, .plurione-chat-panel { grid-column: span 6; }
+}
+@media (max-width: 620px) {
+  .plurione-chart-card { grid-column: span 6; }
+}
+
+/* Distribucion de tarjetas */
+.plurione-chart-card {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0;
+}
+
+/* Contenedores de graficas */
+.plurione-metric-chart {
+  background: #111217;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  height: 250px;
+}
+
+.plurione-metric-title {
+  margin: 0 0 15px 0;
+  color: #fff;
+  text-align: center;
+}
+
+/* Indicadores y diagnosticos */
+.plurione-metric-state {
+  background: #111217;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  text-align: center;
+}
+
+.plurione-metric-details {
+  background: #111217;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  height: 110px;
+  overflow-y: auto;
+  font-size: 0.85em;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PanelMetricas from './dashboard/PanelMetricas';
+import './dashboard/Dashboard.css';
 import { api, WS_URL, limpiarSesion } from './api';
 import JarvisOnboarding from './JarvisOnboarding';
 import ChatJarvis from './dashboard/ChatJarvis';
@@ -468,39 +469,7 @@ const irAlFinalChat = () => {
 
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden', backgroundColor: '#0b0c10', color: '#c5c6c7', fontFamily: '"Segoe UI", Roboto, sans-serif' }}>
 
-      <style>{`
 
-        .plurione-dashboard-grid {
-
-          display: grid;
-
-          grid-template-columns: repeat(6, minmax(0, 1fr));
-
-          align-items: start;
-
-          gap: 20px;
-
-        }
-
-        .plurione-chart-card { grid-column: span 2; }
-
-        .plurione-feed-panel, .plurione-chat-panel { grid-column: span 3; }
-
-        @media (max-width: 1000px) {
-
-          .plurione-chart-card { grid-column: span 3; }
-
-          .plurione-feed-panel, .plurione-chat-panel { grid-column: span 6; }
-
-        }
-
-        @media (max-width: 620px) {
-
-          .plurione-chart-card { grid-column: span 6; }
-
-        }
-
-      `}</style>
 
             {/* 1. CABECERA */}
 
