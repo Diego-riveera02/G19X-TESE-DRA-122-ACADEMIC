@@ -1,0 +1,178 @@
+# Informe de instalación desde un clon limpio — Corte 5
+
+**Proyecto:** PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
+**Tipo de evidencia:** Validación académica de instalación, funcionamiento y recuperación del entorno
+**Fecha de las pruebas:** 27 de octubre de 2026
+**Repositorio:** [Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC](https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC)
+**Rama y commit evaluados:** `main` — `98dfdd6`
+**Sistema anfitrión:** Windows, PowerShell, Docker Desktop y Docker Compose
+
+## 1. Objetivo y alcance
+
+Comprobar, desde una descarga nueva del repositorio de GitHub, que el proyecto PluriOne se puede configurar e iniciar siguiendo las instrucciones de su `README.md`, con PostgreSQL, FastAPI, React y el servicio de correo de pruebas Mailpit. Validar también el registro y verificación de una cuenta ficticia, la recuperación de contraseña y el acceso al Dashboard. Finalmente, restaurar la instalación de trabajo sin eliminar su base de datos ni alterar sus archivos versionados.
+
+La prueba se efectuó como instalación **aislada y de desarrollo**, no como certificación para producción. Se utilizaron los puertos documentados por el README tras detener temporalmente los servicios originales. La separación entre proyectos se consiguió mediante una variable privada adicional de Docker Compose, medida que se declara expresamente para no presentar el ensayo como una instalación sin ajustes del entorno.
+
+## 2. Referencia técnica revisada
+
+Se revisaron las 344 líneas del `README.md` y la configuración `docker-compose.yml` (54 líneas). Se verificó la presencia de los archivos versionados `README.md`, `.env.example`, `backend/.env.example`, `frontend/.env.example`, `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `backend/requirements.txt` y `frontend/package.json`.
+
+La pila utilizada fue:
+
+| Elemento | Tecnología o servicio |
+| --- | --- |
+| API y autenticación | Python, FastAPI y JWT |
+| Persistencia | PostgreSQL 16 |
+| Interfaz | React y Vite |
+| Contenedores | Docker Compose |
+| Correo local | Mailpit, perfil opcional `correo-local` |
+| IA conversacional | Integración Groq opcional; no probada con clave real en este clon |
+
+## 3. Clonación desde GitHub
+
+Se creó en el Escritorio una carpeta separada denominada `PluriOne_Instalacion_Literal_Corte5` y dentro de ella se ejecutó la clonación indicada por el README:
+
+```powershell
+git clone https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC.git
+cd G19X-TESE-DRA-122-ACADEMIC
+```
+
+Las verificaciones de Git confirmaron que el clon y el repositorio original apuntaban al mismo commit `98dfdd6`, con rama `main` y árbol de trabajo limpio. El clon no contenía `.env`, `backend/.env` ni `frontend/.env` privados; los patrones correspondientes estaban protegidos por `.gitignore`.
+
+## 4. Configuración privada e independencia de datos
+
+Se prepararon los archivos privados `.env` y `backend/.env` del clon utilizando las plantillas públicas, sin copiar credenciales del entorno original. Se generaron una contraseña de PostgreSQL y una clave JWT nuevas mediante un generador criptográfico de números aleatorios. No se imprimieron ni se incorporan al informe.
+
+En el archivo `.env` del clon se añadió:
+
+```dotenv
+COMPOSE_PROJECT_NAME=plurione_corte5_literal
+```
+
+Se configuró Mailpit en `backend/.env` con `SMTP_SERVER=mailpit`, `SMTP_PORT=1025`, `SMTP_STARTTLS=false` y `SMTP_AUTH=false`, además de un remitente ficticio. Se conservaron los orígenes CORS documentados para el puerto 5173. No se utilizó ninguna clave real de Groq.
+
+Los proyectos Docker quedaron identificados así:
+
+| Elemento | Instalación original | Instalación del Corte 5 |
+| --- | --- | --- |
+| Nombre del proyecto Compose | `g19x-tese-dra-122-academic` | `plurione_corte5_literal` |
+| Volumen PostgreSQL | `g19x-tese-dra-122-academic_plurione_postgres_data` | `plurione_corte5_literal_plurione_postgres_data` |
+
+La inspección de los montajes del contenedor PostgreSQL confirmó que los volúmenes eran diferentes. Antes de arrancar el clon se comprobó que no existían contenedores ni volúmenes etiquetados con el nombre nuevo. Se validó la configuración mediante `docker compose config --quiet`.
+
+## 5. Construcción e inicio según el README
+
+La instalación original ya utilizaba los puertos `5173`, `8000` y `5433`. Para evitar conflictos, se verificaron sus contenedores y su volumen y después se detuvieron **temporalmente** los servicios `frontend`, `api` y `db`, sin eliminarlos.
+
+Desde la carpeta raíz del clon se ejecutaron los comandos:
+
+```powershell
+docker compose --profile correo-local build
+docker compose --profile correo-local up -d --build
+docker compose --profile correo-local ps
+```
+
+Docker completó la construcción de las imágenes y creó la red, el volumen y los cuatro servicios del proyecto aislado. PostgreSQL alcanzó el estado `healthy` y se comprobó por inspección de Docker que usaba el volumen `plurione_corte5_literal_plurione_postgres_data`.
+
+| Servicio | Comprobación | Resultado observado |
+| --- | --- | --- |
+| FastAPI | `http://127.0.0.1:8000/docs` | HTTP 200 |
+| Frontend | `http://127.0.0.1:5173/` | HTTP 200 |
+| Mailpit | `http://127.0.0.1:8025/` | HTTP 200 |
+| PostgreSQL | Estado de salud del contenedor | `healthy` |
+
+La prueba conservó los mismos puertos del README. La necesidad de detener el entorno original y definir el nombre exclusivo de Compose constituye una **adaptación de entorno documentada**.
+
+## 6. Verificación funcional de identidad y acceso
+
+### 6.1. Registro y activación
+
+En una ventana privada del navegador se utilizó la interfaz React para registrar una cuenta ficticia de prueba con nombre **Prueba Corte 5** y correo `prueba.corte5@example.com`. Se recibió en Mailpit un mensaje de verificación y se completó el procedimiento de activación desde la aplicación.
+
+Una consulta de solo lectura en PostgreSQL confirmó exactamente una cuenta con el correo indicado y el campo `is_active` en valor verdadero (`t`). No se copiaron contraseñas ni códigos de verificación a este archivo.
+
+### 6.2. Incidencia inicial de autenticación
+
+El primer flujo de inicio de sesión presentó una incidencia: las solicitudes `POST /login/` devolvieron **HTTP 401 Unauthorized**. El formulario React mostró el mensaje «Correo o contraseña incorrectos».
+
+Se investigó sin modificar datos. Se confirmó que el correo coincidía exactamente en la tabla `users`, que la cuenta estaba activa, que React enviaba un formulario `application/x-www-form-urlencoded` con campos `username` y `password`, y que el backend empleaba el mismo contexto `passlib`/bcrypt para generar y verificar las contraseñas. Con estas comprobaciones **no se determinó la causa exacta** del rechazo inicial; no se atribuye el problema a un componente sin evidencia.
+
+### 6.3. Recuperación de contraseña
+
+Se inició la recuperación desde React para el usuario de prueba. Mailpit recibió un correo con código temporal. Tras introducir el código y una contraseña nueva, la aplicación permitió actualizar la contraseña. Tanto el código como la contraseña fueron omitidos de la documentación por motivos de seguridad.
+
+### 6.4. Inicio de sesión y Dashboard
+
+Después de la recuperación se consiguió iniciar sesión y se visualizó el Dashboard bajo el nombre de **Prueba Corte 5**. La captura de verificación mostró gráficas de latencia y calidad, indicadores de alerta y diagnósticos automáticos, con los accesos de navegación visibles.
+
+Este resultado valida la entrada al Dashboard después de recuperar la contraseña. No demuestra por sí solo todas las rutas protegidas, el comportamiento ante expiración de JWT ni el funcionamiento completo de cada vista.
+
+## 7. Integración continua
+
+Se comprobó previamente en GitHub Actions el último commit utilizado:
+
+| Dato | Resultado |
+| --- | --- |
+| Commit | `98dfdd6` |
+| Workflow | `PluriOne CI` |
+| ID de ejecución | `40600515152` |
+| Estado | `completed` |
+| Conclusión | `success` |
+
+**Enlace:** https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC/actions/runs/40600515152
+
+La integración continua aprobada complementa las pruebas manuales de instalación, pero no las sustituye.
+
+## 8. Restauración de la instalación original
+
+Al finalizar las pruebas se ejecutó, desde el clon:
+
+```powershell
+docker compose --profile correo-local stop frontend api mailpit db
+```
+
+Se verificó que los cuatro contenedores del clon habían quedado detenidos y que su volumen continuaba existente. Después se reinició el PostgreSQL original, se esperó hasta obtener estado `healthy` y se iniciaron los contenedores originales `api` y `frontend`.
+
+Las comprobaciones finales confirmaron:
+
+- Identidad de los tres contenedores originales conservada.
+- Nombre e identidad del volumen PostgreSQL original conservados.
+- PostgreSQL original saludable.
+- FastAPI original con respuesta HTTP 200 en `/docs`.
+- Frontend original con respuesta HTTP 200.
+- Repositorio original en `main`, sincronizado y sin cambios locales.
+- Clon detenido, con su volumen y los datos de prueba conservados.
+
+En ninguna fase se ejecutó `docker compose down -v` ni se eliminaron volúmenes. Estas comprobaciones acreditan conservación de recursos y disponibilidad del servicio; **no equivalen a una auditoría exhaustiva de integridad ni a una restauración probada de un respaldo**.
+
+## 9. Resumen de evidencias
+
+| Evidencia | Medio de comprobación | Estado |
+| --- | --- | --- |
+| Clon limpio y commit coincidente | `git rev-parse HEAD`, `git status` | Verificada |
+| Plantillas y archivos privados separados | Exploración de archivos y `.gitignore` | Verificada |
+| Proyecto y volumen Docker exclusivos | `docker compose config`, `docker inspect` | Verificada |
+| API, frontend y Mailpit operativos | Peticiones HTTP | Verificada |
+| Registro y verificación | Interfaz React y correo capturado en Mailpit | Verificada |
+| Cuenta activa | Consulta SQL de solo lectura | Verificada |
+| Recuperación de contraseña | Mailpit e interfaz React | Verificada |
+| Inicio de sesión y Dashboard | Comprobación visual | Verificada tras recuperación |
+| Primer inicio de sesión | HTTP 401 | Incidencia documentada |
+| Entorno original restaurado | Docker, HTTP y Git | Verificada |
+| CI para commit evaluado | GitHub Actions | `success` |
+
+Las capturas y las salidas de consola fueron revisadas durante la sesión de pruebas. **No están incrustadas en este archivo**: si el profesor exige capturas descargables dentro del repositorio, deberán guardarse en `docs/` con datos sensibles ocultos y enlazarse desde aquí.
+
+## 10. Limitaciones, hallazgos y acciones recomendadas
+
+1. **Autenticación:** investigar el HTTP 401 inicial si vuelve a reproducirse con credenciales nuevas, preservando registros de respuesta y sin publicar contraseñas.
+2. **Documentación:** actualizar en el README las referencias históricas al commit `657499b` y otras descripciones que ya no representen el estado actual del Corte 5; este documento refleja las pruebas sobre `98dfdd6`.
+3. **Alcance:** no se verificaron Groq con credencial real, pruebas de carga, pruebas de navegador automatizadas, todas las suites HTTP en este clon ni la restauración efectiva de un respaldo.
+4. **Evidencia:** anexar capturas sanitizadas y, si se solicita, ejecutar una revisión adicional de endpoints protegidos sin modificar la base original.
+5. **Seguridad:** no incluir `.env`, contraseñas, códigos temporales, JWT ni claves de pipeline en commits o archivos de entrega.
+
+## 11. Conclusión
+
+La instalación desde un clon nuevo del commit `98dfdd6` permitió construir e iniciar los servicios de PluriOne en un proyecto Docker aislado, con PostgreSQL independiente y correo local Mailpit. Se comprobó el registro y activación de un usuario nuevo, la recepción de correos, la recuperación de contraseña y el acceso al Dashboard. La incidencia de inicio de sesión inicial quedó documentada sin atribuir una causa no demostrada.
+
+Al terminar se detuvo el clon y se restauró la plataforma original con sus contenedores y su volumen PostgreSQL conservados. Los resultados constituyen **evidencia técnica reproducible del MVP académico**, limitada a las operaciones realmente efectuadas y sin implicar certificación de seguridad o producción.
