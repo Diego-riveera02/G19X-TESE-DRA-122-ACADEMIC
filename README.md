@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Octubre de 2026. Código de referencia integrado en `main` hasta `657499b` (26 de octubre de 2026): autenticación modularizada, interceptores Axios, administración de pipelines, evidencia E2E y componentes React separados.**
+**Proyecto académico · Corte 5 (octubre de 2026).** Estado verificable hasta el commit `1381f3c`: CI con Ruff, pruebas de CORS y correo; Dashboard modularizado en 391 líneas; instalación desde clon limpio comprobada y documentada. Los commits anteriores permanecen referenciados en sus pruebas históricas.
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -30,7 +30,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta las 41 pruebas aisladas del backend, `test_cors_config.py`, ESLint y la compilación de React. Las pruebas SMTP y de plantillas de correo todavía no forman parte del workflow en este commit.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta Ruff (`--select F`), 41 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, además de ESLint y la compilación de React. Las suites HTTP y archivado requieren servicios y todavía no forman parte de CI.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -242,14 +242,14 @@ Estas operaciones requieren JWT y filtran los registros por usuario. La API util
 
 ## 8. Pruebas, verificaciones e integración continua
 
-El repositorio en el commit de referencia `657499b` contiene **seis archivos de pruebas**. Las 58 pruebas indicadas en las validaciones del 24 de octubre corresponden a tres suites históricas; las pruebas adicionales de CORS y correo se presentan por separado.
+El repositorio contiene **seis archivos de pruebas**. Las 58 pruebas documentadas el 24 de octubre corresponden a tres suites históricas ejecutadas por separado; las pruebas de CORS y correo se incorporaron posteriormente al flujo de CI.
 
 | Archivo | Pruebas documentadas | ¿En CI actual? |
 | --- | --- | --- |
 | `backend/tests/test_flujos_aislados.py` | 41 pruebas aisladas | Sí |
 | `backend/tests/test_cors_config.py` | 4 funciones parametrizadas | Sí |
-| `backend/tests/test_smtp_config.py` | 1 función, 3 casos | No |
-| `backend/tests/test_plantillas_correo.py` | 4 pruebas | No |
+| `backend/tests/test_smtp_config.py` | 1 función, 3 casos | Sí |
+| `backend/tests/test_plantillas_correo.py` | 4 pruebas | Sí |
 | `backend/tests/test_seguridad_archivado.py` | 8 pruebas de seguridad y archivado | No; requiere servicios |
 | `backend/tests/test_integracion_http.py` | 9 pruebas de integración HTTP | No; requiere servicios |
 
@@ -284,9 +284,9 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Python 3.12 y SQLite en memoria, además de `test_cors_config.py` mediante pytest. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. Los dos trabajos aprobaron las verificaciones de los Pull Requests #18, #24 y #25; estos dos últimos incorporaron la evidencia E2E de ingesta y la modularización de React, respectivamente.
+El workflow `.github/workflows/ci.yml` ejecuta Ruff con reglas F, las 41 pruebas aisladas, `test_cors_config.py`, `test_smtp_config.py` y `test_plantillas_correo.py`. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. El commit `1381f3c` obtuvo el resultado `success` en PluriOne CI (ejecución 40615699143). Las suites de 17 pruebas HTTP/archivado siguen fuera de CI.
 
-**Cobertura pendiente:** incorporar las 17 pruebas HTTP y de archivado al CI con servicios apropiados, añadir pruebas automatizadas de navegador, carga y seguridad, verificar variantes adicionales de esquemas históricos y ejecutar una instalación completa siguiendo exclusivamente este README. Ya se realizó una prueba E2E en un clon aislado con configuración de Docker Compose y cuenta ficticia preparadas expresamente; no equivale a una instalación sin intervenciones adicionales. El lint y la ejecución del workflow en `main` están configurados.
+**Cobertura pendiente:** integrar las 17 pruebas HTTP/archivado en CI con servicios, añadir pruebas automatizadas de navegador, carga y seguridad, y verificar más variantes de esquemas históricos. La instalación funcional desde un clon limpio ya se comprobó en el Corte 5 usando Mailpit, un proyecto Compose aislado y los puertos del README liberados temporalmente; véase [el informe](docs/INSTALACION_LITERAL_CORTE5.md). No fue una instalación sin adaptaciones del entorno.
 
 **Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. Posteriormente, la prueba E2E del cuarto corte confirmó `POST /metricas/externas/` con HTTP 201, el aumento de anomalías de 27 a 28 en PostgreSQL aislado y la alerta visual en React; véase [el informe y su captura](docs/PRUEBA_E2E_CORTE4.md). No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
 
@@ -295,7 +295,7 @@ El workflow `.github/workflows/ci.yml` ejecuta las 41 pruebas aisladas con Pytho
 ## 9. Limitaciones, riesgos y uso de IA
 
 - El simulador usa telemetría sintética y la API puede aceptar entradas externas autenticadas; no hay prueba de monitoreo continuo en AWS ni de integración automática con sistemas corporativos.
-- La interfaz permite administrar pipelines y utiliza URL, token JWT y respuesta HTTP 401 centralizados en `api.js` para peticiones Axios. Las pantallas de verificación, recuperación y dashboard, así como el formato de respuestas J.A.R.V.I.S., se separaron de `App.jsx` en sus propios módulos. Continúan pendientes las pruebas automatizadas de navegador y una división adicional de la lógica extensa de `Dashboard.jsx`.
+- La interfaz administra pipelines y centraliza URL, JWT y tratamiento HTTP 401 en `api.js`. La lógica del Dashboard se separó en `ChatJarvis.jsx`, `HistorialAnomalias.jsx`, `PanelMetricas.jsx`, `CabeceraDashboard.jsx` y módulos auxiliares; `Dashboard.jsx` quedó con 391 líneas. Siguen pendientes las pruebas automatizadas de navegador.
 - Los límites de ingesta y cuota de pipelines están implementados y cubiertos por pruebas aisladas; no se han realizado pruebas completas de seguridad, carga, resiliencia, accesibilidad, alta disponibilidad ni una puesta en producción certificada.
 - La exportación PDF contiene los registros cargados en la interfaz, no necesariamente todo el histórico almacenado en PostgreSQL.
 - J.A.R.V.I.S. puede equivocarse; sus recomendaciones no sustituyen la investigación técnica. No inspecciona logs, CPU, red ni infraestructura empresarial por sí solo, y no ejecuta remediación automática.
@@ -318,6 +318,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [`docs/VALIDACION_SMTP_12_49.md`](docs/VALIDACION_SMTP_12_49.md): evidencias de configuración SMTP y recuperación de contraseñas.
 - [`docs/VALIDACION_CORREOS_12_50.md`](docs/VALIDACION_CORREOS_12_50.md): evidencias de correos de verificación y recuperación.
 - [`docs/VALIDACION_MAILPIT_CORTE5.md`](docs/VALIDACION_MAILPIT_CORTE5.md): prueba de registro, verificación y acceso mediante Mailpit sin Gmail, con restauración del entorno.
+- [`docs/INSTALACION_LITERAL_CORTE5.md`](docs/INSTALACION_LITERAL_CORTE5.md): instalación desde un clon limpio, SMTP de pruebas, acceso funcional y restauración del entorno original.
 - [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
 - `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos empresariales y académicos de referencia, sujetos a disponibilidad en la entrega.
 
@@ -327,7 +328,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Simulador automático e ingesta por JWT o clave de pipeline en la API.
 - [x] Alta, listado, rotación y revocación de pipelines desde el backend.
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
-- [x] CI con 41 pruebas aisladas, pruebas CORS, ESLint y compilación de React. Las pruebas de correo se incorporarán al CI en una etapa posterior.
+- [x] CI con Ruff F, 41 pruebas aisladas, CORS, SMTP, plantillas de correo, ESLint y compilación React; ejecución del commit `1381f3c` aprobada.
 - [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
 - [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; se comprobaron manualmente los flujos principales de identidad, pero faltan pruebas automatizadas de navegador y expiración de sesión.
 - [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py`, `websocket_router.py`, router de anomalías y `auth_router.py` para las seis operaciones de identidad. `main.py` conserva el montaje de routers y configuración compartida.
@@ -335,10 +336,12 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado se repitieron localmente y aprobaron tras el refactor; sigue pendiente integrarlas en CI con los servicios correspondientes.
 - [x] Prueba E2E aislada de pipeline, ingesta externa HTTP 201, registro de anomalía y alerta en React, documentada con captura en el PR #24.
 - [x] Separación de `App.jsx` en componentes `Verificar.jsx`, `RecuperarPassword.jsx`, `Dashboard.jsx` y `RespuestaJarvis.jsx`; ESLint y compilación aprobados en la copia revisada.
+- [x] Modularización del Dashboard: `ChatJarvis.jsx`, `HistorialAnomalias.jsx`, `PanelMetricas.jsx` y `CabeceraDashboard.jsx`; `Dashboard.jsx` reducido de 918 a 391 líneas, con ESLint, build y CI aprobados.
 - [x] Clon nuevo del commit `1f7208a`: PostgreSQL, API y React iniciados en Compose independiente; API y frontend HTTP 200, cuatro tablas creadas y CORS estándar verificado.
+- [x] Instalación del Corte 5 desde el clon `98dfdd6`: PostgreSQL independiente, API, frontend y Mailpit; registro, verificación, recuperación de contraseña y acceso al Dashboard documentados.
 - [x] Verificar la migración sobre una tabla antigua simulada y la creación de esquema nuevo mediante SQLAlchemy, ambas en PostgreSQL 16 temporal y aislado.
-- [ ] Verificar variantes históricas adicionales, restauración de respaldo e instalación completa desde un clon limpio con evidencia reproducible.
+- [ ] Verificar variantes históricas adicionales, ejecutar restauraciones probadas de respaldos y completar validaciones de migraciones representativas.
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** código de referencia integrado en `main` hasta `657499b` (26 de octubre de 2026), con la prueba E2E y el arranque desde un clon nuevo documentados. Para preservar los servicios en uso, la instalación de prueba cambió exclusivamente puertos y variables de entorno en el clon; no demuestra ejecución sin adaptaciones siguiendo literalmente el README, ni una sesión funcional en el puerto alternativo bloqueado por CORS. Permanecen pendientes variantes de migración no simuladas, restauración de respaldo, automatización de navegador y validación de producción; la entrega sigue siendo un MVP académico.
+**Estado documental:** Corte 5 documentado hasta el commit `1381f3c`: `Dashboard.jsx` de 391 líneas, CI aprobada e instalación funcional desde un clon limpio del commit `98dfdd6`. Se utilizaron volúmenes PostgreSQL independientes y Mailpit; el acceso fue correcto después de recuperar contraseña, aunque la causa del primer HTTP 401 no se identificó. La instalación requirió aislamiento de Compose y liberación temporal de puertos. Quedan pendientes pruebas de restauración, variantes históricas, navegador automatizado y validación de producción. Véase [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md).
