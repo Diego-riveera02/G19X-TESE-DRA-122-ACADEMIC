@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** código integrado en `main` hasta `657499b` (26 de octubre de 2026), con routers modularizados y validaciones documentadas.
+- **Versión:** Corte 6, código de referencia integrado en `main` hasta `3cbc283`, con normalización de correos y compatibilidad con cuentas anteriores.
 
 ## 1. Propósito, problemática y visión general
 
@@ -179,4 +179,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** código integrado en `main` hasta `657499b`, con autenticación modularizada, evidencia E2E documentada y dos escenarios limitados de migración/creación de esquema comprobados sobre PostgreSQL 16 temporal. Continúan pendientes la instalación completa desde un clon limpio, pruebas automatizadas de sesión en navegador, variantes históricas de migración, restauración de respaldo y confirmación formal de las sustituciones tecnológicas.
+**Estado:** corrección de autenticación publicada en `3cbc283`; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 finalizó correctamente. Se documentó una instalación funcional desde clon limpio en el Corte 5, con adaptaciones de Compose y puertos. El HTTP 401 inicial de aquella instalación todavía no tiene una causa confirmada. Continúan pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y confirmación formal de sustituciones tecnológicas.

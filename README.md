@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Corte 5 (octubre de 2026).** Estado verificable hasta el commit `1381f3c`: CI con Ruff, pruebas de CORS y correo; Dashboard modularizado en 391 líneas; instalación desde clon limpio comprobada y documentada. Los commits anteriores permanecen referenciados en sus pruebas históricas.
+**Proyecto académico · Corte 6 (octubre de 2026).** Estado verificable hasta el commit `3cbc283`: normalización de correos y compatibilidad con cuentas antiguas simuladas; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 finalizó correctamente. `Dashboard.jsx` quedó modularizado en 391 líneas. Se conservan las evidencias históricas del Corte 5.
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -68,21 +68,6 @@ No compartir `.env`, claves JWT, claves de pipeline reales ni contraseñas en Gi
 
 Los valores son ejemplos de configuración. Para servidores locales de pruebas como Mailpit se deben ajustar el servidor, el puerto, STARTTLS y la autenticación. Nunca se deben publicar contraseñas reales.
 
-**Configuración opcional de Mailpit en `backend/.env`:**
-
-Para probar el registro sin Gmail, sustituir temporalmente las variables SMTP por:
-
-```dotenv
-SMTP_SERVER=mailpit
-SMTP_PORT=1025
-SMTP_STARTTLS=false
-SMTP_AUTH=false
-SENDER_EMAIL=no-responder@plurione.local
-SENDER_PASSWORD=
-```
-
-Conservar `SECRET_KEY`, `DATABASE_URL` y las demás variables necesarias. No publicar el archivo privado `backend/.env`. Guardar una copia privada de su configuración anterior para poder restaurarla después de las pruebas.
-
 ### Controles implementados
 
 - Los endpoints privados verifican JWT y usuario activo; el backend filtra las anomalías y eventos WebSocket por cuenta.
@@ -95,22 +80,6 @@ Conservar `SECRET_KEY`, `DATABASE_URL` y las demás variables necesarias. No pub
 Estos controles forman parte de la seguridad del MVP. Una evaluación de seguridad para producción y pruebas de carga siguen fuera de las validaciones completadas.
 
 ## 5. Instalación y ejecución con Docker Compose
-
-**Correo de pruebas sin Gmail (perfil opcional `correo-local`):**
-
-Después de configurar las variables SMTP indicadas en la sección 4, ejecutar desde la raíz del proyecto:
-
-```powershell
-docker compose --profile correo-local up -d --build
-docker compose --profile correo-local ps
-```
-
-Abrir la bandeja local en `http://127.0.0.1:8025`. Los códigos de verificación y recuperación enviados por la aplicación se pueden consultar allí, incluso usando direcciones ficticias de prueba. Mailpit captura los correos localmente y no los envía a Gmail.
-
-El puerto SMTP `1025` se utiliza dentro de la red de Docker mediante el nombre de servicio `mailpit`; no necesita publicarse en Windows.
-
-Para iniciar los servicios habituales en una instalación nueva, sin activar el correo de pruebas, utilizar `docker compose up -d`. Mailpit solo se incorpora al arranque cuando se solicita su perfil.
-
 
 ### 5.1. Clonar y preparar el proyecto
 
@@ -132,6 +101,38 @@ docker compose logs --tail 40 api
 ```
 
 La configuración incluye `healthcheck` con `pg_isready` en PostgreSQL y dependencia de la API respecto de una base saludable. La documentación de FastAPI está disponible normalmente en `http://127.0.0.1:8000/docs`. El despliegue descrito es **de desarrollo/demostración**, no una configuración empresarial endurecida; el Dockerfile del backend utiliza recarga de desarrollo.
+
+### 5.2.1. Correo local de pruebas con Mailpit
+
+**Configuración opcional de Mailpit en `backend/.env`:**
+
+Para probar el registro sin Gmail, sustituir temporalmente las variables SMTP por:
+
+```dotenv
+SMTP_SERVER=mailpit
+SMTP_PORT=1025
+SMTP_STARTTLS=false
+SMTP_AUTH=false
+SENDER_EMAIL=no-responder@plurione.local
+SENDER_PASSWORD=
+```
+
+Conservar `SECRET_KEY`, `DATABASE_URL` y las demás variables necesarias. No publicar el archivo privado `backend/.env`. Guardar una copia privada de su configuración anterior para poder restaurarla después de las pruebas.
+
+**Correo de pruebas sin Gmail (perfil opcional `correo-local`):**
+
+Después de configurar las variables SMTP anteriores, ejecutar desde la raíz del proyecto:
+
+```powershell
+docker compose --profile correo-local up -d --build
+docker compose --profile correo-local ps
+```
+
+Abrir la bandeja local en `http://127.0.0.1:8025`. Los códigos de verificación y recuperación enviados por la aplicación se pueden consultar allí, incluso usando direcciones ficticias de prueba. Mailpit captura los correos localmente y no los envía a Gmail.
+
+El puerto SMTP `1025` se utiliza dentro de la red de Docker mediante el nombre de servicio `mailpit`; no necesita publicarse en Windows.
+
+Para iniciar los servicios habituales en una instalación nueva, sin activar el correo de pruebas, utilizar `docker compose up -d`. Mailpit solo se incorpora al arranque cuando se solicita su perfil.
 
 ### 5.3. Ejecutar el frontend
 
@@ -284,7 +285,7 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta Ruff con reglas F, las 41 pruebas aisladas, `test_cors_config.py`, `test_smtp_config.py` y `test_plantillas_correo.py`. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. El commit `1381f3c` obtuvo el resultado `success` en PluriOne CI (ejecución 40615699143). Las suites de 17 pruebas HTTP/archivado siguen fuera de CI.
+El workflow `.github/workflows/ci.yml` ejecuta Ruff con reglas F, 43 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. El commit `3cbc283` obtuvo resultado satisfactorio en PluriOne CI #66. El commit histórico `1381f3c` también obtuvo `success` en la ejecución 40615699143. Las 17 pruebas HTTP/archivado siguen pendientes de integración en CI.
 
 **Cobertura pendiente:** integrar las 17 pruebas HTTP/archivado en CI con servicios, añadir pruebas automatizadas de navegador, carga y seguridad, y verificar más variantes de esquemas históricos. La instalación funcional desde un clon limpio ya se comprobó en el Corte 5 usando Mailpit, un proyecto Compose aislado y los puertos del README liberados temporalmente; véase [el informe](docs/INSTALACION_LITERAL_CORTE5.md). No fue una instalación sin adaptaciones del entorno.
 
@@ -328,7 +329,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Simulador automático e ingesta por JWT o clave de pipeline en la API.
 - [x] Alta, listado, rotación y revocación de pipelines desde el backend.
 - [x] Dashboard, WebSocket por usuario, archivado/restauración, chat controlado y PDF.
-- [x] CI con Ruff F, 41 pruebas aisladas, CORS, SMTP, plantillas de correo, ESLint y compilación React; ejecución del commit `1381f3c` aprobada.
+- [x] CI con Ruff F, 43 pruebas aisladas, 18 pruebas CORS, 7 pruebas de correo, ESLint y compilación React; PluriOne CI #66 aprobada para `3cbc283`.
 - [x] Pantalla React de pipelines, centralización de `VITE_API_URL` y archivo `frontend/.env.example`.
 - [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; se comprobaron manualmente los flujos principales de identidad, pero faltan pruebas automatizadas de navegador y expiración de sesión.
 - [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py`, `websocket_router.py`, router de anomalías y `auth_router.py` para las seis operaciones de identidad. `main.py` conserva el montaje de routers y configuración compartida.
@@ -344,4 +345,4 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** Corte 5 documentado hasta el commit `1381f3c`: `Dashboard.jsx` de 391 líneas, CI aprobada e instalación funcional desde un clon limpio del commit `98dfdd6`. Se utilizaron volúmenes PostgreSQL independientes y Mailpit; el acceso fue correcto después de recuperar contraseña, aunque la causa del primer HTTP 401 no se identificó. La instalación requirió aislamiento de Compose y liberación temporal de puertos. Quedan pendientes pruebas de restauración, variantes históricas, navegador automatizado y validación de producción. Véase [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md).
+**Estado documental:** Corte 6 actualizado hasta `3cbc283`, con 68 pruebas locales aprobadas y PluriOne CI #66 satisfactoria. La autenticación con correos normalizados y cuentas antiguas simuladas se verificó en pruebas aisladas. El Corte 5 conserva su evidencia histórica de instalación funcional desde clon limpio con Mailpit, volúmenes independientes y adaptaciones de Compose y puertos. El primer HTTP 401 observado en esa instalación no tiene una causa confirmada y falta verificar el despliegue actualizado. Permanecen pendientes la restauración de respaldos, variantes históricas de migración, pruebas automatizadas de navegador y validación de producción. Véase [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md).

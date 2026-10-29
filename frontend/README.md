@@ -1,6 +1,6 @@
 # Frontend de PluriOne
 
-**Frontend del MVP académico · Octubre de 2026.** El código de referencia está integrado en `main` hasta `657499b` (26 de octubre de 2026), con evidencia E2E, componentes separados y mejoras verificadas en Historial y J.A.R.V.I.S. La interfaz React permite registrar y autenticar usuarios, administrar pipelines, revisar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, administrar el historial visible y exportar información a PDF.
+**Frontend del MVP académico · Octubre de 2026.** Referencia actual: `main` hasta `3cbc283` (Corte 6). La interfaz React permite registrar y autenticar usuarios, administrar pipelines, consultar métricas y anomalías, utilizar J.A.R.V.I.S. 2.0, revisar el historial y exportar información a PDF. `Dashboard.jsx` fue modularizado y quedó en 391 líneas.
 
 El backend dispone de ingesta autenticada y gestión de pipelines. React incorpora una pantalla para crear, listar, rotar y revocar pipelines. El frontend no se conecta directamente a PostgreSQL ni a infraestructuras empresariales.
 
@@ -159,6 +159,6 @@ El MVP utiliza **Groq** en el backend para generar respuestas de J.A.R.V.I.S. y 
 - [x] Extraer verificación, recuperación, dashboard y formato de respuestas de J.A.R.V.I.S. de `App.jsx`; ESLint y compilación aprobados en la copia revisada.
 - [x] Verificar manualmente en navegador login, rechazo de contraseña incorrecta, recuperación SMTP y acceso con contraseña nueva tras el refactor de autenticación.
 - [ ] Automatizar las pruebas de navegador del interceptor, expiración de JWT y recuperación de sesión.
-- [ ] Reducir la complejidad interna de `Dashboard.jsx` y ampliar pruebas de interfaz y accesibilidad. ESLint ya está integrado en CI.
+- [x] Modularizar `Dashboard.jsx` hasta 391 líneas y separar componentes. Permanecen pendientes ampliar las pruebas de interfaz y accesibilidad.
 
-**Estado:** código de referencia integrado hasta `657499b`, con separación de componentes y prueba E2E documentada. Durante la validación histórica del clon nuevo, React respondió HTTP 200 en el puerto `5175`, pero el backend rechazó `http://127.0.0.1:5175` porque no estaba incluido en `CORS_ORIGINS`. Ese origen puede autorizarse agregándolo a la variable y reiniciando la API. El origen estándar `http://127.0.0.1:5173` estaba autorizado. Quedan pendientes pruebas automatizadas de navegador, accesibilidad y escenarios extremos; no se considera una certificación de producción.
+**Estado:** frontend modularizado y backend actualizado hasta `3cbc283`; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 finalizó correctamente. La autenticación con correos normalizados y cuentas antiguas simuladas fue validada mediante pruebas automatizadas. En la prueba histórica del Corte 5, React respondió HTTP 200 en el puerto `5175`, pero el backend rechazó `http://127.0.0.1:5175` porque ese origen no estaba incluido en `CORS_ORIGINS`. El origen `http://127.0.0.1:5173` sí estaba autorizado. Para habilitar el origen alternativo es necesario agregarlo a `CORS_ORIGINS` y reiniciar la API. Continúan pendientes pruebas automatizadas de navegador, accesibilidad y validación del despliegue actualizado; no se considera una certificación de producción.

@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico con código de referencia integrado en `main` hasta `657499b` (26 de octubre de 2026), con autenticación modularizada, evidencia E2E y componentes frontend separados.
+- **Versión:** MVP académico actualizado al Corte 6, con código publicado en `main` hasta `3cbc283`, autenticación corregida y pruebas automatizadas verificadas.
 
 ## 1. Alcance del MVP
 
@@ -127,4 +127,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md), [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** código de referencia integrado hasta `657499b`, con autenticación modularizada, seis archivos de pruebas, dos escenarios limitados de esquema PostgreSQL, evidencia E2E, frontend separado y arranque de servicios desde clon nuevo. Siguen pendientes una instalación sin adaptaciones siguiendo literalmente el README, variantes de migración históricas, restauración del respaldo y pruebas automatizadas de sesión en navegador.
+**Estado documental:** código integrado hasta `3cbc283`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas; PluriOne CI #66 completado correctamente. Se comprobó la compatibilidad de autenticación con cuentas antiguas simuladas. El Corte 5 documentó una instalación funcional desde clon limpio con adaptaciones de Compose y puertos. Permanecen pendientes la verificación del HTTP 401 original en el despliegue actualizado, las pruebas automatizadas de navegador, variantes históricas de migración, restauración del respaldo y validación empresarial.
