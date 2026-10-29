@@ -199,6 +199,27 @@ class PruebasFlujosAislados(unittest.TestCase):
 
         self.assertTrue(self.token(correo))
 
+    def test_01b_correo_normalizado(self):
+        self.registrar("  Ana.Prueba@Example.Invalid  ")
+        correo = "ana.prueba@example.invalid"
+        estado = self.usuario(correo)
+        self.assertFalse(estado["activo"])
+        respuesta = self.verificar("ANA.PRUEBA@EXAMPLE.INVALID")
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertTrue(self.token("  ana.prueba@example.invalid  "))
+
+    def test_01c_correo_legado(self):
+        correo = "legado@example.invalid"
+        self.activar(correo)
+        with self.Session() as db:
+            usuario = db.query(self.models.User).filter_by(correo=correo).one()
+            usuario.correo = "  Legado@Example.Invalid  "
+            db.commit()
+        self.assertTrue(self.token("LEGADO@EXAMPLE.INVALID"))
+        self.registrar("legado@example.invalid")
+        with self.Session() as db:
+            self.assertEqual(db.query(self.models.User).count(), 1)
+
     def test_02_codigo_incorrecto(self):
         correo = "incorrecto@example.invalid"
 

@@ -10,6 +10,7 @@ from typing import Callable
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -54,7 +55,7 @@ def crear_router_auth(
                 "cuenta, inicia sesion o recupera tu acceso."
             )
         }
-        if db.query(models.User).filter(models.User.correo == user.correo).first():
+        if db.query(models.User).filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(user.correo)).first():
             return respuesta
         codigo_secreto = generar_codigo()
         nuevo_usuario = models.User(
@@ -84,7 +85,7 @@ def crear_router_auth(
     def verificar_codigo(req: VerificarRequest, db: Session = Depends(get_db)):
         user = (
             db.query(models.User)
-            .filter(models.User.correo == req.correo)
+            .filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(req.correo))
             .with_for_update()
             .first()
         )
@@ -198,7 +199,7 @@ def crear_router_auth(
 
         user = (
             db.query(models.User)
-            .filter(models.User.correo == req.correo)
+            .filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(req.correo))
             .with_for_update()
             .first()
         )
@@ -248,7 +249,7 @@ def crear_router_auth(
 
         user = (
             db.query(models.User)
-            .filter(models.User.correo == req.correo)
+            .filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(req.correo))
             .with_for_update()
             .first()
         )
@@ -300,7 +301,7 @@ def crear_router_auth(
     ):
         user = (
             db.query(models.User)
-            .filter(models.User.correo == req.correo)
+            .filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(req.correo))
             .with_for_update()
             .first()
         )
@@ -377,7 +378,7 @@ def crear_router_auth(
 
     @router.post("/login/")
     def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-        user = db.query(models.User).filter(models.User.correo == form_data.username).first()
+        user = db.query(models.User).filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(form_data.username)).first()
         if not user or not verify_password(form_data.password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 

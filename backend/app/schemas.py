@@ -27,6 +27,10 @@ class AnomalyLogResponse(AnomalyLogBase):
 
 
 # Esquemas de usuarios
+def normalizar_correo(valor: str) -> str:
+    return valor.strip().lower()
+
+
 class UserBase(BaseModel):
     nombre_completo: str
     correo: str
@@ -35,6 +39,10 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(min_length=8)
+
+    @validator("correo")
+    def validar_correo_normalizado(cls, valor: str) -> str:
+        return normalizar_correo(valor)
 
 
 class UserResponse(UserBase):
