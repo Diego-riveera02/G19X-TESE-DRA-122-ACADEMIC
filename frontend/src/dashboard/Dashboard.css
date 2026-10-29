@@ -295,3 +295,90 @@
 .plurione-feed-status[data-status="Alerta"] {
   color: #D4A017;
 }
+
+/* Cabecera del Dashboard */
+.plurione-header {
+  height: 70px;
+  padding: 0 30px;
+  background-color: #111217;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.plurione-header-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.plurione-header-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #457B9D;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  color: #fff;
+}
+
+.plurione-header-user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.plurione-header-username {
+  font-weight: bold;
+  color: #E5B80B;
+  font-size: 0.9em;
+}
+
+.plurione-header-logout {
+  background: none;
+  border: none;
+  color: #E63946;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.75em;
+  text-align: left;
+}
+
+.plurione-header-nav {
+  display: flex;
+  gap: 20px;
+}
+
+/* Navegacion y vista seleccionada */
+.plurione-header-nav-button {
+  background: transparent;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+}
+
+.plurione-header-nav-button[aria-pressed="true"] {
+  background: rgba(229, 184, 11, 0.1);
+  color: #E5B80B;
+  border-bottom-color: #E5B80B;
+}
+
+.plurione-header-pipelines {
+  color: #E5B80B;
+  text-decoration: none;
+  padding: 10px 12px;
+  font-weight: bold;
+}
+
+.plurione-header-title {
+  margin: 0;
+  color: #E5B80B;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
