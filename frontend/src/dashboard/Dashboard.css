@@ -219,3 +219,79 @@
   display: flex;
   gap: 5px;
 }
+
+/* Feed de alertas recientes */
+.plurione-feed-panel {
+  padding: 20px;
+  height: 450px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.plurione-feed-heading {
+  margin: 0 0 10px 0;
+  color: #E5B80B;
+}
+
+.plurione-feed-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85em;
+}
+
+.plurione-feed-item {
+  border-bottom: 1px solid #1a1a1d;
+  padding-bottom: 5px;
+}
+
+.plurione-feed-time,
+.plurione-feed-empty {
+  color: #888;
+}
+
+/* Diagnosticos automaticos */
+.plurione-metric-diagnosis-title {
+  color: #E5B80B;
+}
+
+.plurione-metric-diagnosis-text {
+  color: #a8a8a8;
+}
+
+/* Estado de cada indicador */
+.plurione-metric-status {
+  background: #006400;
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.plurione-metric-status[data-status="Critico"] {
+  background: #8B0000;
+}
+
+.plurione-metric-status[data-status="Alerta"] {
+  background: #D4A017;
+}
+
+/* Estados en el Feed de Alertas */
+.plurione-feed-status {
+  color: #4BB543;
+  margin-left: 5px;
+}
+
+.plurione-feed-status[data-status="Critico"] {
+  color: #E63946;
+}
+
+.plurione-feed-status[data-status="Alerta"] {
+  color: #D4A017;
+}

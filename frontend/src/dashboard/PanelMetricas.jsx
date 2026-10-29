@@ -66,7 +66,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               <div className="plurione-metric-state">
 
-                <span style={{ background: ultimoLatencia?.status === 'Critico' ? '#8B0000' : ultimoLatencia?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
+                <span className="plurione-metric-status" data-status={ultimoLatencia?.status}>
 
                   ESTADO: {ultimoLatencia ? ultimoLatencia.status : 'Normal'}
 
@@ -76,9 +76,9 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               <div className="plurione-metric-details">
 
-                <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Latencia): </strong>
+                <strong className="plurione-metric-diagnosis-title">Diagnóstico automático (Latencia): </strong>
 
-                <span style={{ color: '#a8a8a8' }}>{ultimoLatencia ? ultimoLatencia.ai_recommendation : 'Esperando datos...'}</span>
+                <span className="plurione-metric-diagnosis-text">{ultimoLatencia ? ultimoLatencia.ai_recommendation : 'Esperando datos...'}</span>
 
               </div>
 
@@ -114,7 +114,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               <div className="plurione-metric-state">
 
-                <span style={{ background: ultimoCalidad?.status === 'Critico' ? '#8B0000' : ultimoCalidad?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
+                <span className="plurione-metric-status" data-status={ultimoCalidad?.status}>
 
                   ESTADO: {ultimoCalidad ? ultimoCalidad.status : 'Normal'}
 
@@ -124,9 +124,9 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               <div className="plurione-metric-details">
 
-                <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Calidad): </strong>
+                <strong className="plurione-metric-diagnosis-title">Diagnóstico automático (Calidad): </strong>
 
-                <span style={{ color: '#a8a8a8' }}>{ultimoCalidad ? ultimoCalidad.ai_recommendation : 'Esperando datos...'}</span>
+                <span className="plurione-metric-diagnosis-text">{ultimoCalidad ? ultimoCalidad.ai_recommendation : 'Esperando datos...'}</span>
 
               </div>
 
@@ -160,7 +160,7 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               <div className="plurione-metric-state">
 
-                <span style={{ background: ultimoFallo?.status === 'Critico' ? '#8B0000' : ultimoFallo?.status === 'Alerta' ? '#D4A017' : '#006400', padding: '6px 12px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>
+                <span className="plurione-metric-status" data-status={ultimoFallo?.status}>
 
                   ESTADO: {ultimoFallo ? ultimoFallo.status : 'Normal'}
 
@@ -170,9 +170,9 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
               <div className="plurione-metric-details">
 
-                <strong style={{ color: '#E5B80B' }}>Diagnóstico automático (Fallos): </strong>
+                <strong className="plurione-metric-diagnosis-title">Diagnóstico automático (Fallos): </strong>
 
-                <span style={{ color: '#a8a8a8' }}>{ultimoFallo ? ultimoFallo.ai_recommendation : 'Esperando datos...'}</span>
+                <span className="plurione-metric-diagnosis-text">{ultimoFallo ? ultimoFallo.ai_recommendation : 'Esperando datos...'}</span>
 
               </div>
 
@@ -180,25 +180,25 @@ export default function PanelMetricas({ anomalias, metricasEnVivo }) {
 
             {/* FEED DE ALERTAS */}
 
-            <div className="plurione-feed-panel" style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333', height: '450px', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+            <div className="plurione-feed-panel plurione-surface-card">
 
-              <h4 style={{ margin: '0 0 10px 0', color: '#E5B80B' }}>Feed de Alertas Recientes</h4>
+              <h4 className="plurione-feed-heading">Feed de Alertas Recientes</h4>
 
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85em' }}>
+              <div className="plurione-feed-list">
 
                 {anomalias.slice(0, 5).map(a => (
 
-                  <div key={a.id} style={{ borderBottom: '1px solid #1a1a1d', paddingBottom: '5px' }}>
+                  <div key={a.id} className="plurione-feed-item">
 
-                    <span style={{ color: '#888' }}>{a.timestamp ? new Date(a.timestamp).toLocaleTimeString() : '—'}</span> |
+                    <span className="plurione-feed-time">{a.timestamp ? new Date(a.timestamp).toLocaleTimeString() : '—'}</span> |
 
-                    <strong style={{ color: a.status === 'Critico' ? '#E63946' : a.status === 'Alerta' ? '#D4A017' : '#4BB543', marginLeft: '5px' }}>{a.status}</strong> en {a.pipeline_name}: {a.metric_type} = {a.value}
+                    <strong className="plurione-feed-status" data-status={a.status}>{a.status}</strong> en {a.pipeline_name}: {a.metric_type} = {a.value}
 
                   </div>
 
                 ))}
 
-                {anomalias.length === 0 && <div style={{ color: '#888' }}>Sin alertas registradas.</div>}
+                {anomalias.length === 0 && <div className="plurione-feed-empty">Sin alertas registradas.</div>}
 
               </div>
 
