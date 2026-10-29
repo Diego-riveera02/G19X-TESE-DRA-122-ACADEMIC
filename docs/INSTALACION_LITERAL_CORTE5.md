@@ -97,6 +97,8 @@ El primer flujo de inicio de sesión presentó una incidencia: las solicitudes `
 
 Se investigó sin modificar datos. Se confirmó que el correo coincidía exactamente en la tabla `users`, que la cuenta estaba activa, que React enviaba un formulario `application/x-www-form-urlencoded` con campos `username` y `password`, y que el backend empleaba el mismo contexto `passlib`/bcrypt para generar y verificar las contraseñas. Con estas comprobaciones **no se determinó la causa exacta** del rechazo inicial; no se atribuye el problema a un componente sin evidencia.
 
+**Seguimiento del Corte 6:** después de publicar la normalización de correos en `3cbc283`, se registró una nueva prueba funcional de registro, verificación e inicio de sesión en un clon aislado actualizado. El primer login funcionó sin recuperar la contraseña. El HTTP 401 histórico no volvió a reproducirse en esa prueba; sin embargo, su causa original no quedó demostrada. No se atribuye con certeza a diferencias de mayúsculas o espacios en el correo. La evidencia se documenta en `EVIDENCIAS_FUNCIONALES_CORTE6.md`.
+
 ### 6.3. Recuperación de contraseña
 
 Se inició la recuperación desde React para el usuario de prueba. Mailpit recibió un correo con código temporal. Tras introducir el código y una contraseña nueva, la aplicación permitió actualizar la contraseña. Tanto el código como la contraseña fueron omitidos de la documentación por motivos de seguridad.
@@ -106,6 +108,28 @@ Se inició la recuperación desde React para el usuario de prueba. Mailpit recib
 Después de la recuperación se consiguió iniciar sesión y se visualizó el Dashboard bajo el nombre de **Prueba Corte 5**. La captura de verificación mostró gráficas de latencia y calidad, indicadores de alerta y diagnósticos automáticos, con los accesos de navegación visibles.
 
 Este resultado valida la entrada al Dashboard después de recuperar la contraseña. No demuestra por sí solo todas las rutas protegidas, el comportamiento ante expiración de JWT ni el funcionamiento completo de cada vista.
+
+### 6.5. Validación funcional posterior del Corte 6
+
+La prueba posterior se documentó sobre el commit `42a49d1`, utilizando el clon aislado existente del Corte 5, con PostgreSQL y Mailpit independientes del proyecto principal. No constituye una nueva instalación completamente libre de adaptaciones.
+
+| Paso | Comprobación | Resultado documentado |
+| --- | --- | --- |
+| 1 | Registrar una cuenta nueva desde React | Correcto |
+| 2 | Recibir el código mediante Mailpit y verificar la cuenta | Correcto |
+| 3 | Iniciar sesión sin recuperar la contraseña | Correcto |
+| 4 | Crear el pipeline `pipeline-corte6-latencia` | Correcto |
+| 5 | Enviar `latencia_ms = 9500` mediante `/metricas/externas/` | HTTP 201 |
+| 6 | Consultar el dashboard | Alerta crítica visible |
+| 7 | Consultar el historial de anomalías | Registro confirmado en la fila 8 |
+
+Estos resultados se encuentran registrados en [EVIDENCIAS_FUNCIONALES_CORTE6.md](EVIDENCIAS_FUNCIONALES_CORTE6.md), incorporado al repositorio mediante el commit `9e9bd39`.
+
+Las credenciales, códigos de verificación, tokens JWT y claves de pipelines no se incluyen en la documentación.
+
+**Evidencia visual pendiente:** incorporar al repositorio las capturas ya obtenidas, previamente revisadas para ocultar cualquier dato sensible.
+
+**Limitación:** el recorrido completo se comprobó en un clon existente actualizado. La prueba no demuestra una instalación nueva desde cero sin adaptaciones ni identifica de forma concluyente la causa del HTTP 401 original.
 
 ## 7. Integración continua
 
@@ -158,6 +182,7 @@ En ninguna fase se ejecutó `docker compose down -v` ni se eliminaron volúmenes
 | Recuperación de contraseña | Mailpit e interfaz React | Verificada |
 | Inicio de sesión y Dashboard | Comprobación visual | Verificada tras recuperación |
 | Primer inicio de sesión | HTTP 401 | Incidencia documentada |
+| Validación posterior del Corte 6 | Login sin recuperación, pipeline y alerta | Documentada en clon aislado |
 | Entorno original restaurado | Docker, HTTP y Git | Verificada |
 | CI para commit evaluado | GitHub Actions | `success` |
 

@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** Corte 6, código de referencia integrado en `main` hasta `3cbc283`, con normalización de correos y compatibilidad con cuentas anteriores.
+- **Versión:** Corte 6, código de referencia integrado en `main` hasta `9e9bd39`, con autenticación corregida, dashboard modularizado y evidencia funcional del Corte 6.
 
 ## 1. Propósito, problemática y visión general
 
@@ -80,7 +80,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
 - **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles, máximo de 20 pipelines activos por usuario y límite de 60 solicitudes por minuto para ingesta; falta validar su eficacia bajo carga y concurrencia reales.
 - **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
-- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para autenticación, anomalías, pipelines, chat, métricas y WebSocket. `main.py` conserva la configuración compartida y registra los routers. `App.jsx` ya está modularizado; sigue pendiente dividir `Dashboard.jsx` y ampliar las pruebas automatizadas de interfaz.
+- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para autenticación, anomalías, pipelines, chat, métricas y WebSocket. `main.py` conserva la configuración compartida y registra los routers. `App.jsx` y `Dashboard.jsx` ya están modularizados; el dashboard se dividió en componentes dentro de `frontend/src/dashboard/`. Permanecen pendientes las pruebas automatizadas de interfaz y la extracción de estilos repetidos a CSS.
 
 ## 5. Arquitectura y flujo de datos
 
@@ -103,7 +103,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - `POST /pipelines/{pipeline_id}/rotar/` y `POST /pipelines/{pipeline_id}/revocar/` — rotar o revocar con JWT.
 - `GET /anomalias/`, `DELETE /anomalias/`, `GET /anomalias/archivadas/`, `POST /anomalias/restaurar/` — historial protegido y reversible.
 
-Estas rutas forman parte del código del MVP. La ingesta y las alertas ya tienen una prueba E2E documentada en [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md). Continúa pendiente una instalación desde cero siguiendo literalmente el README, sin activar cuentas directamente en PostgreSQL.
+Estas rutas forman parte del código del MVP. La ingesta y las alertas ya tienen una prueba E2E documentada en [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md). El Corte 5 documentó una instalación desde un clon nuevo con Mailpit, sin activar cuentas directamente en PostgreSQL. En el Corte 6 se comprobó además el registro, la verificación, el primer login sin recuperación, la ingesta externa HTTP 201 y la alerta crítica en un clon aislado existente. No se ha demostrado una instalación completamente libre de adaptaciones del entorno.
 
 ## 6. Seguridad y uso responsable de inteligencia artificial
 
@@ -120,7 +120,7 @@ El backend también incorpora autenticación JWT, rechazo de usuarios inactivos,
 - **Datos y persistencia:** modelos PostgreSQL y registro de anomalías implementados; `schema_migrations.py` actualiza columnas de autenticación, pero **no** ejecuta el SQL de archivado. El SQL se comprobó sobre una tabla antigua mínima con un registro ficticio; el modelo SQLAlchemy creó un esquema nuevo en otro PostgreSQL 16 aislado. Comprobar el esquema en cada instalación y aplicar la migración manual controlada cuando corresponda; faltan otras variantes históricas y una restauración de respaldo de prueba.
 - **Backend y seguridad:** autenticación, ingesta, pipelines, HMAC, aislamiento, límites de ingesta y de pipelines y routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket implementados. La extracción de autenticación aprobó pruebas de regresión locales. Pendiente una auditoría integral de seguridad.
 - **Interfaz y observabilidad:** dashboard, WebSocket, chat, historial, PDF y gestión React de pipelines implementados. URL del backend y token/401 HTTP centralizados en `api.js`. Los flujos habituales de autenticación se comprobaron manualmente; pendientes accesibilidad y pruebas automatizadas de navegador, incluida la expiración de sesión.
-- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 41 pruebas aisladas, ESLint y compilación de React aprobados en los dos trabajos del Pull Request #18, ya integrado. Con el refactor aprobaron localmente 41 pruebas aisladas y 17 pruebas HTTP/seguridad. Dos escenarios de esquema aprobaron en contenedores PostgreSQL 16 temporales independientes, sin modificar la base principal. Pendientes CI con PostgreSQL real, instalación desde clon limpio, restauración de respaldo y revisión de contenedores productivos.
+- **Empaquetamiento y reproducibilidad:** Docker Compose, ejemplos de entorno y CI disponibles en `main`; 41 pruebas aisladas, ESLint y compilación de React aprobados en los dos trabajos del Pull Request #18, ya integrado. Con el refactor aprobaron localmente 41 pruebas aisladas y 17 pruebas HTTP/seguridad. Dos escenarios de esquema aprobaron en contenedores PostgreSQL 16 temporales independientes, sin modificar la base principal. Pendientes CI con PostgreSQL real, restauración de respaldo y revisión de contenedores productivos. La instalación desde un clon nuevo y la validación funcional posterior están documentadas con sus adaptaciones y limitaciones.
 - **Evolución posterior:** conectores productivos, búsqueda histórica avanzada, alta disponibilidad, pruebas de carga y remediación, fuera del alcance comprobado.
 
 ## 8. Criterios de aceptación y evidencia
@@ -151,7 +151,7 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - Paginación: la primera consulta o el PDF puede no incluir todos los registros de la base de datos.
 - Migración de archivado SQL separada (`backend/migrations/001_archivado_logico_anomalias.sql`): **no se ejecuta desde `schema_migrations.py`**. Su SQL incorpora columnas sin `IF NOT EXISTS`, por lo que no debe repetirse a ciegas. Aprobó una simulación limitada con una tabla antigua mínima, pero faltan verificaciones de otras versiones históricas y restauración de respaldo. En una base de datos existente se debe verificar el esquema y hacer respaldo antes de aplicarlo manualmente si falta.
 - Pendientes pruebas manuales de portapapeles, concurrencia y resistencia bajo carga de los límites de ingesta y cantidad de pipelines.
-- CI con SQLite en memoria para las 41 pruebas aisladas y ejecución adicional de pruebas CORS mediante pytest; ESLint y build activos. Pendiente incorporar pruebas SMTP, plantillas de correo y pruebas HTTP/archivado con los servicios correspondientes.
+- CI con SQLite en memoria para 43 pruebas aisladas, además de pruebas CORS, SMTP y plantillas de correo; ESLint y build activos. Permanece pendiente incorporar las pruebas HTTP/archivado que requieren servicios.
 - Dockerfiles todavía orientados a desarrollo; la preparación para producción no está demostrada.
 
 ## 10. Lista de verificación del producto
@@ -160,7 +160,7 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [x] Simulador, endpoints de ingesta y administración de pipelines en el backend.
 - [x] WebSocket por usuario, dashboard, archivado lógico, restauración, chat y PDF.
 - [x] Códigos con HMAC y claves de pipeline con SHA-256.
-- [x] CI con 41 pruebas aisladas, pruebas CORS, ESLint y compilación de frontend. Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación; las pruebas CORS se incorporaron posteriormente.
+- [x] CI con 43 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, ESLint y compilación de frontend. Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación; las pruebas CORS se incorporaron posteriormente.
 - [x] Interfaz React de pipelines y configuración centralizada de API/WebSocket.
 - [x] Cuota de hasta 20 pipelines activos por usuario y límites de 60 solicitudes de ingesta por minuto implementados.
 - [x] Routers de autenticación, pipelines, métricas, chat, anomalías y WebSocket extraídos de `main.py`, con configuración compartida preservada.
@@ -179,4 +179,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** corrección de autenticación publicada en `3cbc283`; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 finalizó correctamente. Se documentó una instalación funcional desde clon limpio en el Corte 5, con adaptaciones de Compose y puertos. El HTTP 401 inicial de aquella instalación todavía no tiene una causa confirmada. Continúan pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y confirmación formal de sustituciones tecnológicas.
+**Estado:** documento actualizado con referencia a `9e9bd39`. La normalización de correos quedó implementada y se aprobaron 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo; PluriOne CI #66 aprobó la corrección `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La evidencia funcional del Corte 6 registra verificación con Mailpit, primer login sin recuperación de contraseña, ingesta externa HTTP 201 y alerta crítica en un clon aislado. El HTTP 401 histórico no volvió a reproducirse en esa prueba, pero su causa original sigue sin determinarse. Continúan pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y confirmación formal de sustituciones tecnológicas.

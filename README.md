@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Corte 6 (octubre de 2026).** Estado verificable hasta el commit `3cbc283`: normalización de correos y compatibilidad con cuentas antiguas simuladas; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 finalizó correctamente. `Dashboard.jsx` quedó modularizado en 391 líneas. Se conservan las evidencias históricas del Corte 5.
+**Proyecto académico · Corte 6 (octubre de 2026).** Estado verificable hasta el commit `9e9bd39`: normalización de correos y compatibilidad con cuentas antiguas simuladas; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 finalizó correctamente. `Dashboard.jsx` quedó modularizado en 391 líneas. Se conservan las evidencias históricas del Corte 5 y se documenta la validación funcional del Corte 6.
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -320,6 +320,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [`docs/VALIDACION_CORREOS_12_50.md`](docs/VALIDACION_CORREOS_12_50.md): evidencias de correos de verificación y recuperación.
 - [`docs/VALIDACION_MAILPIT_CORTE5.md`](docs/VALIDACION_MAILPIT_CORTE5.md): prueba de registro, verificación y acceso mediante Mailpit sin Gmail, con restauración del entorno.
 - [`docs/INSTALACION_LITERAL_CORTE5.md`](docs/INSTALACION_LITERAL_CORTE5.md): instalación desde un clon limpio, SMTP de pruebas, acceso funcional y restauración del entorno original.
+- [`docs/EVIDENCIAS_FUNCIONALES_CORTE6.md`](docs/EVIDENCIAS_FUNCIONALES_CORTE6.md): registro, verificación con Mailpit, primer login sin recuperación, pipeline, ingesta HTTP 201 y alerta crítica en el dashboard.
 - [`frontend/README.md`](frontend/README.md): instalación e interfaz React.
 - `docs/Informe Técnico Plataforma de Observabilidad.pdf` y `docs/Bitácora de Desarrollo Ágil (Scrum) - Proyecto PluriOne.pdf`: documentos empresariales y académicos de referencia, sujetos a disponibilidad en la entrega.
 
@@ -345,4 +346,4 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** Corte 6 actualizado hasta `3cbc283`, con 68 pruebas locales aprobadas y PluriOne CI #66 satisfactoria. La autenticación con correos normalizados y cuentas antiguas simuladas se verificó en pruebas aisladas. El Corte 5 conserva su evidencia histórica de instalación funcional desde clon limpio con Mailpit, volúmenes independientes y adaptaciones de Compose y puertos. El primer HTTP 401 observado en esa instalación no tiene una causa confirmada y falta verificar el despliegue actualizado. Permanecen pendientes la restauración de respaldos, variantes históricas de migración, pruebas automatizadas de navegador y validación de producción. Véase [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md).
+**Estado documental:** referencia actual `9e9bd39`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas; PluriOne CI #66 aprobó la corrección anterior `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La instalación desde clon nuevo del Corte 5 está documentada con sus adaptaciones. En el Corte 6 se comprobó en un clon aislado existente el registro, verificación con Mailpit, primer login sin recuperar contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica. El HTTP 401 histórico no volvió a reproducirse en esa prueba, aunque su causa original permanece sin determinarse. Siguen pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y validación de producción. Consultar [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md) y [EVIDENCIAS_FUNCIONALES_CORTE6.md](docs/EVIDENCIAS_FUNCIONALES_CORTE6.md).

@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico actualizado al Corte 6, con código publicado en `main` hasta `3cbc283`, autenticación corregida y pruebas automatizadas verificadas.
+- **Versión:** MVP académico actualizado al Corte 6, con código publicado en `main` hasta `9e9bd39`, autenticación corregida, dashboard modularizado y evidencia funcional del Corte 6.
 
 ## 1. Alcance del MVP
 
@@ -39,7 +39,7 @@ El frontend envía un contexto limitado de mensajes recientes, muestra Markdown 
 
 ### 1.5. Infraestructura
 
-FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. GitHub Actions ejecuta 41 pruebas aisladas, las pruebas de CORS mediante pytest, ESLint y compilación de React con Node.js 22. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
+FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarrollo y demostración, con Docker Compose y variables privadas de entorno. GitHub Actions ejecuta 43 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, además de Ruff, ESLint y compilación de React con Node.js 22. Los Dockerfiles todavía están orientados a desarrollo, no a una instalación empresarial endurecida.
 
 ## 2. Estado verificable de las funcionalidades
 
@@ -54,7 +54,7 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 - **Historial reversible:** archivado lógico, restauración y paginación disponibles. `schema_migrations.py` no aplica la migración SQL del archivado; su aplicación controlada requiere revisar antes las columnas y respaldar cualquier base existente. El SQL se probó en una tabla antigua mínima simulada; el modelo actual se probó en una base temporal nueva. No se probó una migración integral de todos los esquemas históricos.
 - **J.A.R.V.I.S.:** chat, consultas restringidas y diagnóstico orientativo implementados; sujeto a disponibilidad y límites de Groq.
 - **PDF, Markdown y onboarding:** disponibles para los registros y mensajes visibles.
-- **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación. Un clon nuevo de `main` inició PostgreSQL, FastAPI y React en un entorno Docker independiente con puertos alternativos y variables ficticias; todavía no se comprobó una instalación literal sin ajustes ni la sesión React–API desde el puerto alternativo.
+- **Compilación e instalación:** frontend y backend verificados localmente. GitHub Actions aprobó pruebas aisladas, ESLint y compilación. Un clon nuevo de `main` inició PostgreSQL, FastAPI y React en un entorno Docker independiente con puertos alternativos y variables ficticias; el Corte 5 comprobó el registro y la verificación con Mailpit en un clon nuevo con adaptaciones del entorno. El Corte 6 documentó en un clon aislado existente el primer login sin recuperación, la creación de un pipeline, ingesta HTTP 201 y alerta crítica. Sigue pendiente demostrar una instalación sin adaptaciones.
 - **Conectores empresariales, remediación y despliegue de producción:** no demostrados o fuera del MVP.
 
 ## 3. Criterios de validación
@@ -71,18 +71,18 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 
 ### Cobertura de pruebas y evidencia
 
-La validación local del 24 de octubre de 2026 reunió **58 casos** en tres suites ejecutadas por separado. El repositorio de referencia `657499b` contiene **seis archivos de pruebas**, incluidos los de CORS y correo:
+El 24 de octubre de 2026 aprobaron **58 casos** en tres suites locales ejecutadas por separado. En la versión de referencia `9e9bd39` se mantienen **seis archivos de pruebas**, incluidos los de CORS y correo, y la suite aislada se amplió de 41 a 43 casos:
 
-- `backend/tests/test_flujos_aislados.py`: **41 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket, claves de pipelines y regresiones de routers. **Sí forman parte del workflow actual.**
+- `backend/tests/test_flujos_aislados.py`: **43 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket, claves de pipelines y regresiones de routers. **Sí forman parte del workflow actual.**
 - `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
 - `backend/tests/test_seguridad_archivado.py`: **8 pruebas HTTP** de autorización y archivado. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
 - `backend/tests/test_cors_config.py`: 4 funciones de prueba parametrizadas. **Sí se ejecuta en CI.**
-- `backend/tests/test_smtp_config.py`: 1 función con 3 casos. **Todavía no se ejecuta en CI.**
-- `backend/tests/test_plantillas_correo.py`: 4 pruebas. **Todavía no se ejecuta en CI.**
+- `backend/tests/test_smtp_config.py`: 1 función con 3 casos. **Sí se ejecuta en CI.**
+- `backend/tests/test_plantillas_correo.py`: 4 pruebas. **Sí se ejecuta en CI.**
 
-GitHub Actions ejecuta 41 pruebas aisladas y `test_cors_config.py`, además de comprobar ESLint y compilación de React con Node.js 22. Las pruebas SMTP y de plantillas de correo todavía no forman parte del CI en el commit de referencia. **Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.** El 24 de octubre de 2026 aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
+GitHub Actions ejecuta actualmente 43 pruebas aisladas, `test_cors_config.py`, `test_smtp_config.py` y `test_plantillas_correo.py`, además de Ruff, ESLint y compilación de React con Node.js 22. **Los dos trabajos del Pull Request #18 aprobaron el refactor de autenticación.** El 24 de octubre de 2026 aprobaron localmente **41 pruebas aisladas + 9 HTTP + 8 de seguridad = 58 casos**, en tres ejecuciones separadas. No se afirma que las 58 se ejecutaran juntas en CI. El backend reconstruido en Docker expuso las seis rutas y la comprobación HTTP alcanzó PostgreSQL; previamente se creó y verificó un respaldo local, sin realizar una restauración de prueba.
 
-**Pruebas aisladas adicionales de esquema (24 de octubre de 2026):** en un PostgreSQL 16 temporal, el archivo `001_archivado_logico_anomalias.sql` agregó las columnas de archivado a una tabla antigua mínima simulada y conservó su único registro ficticio activo. En otro PostgreSQL 16 temporal se comprobó que SQLAlchemy crea desde cero las tablas `users`, `anomaly_logs`, `auth_rate_limits` y `pipelines` con las columnas de archivado esperadas. Ambos contenedores se eliminaron. En la base principal solo se consultaron las columnas existentes; no se aplicó allí una migración. Faltan pruebas de variantes históricas reales, restauración del respaldo e instalación completa desde un clon limpio.
+**Pruebas aisladas adicionales de esquema (24 de octubre de 2026):** en un PostgreSQL 16 temporal, el archivo `001_archivado_logico_anomalias.sql` agregó las columnas de archivado a una tabla antigua mínima simulada y conservó su único registro ficticio activo. En otro PostgreSQL 16 temporal se comprobó que SQLAlchemy crea desde cero las tablas `users`, `anomaly_logs`, `auth_rate_limits` y `pipelines` con las columnas de archivado esperadas. Ambos contenedores se eliminaron. En la base principal solo se consultaron las columnas existentes; no se aplicó allí una migración. Faltan pruebas de variantes históricas reales, restauración del respaldo e instalación completamente reproducible sin ajustes. La instalación desde clon nuevo del Corte 5 y la validación funcional del Corte 6 están documentadas.
 
 Se confirmaron manualmente cinco puntos funcionales después del refactor: entrada con cuenta activa, rechazo de contraseña errónea/cierre de sesión, recepción de código SMTP, recuperación y nuevo acceso, y separación de pipelines entre dos usuarios. También se registró una métrica externa autenticada con HTTP 201 en un entorno local. Estas evidencias no son pruebas automáticas de navegador ni certificación de seguridad productiva; deben repetirse cuando cambie el código pertinente.
 
@@ -103,21 +103,21 @@ En una [segunda instalación desde un clon nuevo](VALIDACION_CLON_LIMPIO_CORTE4.
 - [x] Flujo E2E de pipeline, ingesta externa, PostgreSQL y dashboard validado en entorno aislado, con evidencia escrita y visual en el PR #24.
 - [x] Construcción y arranque desde clon nuevo con PostgreSQL, FastAPI y React, empleando puertos independientes; prueba de CORS y limitaciones registradas.
 - [x] Prueba limitada del SQL de archivado en una tabla antigua mínima simulada y de creación de esquema nuevo mediante SQLAlchemy, usando dos PostgreSQL 16 temporales y aislados.
-- [ ] Probar variantes adicionales de esquemas anteriores, restaurar un respaldo de prueba y repetir una instalación completa desde un clon limpio.
+- [ ] Probar variantes adicionales de esquemas anteriores, restaurar un respaldo de prueba y verificar una instalación completa sin adaptaciones adicionales.
 - [ ] Incorporar las 17 pruebas HTTP/seguridad al CI con servicios; ESLint ya está integrado. Pendientes pruebas de carga y navegador automatizado.
 - [x] Límites de 60 solicitudes por minuto para ingesta y máximo de 20 pipelines activos por usuario.
 - [x] Routers de métricas, chat y WebSocket separados de `main.py`, además de anomalías y pipelines.
 - [x] Centralizar JWT y HTTP 401 de solicitudes Axios protegidas, manteniendo públicas las rutas de identidad.
 - [x] Extraer seis endpoints de autenticación a `backend/app/auth_router.py`, manteniendo la configuración compartida en `main.py` y verificando regresiones.
 - [x] Separar `Verificar`, `RecuperarPassword`, el dashboard y el formato de respuestas J.A.R.V.I.S. de `App.jsx`; ESLint y compilación aprobados en la copia revisada.
-- [ ] Automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador; simplificar la lógica interna extensa de `Dashboard.jsx`.
+- [ ] Automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador; trasladar a CSS los estilos repetidos de los componentes del dashboard. `Dashboard.jsx` ya fue modularizado y reducido a 391 líneas.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, la pantalla React de pipelines y la separación de las pantallas principales de `App.jsx`. Persisten tareas de simplificación interna del dashboard, verificación de límites bajo carga y fortalecimiento de CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
+Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, la pantalla React de pipelines y la separación de las pantallas principales de `App.jsx`. Persisten la extracción de estilos repetidos del dashboard a CSS, la verificación de límites bajo carga y la integración de pruebas HTTP con servicios en CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
 
 **Uso de IA y tecnología elegida:** el MVP implementa Groq para las respuestas de J.A.R.V.I.S. 2.0 y su llamada controlada a funciones backend. En la propuesta de referencia se plantean servicios Azure, que no se incorporaron al prototipo. Groq permite implementar el flujo conversacional previsto con la integración disponible en FastAPI; la aceptación académica formal de esta sustitución debe confirmarse con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo de análisis, programación y documentación; cada resultado requiere revisión y pruebas del equipo.
 
@@ -127,4 +127,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md), [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** código integrado hasta `3cbc283`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas; PluriOne CI #66 completado correctamente. Se comprobó la compatibilidad de autenticación con cuentas antiguas simuladas. El Corte 5 documentó una instalación funcional desde clon limpio con adaptaciones de Compose y puertos. Permanecen pendientes la verificación del HTTP 401 original en el despliegue actualizado, las pruebas automatizadas de navegador, variantes históricas de migración, restauración del respaldo y validación empresarial.
+**Estado documental:** referencia actual `9e9bd39`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 aprobó la corrección de autenticación `3cbc283`; las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La evidencia funcional del Corte 6 documenta registro, verificación con Mailpit, primer login sin recuperación de contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica en un clon aislado. El HTTP 401 histórico no volvió a reproducirse, aunque su causa original sigue sin determinarse. Permanecen pendientes pruebas automatizadas de navegador, restauración del respaldo, variantes históricas de migración y validación empresarial.
