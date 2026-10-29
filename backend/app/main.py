@@ -26,6 +26,9 @@ from .chat_router import crear_router_chat
 from .metricas_router import crear_router_metricas
 from .websocket_router import ConnectionManager, crear_router_websocket
 from .origin_utils import get_cors_origins
+from .jwt_utils import encode_access_token
+from .auth_dependencies import resolve_current_user
+from .email_utils import _enviar_correo_verificacion_impl
 
 # Fuerza a Python a leer la llave nueva
 load_dotenv(override=True, encoding='utf-8')
@@ -61,12 +64,6 @@ def generar_codigo_seguro():
     return str(100000 + secrets.randbelow(900000))
 
 
-from .jwt_utils import encode_access_token
-from .auth_dependencies import resolve_current_user
-from .email_utils import (
-    _enviar_correo_verificacion_impl,
-    _enviar_alerta_correo_consolidado_impl,
-)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Limites compartidos por las instancias mediante AuthRateLimit.
@@ -256,8 +253,6 @@ def enviar_correo_verificacion(destinatario: str, codigo: str, proposito: str = 
         sender_password=SENDER_PASSWORD,
     )
 
-def enviar_alerta_correo_consolidado(destinatario: str, lat_v: str, lat_s: str, cal_v: str, cal_s: str, fal_v: str, fal_s: str, diag_general: str):
-    return _enviar_alerta_correo_consolidado_impl(destinatario, lat_v, lat_s, cal_v, cal_s, fal_v, fal_s, diag_general, smtp_server=SMTP_SERVER, smtp_port=SMTP_PORT, sender_email=SENDER_EMAIL, sender_password=SENDER_PASSWORD)
 
 
 def generar_recomendacion_ia(pipeline_name: str, metric_type: str, value: float) -> str:
