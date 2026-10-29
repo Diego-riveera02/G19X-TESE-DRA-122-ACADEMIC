@@ -99,6 +99,58 @@ Se investigó sin modificar datos. Se confirmó que el correo coincidía exactam
 
 **Seguimiento del Corte 6:** después de publicar la normalización de correos en `3cbc283`, se registró una nueva prueba funcional de registro, verificación e inicio de sesión en un clon aislado actualizado. El primer login funcionó sin recuperar la contraseña. El HTTP 401 histórico no volvió a reproducirse en esa prueba; sin embargo, su causa original no quedó demostrada. No se atribuye con certeza a diferencias de mayúsculas o espacios en el correo. La evidencia se documenta en `EVIDENCIAS_FUNCIONALES_CORTE6.md`.
 
+**Seguimiento adicional del 29 de octubre de 2026:**
+
+Se reviso nuevamente la incidencia original y se
+comparo la implementacion anterior de autenticacion
+con la correccion de normalizacion de correos.
+
+En el commit 98dfdd6, el inicio de sesion utilizaba
+una comparacion exacta del correo almacenado.
+
+La correccion del commit 3cbc283 incorporo la
+normalizacion mediante LOWER, TRIM y normalizar_correo.
+
+Una consulta SQL de solo lectura, utilizando un correo
+ficticio con diferencias de mayusculas y espacios,
+obtuvo los siguientes resultados:
+
+- Busqueda exacta anterior: NO_ENCONTRADO.
+- Busqueda normalizada: ENCONTRADO.
+
+Esta prueba reprodujo un mecanismo que podia impedir
+localizar usuarios en la implementacion anterior.
+
+Adicionalmente, se ejecutaron tres pruebas aisladas
+de autenticacion y todas aprobaron.
+
+En el entorno local principal se registro y verifico
+una cuenta nueva mediante React y Mailpit.
+
+El primer inicio de sesion funciono sin recuperar
+la contrasena y la solicitud POST /login/ devolvio
+HTTP 200. Tambien se comprobo el acceso al Dashboard.
+
+La evidencia visual se publico en el commit 9b5a4e3.
+
+El analisis tecnico reproducible se documento y
+publico en el commit 6a6bf0c.
+
+**Limitacion:** la incidencia historica no se
+reprodujo nuevamente con sus condiciones originales.
+La bitacora del Corte 5 registro que se habia
+comprobado la coincidencia del correo en la base
+de datos. Por ello, la prueba de normalizacion
+no demuestra que las diferencias de mayusculas
+o espacios causaran aquel HTTP 401.
+
+Se conserva esta limitacion para distinguir el
+mecanismo reproducido de la causa historica,
+que continua sin determinarse con certeza.
+
+El desarrollo completo de la investigacion se
+encuentra en [EVIDENCIAS_FUNCIONALES_CORTE6.md](EVIDENCIAS_FUNCIONALES_CORTE6.md).
+
 ### 6.3. Recuperación de contraseña
 
 Se inició la recuperación desde React para el usuario de prueba. Mailpit recibió un correo con código temporal. Tras introducir el código y una contraseña nueva, la aplicación permitió actualizar la contraseña. Tanto el código como la contraseña fueron omitidos de la documentación por motivos de seguridad.
