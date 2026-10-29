@@ -253,3 +253,95 @@ Las capturas y las salidas de consola fueron revisadas durante la sesión de pru
 La instalación desde un clon nuevo del commit `98dfdd6` permitió construir e iniciar los servicios de PluriOne en un proyecto Docker aislado, con PostgreSQL independiente y correo local Mailpit. Se comprobó el registro y activación de un usuario nuevo, la recepción de correos, la recuperación de contraseña y el acceso al Dashboard. La incidencia de inicio de sesión inicial quedó documentada sin atribuir una causa no demostrada.
 
 Al terminar se detuvo el clon y se restauró la plataforma original con sus contenedores y su volumen PostgreSQL conservados. Los resultados constituyen **evidencia técnica reproducible del MVP académico**, limitada a las operaciones realmente efectuadas y sin implicar certificación de seguridad o producción.
+
+
+## 10. Validacion integral desde clon nuevo - 2026-10-29
+
+Se realizo una instalacion desde un clon nuevo de GitHub,
+correspondiente al commit 2872b92.
+
+El clon se preparo en PluriOne_Validacion_Final_Corte6.
+
+Se utilizo un proyecto Docker independiente llamado
+plurione_validacion_final_c6.
+
+Se generaron credenciales nuevas y un volumen PostgreSQL
+independiente del proyecto principal.
+
+### Puertos de la instalacion
+
+| Servicio | Puerto |
+| --- | --- |
+| React | 5174 |
+| FastAPI | 8001 |
+| PostgreSQL | 5434 |
+| Mailpit | 8026 |
+
+Se utilizaron configuraciones locales para cambiar los
+puertos y mantener ambas instalaciones separadas.
+
+### Verificaciones
+
+React, FastAPI y Mailpit respondieron HTTP 200.
+
+PostgreSQL alcanzo el estado healthy.
+
+La verificacion CORS devolvio HTTP 200 y autorizo
+el origen http://127.0.0.1:5174.
+
+### Registro y autenticacion
+
+Se registro y verifico una cuenta nueva mediante React
+y Mailpit en el clon independiente.
+
+El primer inicio de sesion funciono sin recuperar
+la contrasena.
+
+La pestaña Network mostro POST /login/ con HTTP 200.
+
+Se confirmo el acceso al Dashboard.
+
+### Pipeline e ingesta
+
+Se creo el pipeline pipeline-corte6-final.
+
+La interfaz confirmo su creacion mediante HTTP 201.
+
+Posteriormente, se envio una solicitud autenticada
+a http://127.0.0.1:8001/metricas/externas/.
+
+La metrica enviada fue latencia_ms con valor 9500.
+
+La clave X-Pipeline-Key se introdujo de forma privada
+y no se incorporo a la documentacion.
+
+La API devolvio HTTP 201.
+
+### Alerta critica
+
+El Dashboard mostro una alerta critica correspondiente
+al pipeline pipeline-corte6-final.
+
+La alerta identifico la metrica latencia_ms
+con el valor 9500.
+
+El evento aparecio en el feed de alertas recientes
+a las 10:59:08 del 29 de octubre de 2026.
+
+### Conclusiones y limitaciones
+
+La instalacion nueva permitio comprobar el recorrido
+de registro, verificacion, primer login, creacion
+de pipeline, ingesta HTTP 201 y alerta critica.
+
+El proyecto principal y su base de datos se conservaron
+sin modificaciones.
+
+La causa exacta del HTTP 401 historico del Corte 5
+continua sin demostrarse.
+
+Esta prueba confirma el funcionamiento del flujo actual,
+pero no constituye una certificacion de produccion.
+
+No se publicaron contrasenas, codigos, JWT ni claves
+de pipelines.
