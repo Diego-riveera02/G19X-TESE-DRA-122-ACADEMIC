@@ -8,11 +8,11 @@ export default function HistorialAnomalias({
   return (
           <div className="plurione-surface-card plurione-history-panel">
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <div className="plurione-history-toolbar">
 
-              <h4 style={{ margin: 0, color: '#E5B80B' }}>Registro Detallado (Auditoría)</h4>
+              <h4 className="plurione-history-title">Registro Detallado (Auditoría)</h4>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div className="plurione-history-actions">
 
                 <button onClick={exportarPDF} className="plurione-outline-button plurione-outline-button--pdf">📄 Descargar PDF</button>
 
@@ -29,13 +29,13 @@ export default function HistorialAnomalias({
 
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9em' }}>
+            <table className="plurione-history-table">
 
               <thead>
 
-                <tr style={{ borderBottom: '2px solid #333', color: '#888' }}>
+                <tr className="plurione-history-head-row">
 
-                  <th style={{ padding: '10px' }}>N.º</th><th>Pipeline</th><th>Métrica</th><th>Valor</th><th>Estado</th><th>IA Diagnóstico</th>
+                  <th className="plurione-history-index-heading">N.º</th><th>Pipeline</th><th>Métrica</th><th>Valor</th><th>Estado</th><th>IA Diagnóstico</th>
 
                 </tr>
 
@@ -45,19 +45,19 @@ export default function HistorialAnomalias({
 
                 {anomalias.map((a, indice) => (
 
-                  <tr key={a.id} style={{ borderBottom: '1px solid #1a1a1d' }}>
+                  <tr key={a.id} className="plurione-history-row">
 
-                    <td style={{ padding: '10px', color: '#E5B80B' }}>#{indice + 1}</td>
+                    <td className="plurione-history-index">#{indice + 1}</td>
 
                     <td>{a.pipeline_name}</td>
 
-                    <td style={{ color: '#888' }}>{a.metric_type}</td>
+                    <td className="plurione-history-metric-type">{a.metric_type}</td>
 
-                    <td style={{ color: '#E63946', fontWeight: 'bold' }}>{a.value}</td>
+                    <td className="plurione-history-value">{a.value}</td>
 
-                    <td><span style={{ background: a.status === 'Critico' ? '#8B0000' : a.status === 'Alerta' ? '#D4A017' : '#006400', padding: '4px 8px', borderRadius: '4px', color: '#fff', fontSize: '0.8em' }}>{a.status}</span></td>
+                    <td><span className="plurione-history-status" data-status={a.status}>{a.status}</span></td>
 
-                    <td style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#a8a8a8' }}>{a.ai_recommendation}</td>
+                    <td className="plurione-history-recommendation">{a.ai_recommendation}</td>
 
                   </tr>
 

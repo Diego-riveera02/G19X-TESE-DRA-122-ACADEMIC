@@ -382,3 +382,82 @@
   letter-spacing: 2px;
   text-transform: uppercase;
 }
+
+/* Historial de Anomalias */
+.plurione-history-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.plurione-history-title {
+  margin: 0;
+  color: #E5B80B;
+}
+
+.plurione-history-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Tabla del Historial */
+.plurione-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9em;
+}
+
+.plurione-history-head-row {
+  border-bottom: 2px solid #333;
+  color: #888;
+}
+
+.plurione-history-index-heading {
+  padding: 10px;
+}
+
+.plurione-history-row {
+  border-bottom: 1px solid #1a1a1d;
+}
+
+.plurione-history-index {
+  padding: 10px;
+  color: #E5B80B;
+}
+
+.plurione-history-metric-type {
+  color: #888;
+}
+
+.plurione-history-value {
+  color: #E63946;
+  font-weight: bold;
+}
+
+/* Estados de Anomalias */
+.plurione-history-status {
+  background: #006400;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8em;
+}
+
+.plurione-history-status[data-status="Critico"] {
+  background: #8B0000;
+}
+
+.plurione-history-status[data-status="Alerta"] {
+  background: #D4A017;
+}
+
+/* Diagnostico de IA */
+.plurione-history-recommendation {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #a8a8a8;
+}
