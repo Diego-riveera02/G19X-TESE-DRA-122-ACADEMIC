@@ -133,3 +133,89 @@
   border-radius: 4px;
   font-weight: bold;
 }
+
+/* Encabezado interno de J.A.R.V.I.S. */
+.plurione-chat-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.plurione-chat-title {
+  color: #E5B80B;
+  font-size: 0.9em;
+}
+
+.plurione-chat-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plurione-chat-live {
+  color: #4BB543;
+  font-size: 0.7em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.plurione-chat-live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #4BB543;
+  border-radius: 50%;
+}
+
+/* Contenedor y mensajes */
+.plurione-chat-messages {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  background: #0b0c10;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.plurione-chat-message {
+  flex-shrink: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.plurione-chat-message--jarvis {
+  align-self: stretch;
+}
+
+.plurione-chat-message--user {
+  align-self: flex-end;
+}
+
+.plurione-chat-user-bubble {
+  color: #f2f3f4;
+  background: #28323b;
+  border: 1px solid #3d4852;
+  padding: 9px 12px;
+  border-radius: 10px 10px 3px 10px;
+  overflow-wrap: break-word;
+  text-align: left;
+}
+
+.plurione-chat-composer {
+  display: flex;
+  gap: 5px;
+}

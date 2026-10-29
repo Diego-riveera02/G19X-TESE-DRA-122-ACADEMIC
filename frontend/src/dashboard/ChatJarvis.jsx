@@ -11,11 +11,11 @@ export default function ChatJarvis({
   return (
 <div className="plurione-chat-panel plurione-surface-card">
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div className="plurione-chat-toolbar">
 
-                <strong style={{ color: '#E5B80B', fontSize: '0.9em' }}>J.A.R.V.I.S.</strong>
+                <strong className="plurione-chat-title">J.A.R.V.I.S.</strong>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="plurione-chat-toolbar-actions">
 
                   <button
 
@@ -33,9 +33,9 @@ export default function ChatJarvis({
 
                   </button>
 
-                  <span style={{ color: '#4BB543', fontSize: '0.7em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span className="plurione-chat-live">
 
-                    <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: '#4BB543', borderRadius: '50%' }}></span>
+                    <span className="plurione-chat-live-dot"></span>
 
                     ● EN VIVO
 
@@ -45,11 +45,11 @@ export default function ChatJarvis({
 
               </div>
 
-              <div ref={chatContainerRef} style={{ flex: 1, minHeight: 0, minWidth: 0, maxWidth: '100%', overflowY: 'auto', overflowX: 'hidden', overscrollBehaviorY: 'contain', background: '#0b0c10', padding: '12px', borderRadius: '6px', marginBottom: '10px', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box' }}>
+              <div ref={chatContainerRef} className="plurione-chat-messages">
 
 {mensajes.map((m, i) => (
 
-                  <div key={i} style={{ alignSelf: m.role === 'jarvis' ? 'stretch' : 'flex-end', flexShrink: 0, maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+                  <div key={i} className={m.role === 'jarvis' ? 'plurione-chat-message plurione-chat-message--jarvis' : 'plurione-chat-message plurione-chat-message--user'}>
 
                     {m.role === 'jarvis' ? (
 
@@ -57,7 +57,7 @@ export default function ChatJarvis({
 
                     ) : (
 
-                      <div style={{ color: '#f2f3f4', background: '#28323b', border: '1px solid #3d4852', padding: '9px 12px', borderRadius: '10px 10px 3px 10px', overflowWrap: 'break-word', textAlign: 'left' }}>
+                      <div className="plurione-chat-user-bubble">
 
                         {m.text}
 
@@ -71,7 +71,7 @@ export default function ChatJarvis({
 
               </div>
 
-              <div style={{ display: 'flex', gap: '5px' }}>
+              <div className="plurione-chat-composer">
 
                 <input type="text" value={pregunta} onChange={(e) => setPregunta(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && onEnviar()} placeholder="Preguntar..." className="plurione-chat-input" />
 
