@@ -345,3 +345,61 @@ pero no constituye una certificacion de produccion.
 
 No se publicaron contrasenas, codigos, JWT ni claves
 de pipelines.
+
+
+## 11. Investigacion complementaria del HTTP 401 - 2026-10-29
+
+Se reviso el codigo historico de autenticacion del commit
+98dfdd6 y se comparo con la correccion 3cbc283.
+
+El registro historico almacenaba un hash bcrypt de la
+contrasena original. La recuperacion generaba un nuevo
+hash y el login verificaba la contrasena proporcionada
+contra el hash almacenado.
+
+Se identifico un mecanismo adicional que puede producir
+HTTP 401 cuando una cuenta existente intenta registrarse
+nuevamente con otra contrasena.
+
+### Reproduccion controlada
+
+Se utilizo el clon independiente del Corte 6, con
+FastAPI en el puerto 8001 y PostgreSQL aislado.
+
+Se genero una cuenta ficticia con correo aleatorio y
+dos contrasenas distintas, sin publicar sus valores.
+
+Resultados observados:
+
+| Operacion | Resultado |
+| --- | --- |
+| Primer registro | HTTP 200 |
+| Segundo registro con el mismo correo | HTTP 200 |
+| Comparacion de respuestas de registro | Identicas |
+| Login con la segunda contrasena | HTTP 401 |
+| Login con la primera contrasena | HTTP 403 |
+
+El segundo registro no reemplazo la contrasena original.
+
+El HTTP 403 con la primera contrasena confirma que esta
+fue reconocida, pero la cuenta permanecia sin verificar.
+
+### Interpretacion
+
+La respuesta generica del registro no confirma que se
+haya creado otra cuenta ni que la contrasena se actualizara.
+
+Este comportamiento puede explicar una secuencia donde
+aparece HTTP 401 y posteriormente funciona el acceso
+tras recuperar la contrasena.
+
+Sin embargo, no se dispone de evidencia suficiente para
+demostrar que hubo un segundo registro durante el
+incidente historico del Corte 5.
+
+Por tanto, se considera reproducido un mecanismo posible,
+pero la causa exacta del HTTP 401 historico permanece
+sin confirmacion forense.
+
+No se modifico el codigo de autenticacion ni se publicaron
+contrasenas, tokens, claves privadas o datos reales.
