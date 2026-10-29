@@ -6,7 +6,7 @@ export default function HistorialAnomalias({
   procesandoHistorial
 }) {
   return (
-          <div style={{ background: '#111217', padding: '20px', borderRadius: '8px', border: '1px solid #333' }}>
+          <div className="plurione-surface-card plurione-history-panel">
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
 
@@ -14,20 +14,13 @@ export default function HistorialAnomalias({
 
               <div style={{ display: 'flex', gap: '10px' }}>
 
-                <button onClick={exportarPDF} style={{ background: 'transparent', color: '#457B9D', border: '1px solid #457B9D', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>📄 Descargar PDF</button>
+                <button onClick={exportarPDF} className="plurione-outline-button plurione-outline-button--pdf">📄 Descargar PDF</button>
 
-                <button onClick={limpiarHistorial} disabled={procesandoHistorial} title="Archivar sin borrar registros" style={{ background: 'transparent', color: '#E63946', border: '1px solid #E63946', padding: '5px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Vaciar Tabla</button>
+                <button onClick={limpiarHistorial} disabled={procesandoHistorial} title="Archivar sin borrar registros" className="plurione-outline-button plurione-outline-button--archive">🗑️ Vaciar Tabla</button>
                 <button
                   onClick={restaurarHistorial}
                   disabled={procesandoHistorial}
-                  style={{
-                    background: 'transparent',
-                    color: '#2A9D8F',
-                    border: '1px solid #2A9D8F',
-                    padding: '5px 15px',
-                    borderRadius: '4px',
-                    cursor: procesandoHistorial ? 'wait' : 'pointer'
-                  }}
+                  className="plurione-outline-button plurione-outline-button--restore"
                 >
                   Restaurar historial
                 </button>

@@ -55,3 +55,40 @@
   overflow-y: auto;
   font-size: 0.85em;
 }
+
+/* Tarjetas reutilizables del dashboard */
+.plurione-surface-card {
+  background: #111217;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+.plurione-history-panel {
+  padding: 20px;
+}
+
+/* Botones del historial */
+.plurione-outline-button {
+  background: transparent;
+  border: 1px solid currentColor;
+  padding: 5px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.plurione-outline-button--pdf {
+  color: #457B9D;
+}
+
+.plurione-outline-button--archive {
+  color: #E63946;
+}
+
+.plurione-outline-button--restore {
+  color: #2A9D8F;
+}
+
+.plurione-outline-button--restore:disabled {
+  cursor: wait;
+}
