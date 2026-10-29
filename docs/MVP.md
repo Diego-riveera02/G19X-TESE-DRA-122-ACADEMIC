@@ -3,7 +3,7 @@
 - **Proyecto:** Plataforma de Observabilidad de Datos con Inteligencia Artificial.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** MVP académico actualizado al Corte 6, con código publicado en `main` hasta `9e9bd39`, autenticación corregida, dashboard modularizado y evidencia funcional del Corte 6.
+- **Versión:** MVP académico actualizado al Corte 6, con código publicado en `main` hasta `48f360e`, autenticación corregida, dashboard modularizado y evidencia funcional del Corte 6.
 
 ## 1. Alcance del MVP
 
@@ -71,7 +71,7 @@ FastAPI, PostgreSQL, WebSocket y React/Vite componen el entorno local de desarro
 
 ### Cobertura de pruebas y evidencia
 
-El 24 de octubre de 2026 aprobaron **58 casos** en tres suites locales ejecutadas por separado. En la versión de referencia `9e9bd39` se mantienen **seis archivos de pruebas**, incluidos los de CORS y correo, y la suite aislada se amplió de 41 a 43 casos:
+El 24 de octubre de 2026 aprobaron **58 casos** en tres suites locales ejecutadas por separado. En la versión de referencia `48f360e` se mantienen **seis archivos de pruebas**, incluidos los de CORS y correo, y la suite aislada se amplió de 41 a 43 casos:
 
 - `backend/tests/test_flujos_aislados.py`: **43 pruebas** con `TestClient` y SQLite en memoria. Incluyen expiración, quinto intento, HTTP 429, separación de usuarios, WebSocket, claves de pipelines y regresiones de routers. **Sí forman parte del workflow actual.**
 - `backend/tests/test_integracion_http.py`: **9 pruebas HTTP** de disponibilidad, autorización, rutas, CORS y PostgreSQL. **Aprobadas localmente el 24 de octubre de 2026 con el nuevo router; no se ejecutan en CI.**
@@ -110,14 +110,15 @@ En una [segunda instalación desde un clon nuevo](VALIDACION_CLON_LIMPIO_CORTE4.
 - [x] Centralizar JWT y HTTP 401 de solicitudes Axios protegidas, manteniendo públicas las rutas de identidad.
 - [x] Extraer seis endpoints de autenticación a `backend/app/auth_router.py`, manteniendo la configuración compartida en `main.py` y verificando regresiones.
 - [x] Separar `Verificar`, `RecuperarPassword`, el dashboard y el formato de respuestas J.A.R.V.I.S. de `App.jsx`; ESLint y compilación aprobados en la copia revisada.
-- [ ] Automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador; trasladar a CSS los estilos repetidos de los componentes del dashboard. `Dashboard.jsx` ya fue modularizado y reducido a 391 líneas.
+- [x] Trasladar a CSS los estilos repetidos de los cuatro componentes del dashboard; ESLint y build aprobados. `Dashboard.jsx` ya fue modularizado y reducido a 391 líneas.
+- [ ] Automatizar la validación del interceptor, expiración de sesión y accesibilidad en navegador.
 - [ ] Conectores productivos y remediación automática, fuera del alcance demostrado.
 
 ## 5. Exclusiones, riesgos y trabajo posterior
 
 Las métricas del simulador son sintéticas. La ingesta autenticada por API no demuestra la existencia de conectores a AWS o bases empresariales. Las respuestas de IA pueden equivocarse y no sustituyen un diagnóstico técnico. La herramienta de J.A.R.V.I.S. no ofrece filtros históricos arbitrarios ni acceso irrestricto a SQL. El chat no almacena memoria permanente y la exportación PDF solo incluye datos cargados.
 
-Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, la pantalla React de pipelines y la separación de las pantallas principales de `App.jsx`. Persisten la extracción de estilos repetidos del dashboard a CSS, la verificación de límites bajo carga y la integración de pruebas HTTP con servicios en CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
+Se completó la extracción de routers de autenticación, anomalías, pipelines, métricas, chat y WebSocket, la pantalla React de pipelines y la separación de las pantallas principales de `App.jsx`. La extracción de estilos repetidos del dashboard a CSS se completó en los commits de refactorización, incluido fe51c53. Persisten la verificación de límites bajo carga y la integración de pruebas HTTP con servicios en CI. Los Dockerfiles siguen orientados a desarrollo. Las columnas de archivado se comprobaron en la base PostgreSQL local. En dos bases temporales aisladas se validaron una migración sobre una tabla antigua mínima simulada y la creación de un esquema nuevo. Sin embargo, `schema_migrations.py` **no ejecuta** `backend/migrations/001_archivado_logico_anomalias.sql`; dicho SQL no es idempotente. Antes de aplicarlo manualmente en otro entorno se debe respaldar la base y comprobar el esquema.
 
 **Uso de IA y tecnología elegida:** el MVP implementa Groq para las respuestas de J.A.R.V.I.S. 2.0 y su llamada controlada a funciones backend. En la propuesta de referencia se plantean servicios Azure, que no se incorporaron al prototipo. Groq permite implementar el flujo conversacional previsto con la integración disponible en FastAPI; la aceptación académica formal de esta sustitución debe confirmarse con el profesor o la empresa. Durante el desarrollo se utilizó IA generativa como apoyo de análisis, programación y documentación; cada resultado requiere revisión y pruebas del equipo.
 
@@ -127,4 +128,4 @@ El MVP demuestra ingesta autenticada, simulación, seguimiento de anomalías, ad
 
 Documentos relacionados: [`../README.md`](../README.md), [`PRD.md`](PRD.md), [`PRUEBA_E2E_CORTE4.md`](PRUEBA_E2E_CORTE4.md) y [`../frontend/README.md`](../frontend/README.md).
 
-**Estado documental:** referencia actual `9e9bd39`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 aprobó la corrección de autenticación `3cbc283`; las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La evidencia funcional del Corte 6 documenta registro, verificación con Mailpit, primer login sin recuperación de contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica en un clon aislado. El HTTP 401 histórico no volvió a reproducirse, aunque su causa original sigue sin determinarse. Permanecen pendientes pruebas automatizadas de navegador, restauración del respaldo, variantes históricas de migración y validación empresarial.
+**Estado documental:** referencia actual `48f360e`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 aprobó la corrección de autenticación `3cbc283`; las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La evidencia funcional del Corte 6 documenta registro, verificación con Mailpit, primer login sin recuperación de contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica en un clon aislado. La validación adicional del 29 de octubre en main confirmó el primer login HTTP 200 de una cuenta nueva, con evidencia visual publicada en 9b5a4e3. El análisis técnico reproducible se documentó en 6a6bf0c y la bitácora se actualizó en 48f360e. La causa exacta del HTTP 401 histórico sigue sin determinarse. Permanecen pendientes pruebas automatizadas de navegador, restauración del respaldo, variantes históricas de migración y validación empresarial.

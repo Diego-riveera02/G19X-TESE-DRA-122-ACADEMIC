@@ -4,7 +4,7 @@
 - **Empresa vinculada:** PluriOne S.A. de C.V.
 - **Autor:** Diego Rivera Aguilar.
 - **Periodo:** octubre de 2026.
-- **Versión:** Corte 6, código de referencia integrado en `main` hasta `9e9bd39`, con autenticación corregida, dashboard modularizado y evidencia funcional del Corte 6.
+- **Versión:** Corte 6, código de referencia integrado en `main` hasta `48f360e`, con autenticación corregida, dashboard modularizado y evidencia funcional del Corte 6.
 
 ## 1. Propósito, problemática y visión general
 
@@ -80,7 +80,7 @@ El MVP combina **un simulador de demostración** con **endpoints de ingesta aute
 - **RNF-07 — Protección de credenciales:** códigos de un solo uso con HMAC; claves de pipelines almacenadas mediante hash SHA-256 y comparación segura; evitar exposición de secretos.
 - **RNF-08 — Control de abuso:** límites de intentos y solicitudes sensibles, máximo de 20 pipelines activos por usuario y límite de 60 solicitudes por minuto para ingesta; falta validar su eficacia bajo carga y concurrencia reales.
 - **RNF-09 — Reproducibilidad:** variables de entorno documentadas, dependencias fijadas y ejecución verificable con Docker y CI.
-- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para autenticación, anomalías, pipelines, chat, métricas y WebSocket. `main.py` conserva la configuración compartida y registra los routers. `App.jsx` y `Dashboard.jsx` ya están modularizados; el dashboard se dividió en componentes dentro de `frontend/src/dashboard/`. Permanecen pendientes las pruebas automatizadas de interfaz y la extracción de estilos repetidos a CSS.
+- **RNF-10 — Mantenibilidad:** URL HTTP/WebSocket, JWT y respuesta HTTP 401 de Axios centralizados; routers independientes para autenticación, anomalías, pipelines, chat, métricas y WebSocket. `main.py` conserva la configuración compartida y registra los routers. `App.jsx` y `Dashboard.jsx` ya están modularizados; el dashboard se dividió en componentes dentro de `frontend/src/dashboard/`. Los estilos repetidos de los cuatro componentes del dashboard ya se trasladaron a Dashboard.css, con validaciones de ESLint y compilación aprobadas. Permanecen pendientes las pruebas automatizadas de interfaz.
 
 ## 5. Arquitectura y flujo de datos
 
@@ -179,4 +179,4 @@ Las pruebas aisladas incluyen casos de vencimiento de códigos, quinto intento, 
 - [`MVP.md`](MVP.md) — alcance actual y criterios de validación del producto mínimo viable.
 - [`../frontend/README.md`](../frontend/README.md) — instalación y capacidades de la interfaz.
 
-**Estado:** documento actualizado con referencia a `9e9bd39`. La normalización de correos quedó implementada y se aprobaron 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo; PluriOne CI #66 aprobó la corrección `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La evidencia funcional del Corte 6 registra verificación con Mailpit, primer login sin recuperación de contraseña, ingesta externa HTTP 201 y alerta crítica en un clon aislado. El HTTP 401 histórico no volvió a reproducirse en esa prueba, pero su causa original sigue sin determinarse. Continúan pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y confirmación formal de sustituciones tecnológicas.
+**Estado:** documento actualizado con referencia a `48f360e`. La normalización de correos quedó implementada y se aprobaron 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo; PluriOne CI #66 aprobó la corrección `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La evidencia funcional del Corte 6 registra verificación con Mailpit, primer login sin recuperación de contraseña, ingesta externa HTTP 201 y alerta crítica en un clon aislado. El 29 de octubre también se comprobó en main el primer login HTTP 200 de una cuenta nueva, con evidencia visual publicada en 9b5a4e3. El análisis reproducible de búsqueda exacta y normalizada se documentó en 6a6bf0c y la bitácora se actualizó en 48f360e. Estas comprobaciones no demuestran la causa exacta del HTTP 401 histórico. Continúan pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y confirmación formal de sustituciones tecnológicas.
