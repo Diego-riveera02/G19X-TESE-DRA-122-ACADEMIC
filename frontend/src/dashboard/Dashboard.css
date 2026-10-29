@@ -92,3 +92,44 @@
 .plurione-outline-button--restore:disabled {
   cursor: wait;
 }
+
+/* Chat J.A.R.V.I.S. */
+.plurione-chat-panel {
+  padding: 16px;
+  border-color: #E5B80B;
+  height: 450px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.plurione-chat-last-button {
+  background: #22252d;
+  color: #E5B80B;
+  border: 1px solid #494026;
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.75em;
+}
+
+.plurione-chat-input {
+  flex: 1;
+  padding: 5px;
+  background: #1a1a1d;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.plurione-chat-send-button {
+  background: #E5B80B;
+  border: none;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-weight: bold;
+}

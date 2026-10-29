@@ -9,7 +9,7 @@ export default function ChatJarvis({
   chatContainerRef
 }) {
   return (
-<div className="plurione-chat-panel" style={{ background: '#111217', padding: '16px', borderRadius: '8px', border: '1px solid #E5B80B', height: '450px', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+<div className="plurione-chat-panel plurione-surface-card">
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
 
@@ -25,7 +25,7 @@ export default function ChatJarvis({
 
                     title="Ir al último mensaje"
 
-                    style={{ background: '#22252d', color: '#E5B80B', border: '1px solid #494026', borderRadius: '5px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75em' }}
+                    className="plurione-chat-last-button"
 
                   >
 
@@ -73,9 +73,9 @@ export default function ChatJarvis({
 
               <div style={{ display: 'flex', gap: '5px' }}>
 
-                <input type="text" value={pregunta} onChange={(e) => setPregunta(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && onEnviar()} placeholder="Preguntar..." style={{ flex: 1, padding: '5px', background: '#1a1a1d', color: '#fff', border: '1px solid #333', borderRadius: '4px', fontSize: '0.8em' }} />
+                <input type="text" value={pregunta} onChange={(e) => setPregunta(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && onEnviar()} placeholder="Preguntar..." className="plurione-chat-input" />
 
-                <button onClick={onEnviar} style={{ background: '#E5B80B', border: 'none', padding: '0 10px', borderRadius: '4px', fontWeight: 'bold' }}>&gt;</button>
+                <button onClick={onEnviar} className="plurione-chat-send-button">&gt;</button>
 
               </div>
 
