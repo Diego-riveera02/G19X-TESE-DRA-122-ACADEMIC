@@ -135,3 +135,77 @@ por su rubrica.
 
 La captura permite verificar el resultado HTTP 200
 sin mostrar contrasenas, codigos ni tokens.
+
+
+## Analisis tecnico reproducible del HTTP 401
+
+### Comparacion de versiones
+
+Se reviso el comportamiento de autenticacion del commit
+98dfdd6 y la correccion incorporada en el commit 3cbc283.
+
+La implementacion anterior buscaba usuarios mediante
+una comparacion exacta entre el correo almacenado y
+el correo introducido durante el inicio de sesion.
+
+Esta comparacion podia fallar cuando existian diferencias
+de mayusculas, minusculas o espacios.
+
+La correccion incorporo la normalizacion del correo
+mediante las operaciones LOWER, TRIM y normalizar_correo.
+
+### Prueba reproducible en PostgreSQL
+
+Se ejecuto una consulta SQL de solo lectura utilizando
+un correo ficticio con mayusculas y espacios adicionales.
+
+Resultados:
+
+| Busqueda | Resultado |
+| --- | --- |
+| Comparacion exacta anterior | NO_ENCONTRADO |
+| Comparacion con normalizacion | ENCONTRADO |
+
+La consulta obtuvo el resultado:
+
+NO_ENCONTRADO|ENCONTRADO
+
+Esta prueba demuestra que la comparacion exacta podia
+impedir encontrar una cuenta existente cuando habia
+diferencias en el formato del correo.
+
+No se modificaron registros de usuarios ni datos reales.
+
+### Pruebas automatizadas
+
+Se ejecutaron tres pruebas aisladas de autenticacion:
+
+1. Registro, verificacion e inicio de sesion.
+2. Normalizacion de correo.
+3. Compatibilidad con correos de cuentas anteriores.
+
+Resultado: 3 pruebas aprobadas.
+
+### Validacion funcional
+
+En el commit 9b5a4e3 se publico evidencia de un
+primer inicio de sesion exitoso mediante HTTP 200.
+
+La cuenta ficticia fue registrada, verificada e
+identificada correctamente dentro del Dashboard.
+
+### Conclusiones y limitaciones
+
+Se identifico y reprodujo un mecanismo tecnico
+que podia provocar HTTP 401 en la implementacion anterior.
+
+Sin embargo, no se conservaron los datos originales
+necesarios para demostrar que este mecanismo fue
+la causa exacta de la incidencia historica.
+
+Por ello, la evidencia permite explicar un fallo
+potencial de autenticacion y comprobar su correccion,
+pero no atribuirle con certeza el incidente original.
+
+La aceptacion definitiva corresponde a la evaluacion
+de TODO Academy.
