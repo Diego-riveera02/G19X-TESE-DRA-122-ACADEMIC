@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
 import ParticlesBackground from './ParticlesBackground';
+import './Auth.css';
 
 export default function Verificar() {
   const location = useLocation();
@@ -67,16 +68,16 @@ export default function Verificar() {
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b0c10', overflow: 'auto' }}>
+    <div className="auth-page">
       <ParticlesBackground />
-      <div style={{ position: 'relative', zIndex: 10, width: '400px', maxWidth: 'calc(100% - 32px)', boxSizing: 'border-box', padding: '32px', margin: '20px auto', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
-        <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>Verificación</h2>
-        <p style={{ color: '#aaa', fontSize: '0.9em', marginBottom: '20px' }}>Ingresa el código de 6 dígitos que enviamos a tu correo.</p>
+      <div className="auth-card auth-card--compact">
+        <h2 className="auth-title">Verificación</h2>
+        <p className="auth-description">Ingresa el código de 6 dígitos que enviamos a tu correo.</p>
 
-        {error && <div role="alert" style={{ color: '#ff7474', marginBottom: '15px', overflowWrap: 'anywhere' }}>{error}</div>}
-        {mensaje && <div role="status" style={{ color: '#85db92', marginBottom: '15px', overflowWrap: 'anywhere' }}>{mensaje}</div>}
+        {error && <div role="alert" className="auth-message auth-message--error">{error}</div>}
+        {mensaje && <div role="status" className="auth-message auth-message--success">{mensaje}</div>}
 
-        <form onSubmit={manejarVerificacion} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <form onSubmit={manejarVerificacion} className="auth-form">
           <input
             type="email"
             aria-label="Correo electrónico"
@@ -85,7 +86,7 @@ export default function Verificar() {
             required
             disabled={verificado}
             placeholder="Confirma tu correo"
-            style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}
+            className="auth-input"
           />
           <input
             type="text"
@@ -99,12 +100,12 @@ export default function Verificar() {
             disabled={verificado}
             placeholder="Código de 6 dígitos"
             maxLength={6}
-            style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #E5B80B', color: '#E5B80B', fontWeight: 'bold', textAlign: 'center', letterSpacing: '5px', fontSize: '1.2em', borderRadius: '4px' }}
+            className="auth-input auth-input--code"
           />
           <button
             type="submit"
             disabled={verificando || reenviando || verificado || codigo.length !== 6}
-            style={{ background: '#E5B80B', color: '#0b0c10', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: verificando ? 'wait' : 'pointer', opacity: verificando || reenviando || verificado || codigo.length !== 6 ? 0.65 : 1 }}
+            className="auth-button"
           >
             {verificando ? 'Verificando...' : verificado ? 'Cuenta activada' : 'Activar cuenta'}
           </button>
@@ -113,18 +114,18 @@ export default function Verificar() {
             type="button"
             onClick={manejarReenvio}
             disabled={!correo.trim() || reenviando || verificando || verificado}
-            style={{ background: 'transparent', color: '#E5B80B', border: '1px solid #E5B80B', padding: '11px', borderRadius: '4px', fontWeight: 'bold', cursor: reenviando ? 'wait' : 'pointer', opacity: !correo.trim() || reenviando || verificando || verificado ? 0.55 : 1 }}
+            className="auth-button auth-button--outline auth-button--resend"
           >
             {reenviando ? 'Solicitando código...' : 'Reenviar código'}
           </button>
         </form>
 
-        <p style={{ color: '#aaa', fontSize: '0.8em', marginTop: '14px', lineHeight: 1.5 }}>
+        <p className="auth-helper">
           El código dura 10 minutos. Si todavía está vigente, usa el que ya recibiste.
           Si venció, solicita uno nuevo y revisa también tu carpeta de spam.
         </p>
-        <div style={{ marginTop: '20px' }}>
-          <Link to="/login" style={{ color: '#aaa', textDecoration: 'none', fontSize: '0.9em' }}>Volver al Login</Link>
+        <div className="auth-footer">
+          <Link to="/login" className="auth-link auth-link--muted auth-link--back auth-link--soft">Volver al Login</Link>
         </div>
       </div>
     </div>
