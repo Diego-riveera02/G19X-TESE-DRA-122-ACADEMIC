@@ -198,6 +198,15 @@ docker compose stop
 
 ### 7.1. Flujo desde React
 
+> **Registro duplicado:** Si una persona intenta registrarse
+> nuevamente con un correo existente, el sistema devuelve
+> una respuesta genérica por seguridad y no reemplaza la
+> contraseña original. Para iniciar sesión debe utilizar
+> su contraseña original o seleccionar
+> **«¿Olvidaste tu contraseña?»** para recuperarla.
+> Si la cuenta todavía no ha sido verificada, también
+> deberá completar su proceso de verificación.
+
 1. Registrarse y verificar la cuenta con el código de correo; iniciar sesión.
 2. Abrir el dashboard y observar las métricas y alertas de demostración recibidas por WebSocket.
 3. Consultar a J.A.R.V.I.S.: «¿Cuántas anomalías críticas tengo y cuál fue la más reciente?». Distinguir siempre los datos recuperados de las hipótesis generadas.

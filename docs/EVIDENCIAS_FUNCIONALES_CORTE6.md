@@ -32,8 +32,16 @@ en el entorno aislado actualizado al Corte 6.
 Se obtuvieron capturas del registro, verificacion, inicio
 de sesion, pipeline, Dashboard e Historial.
 
-Pendiente: incorporar al repositorio capturas sin credenciales,
-claves de ingesta ni otros datos sensibles.
+Ya se incorporó al repositorio una captura del primer inicio
+de sesión HTTP 200, correspondiente a la validación adicional
+en main del 29 de octubre de 2026:
+
+[Ver captura del login HTTP 200](evidencias/login_http200_main_20261029.png)
+
+Las demás capturas del recorrido descrito anteriormente
+no se consideran publicadas por esta referencia.
+No deben incluirse contraseñas, tokens, claves de ingesta
+ni otros datos sensibles en evidencias futuras.
 
 ## Limitaciones y pendientes
 

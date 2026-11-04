@@ -233,7 +233,7 @@ En ninguna fase se ejecutó `docker compose down -v` ni se eliminaron volúmenes
 | Cuenta activa | Consulta SQL de solo lectura | Verificada |
 | Recuperación de contraseña | Mailpit e interfaz React | Verificada |
 | Inicio de sesión y Dashboard | Comprobación visual | Verificada tras recuperación |
-| Primer inicio de sesión | HTTP 401 | Incidencia documentada |
+| Primer inicio de sesión | HTTP 200 en clon nuevo (Corte 6) | El HTTP 401 del Corte 5 permanece como antecedente histórico; ver sección 12. |
 | Validación posterior del Corte 6 | Login sin recuperación, pipeline y alerta | Documentada en clon aislado |
 | Entorno original restaurado | Docker, HTTP y Git | Verificada |
 | CI para commit evaluado | GitHub Actions | `success` |
@@ -242,8 +242,8 @@ Las capturas y las salidas de consola fueron revisadas durante la sesión de pru
 
 ## 10. Limitaciones, hallazgos y acciones recomendadas
 
-1. **Autenticación:** investigar el HTTP 401 inicial si vuelve a reproducirse con credenciales nuevas, preservando registros de respuesta y sin publicar contraseñas.
-2. **Documentación:** actualizar en el README las referencias históricas al commit `657499b` y otras descripciones que ya no representen el estado actual del Corte 5; este documento refleja las pruebas sobre `98dfdd6`.
+1. **Autenticación — seguimiento atendido:** después de la normalización de correos incorporada en `3cbc283`, se verificó un primer login HTTP 200 en un clon nuevo (sección 12). La sección 13 presenta otro mecanismo reproducible del HTTP 401. La causa exacta del incidente histórico permanece sin confirmar.
+2. **Documentación — seguimiento atendido:** los documentos principales se sincronizaron durante el Corte 6. En el Corte 7 se reorganizó esta bitácora y se creó `docs/README.md` para identificar los documentos vigentes y los antecedentes históricos.
 3. **Alcance:** no se verificaron Groq con credencial real, pruebas de carga, pruebas de navegador automatizadas, todas las suites HTTP en este clon ni la restauración efectiva de un respaldo.
 4. **Evidencia:** anexar capturas sanitizadas y, si se solicita, ejecutar una revisión adicional de endpoints protegidos sin modificar la base original.
 5. **Seguridad:** no incluir `.env`, contraseñas, códigos temporales, JWT ni claves de pipeline en commits o archivos de entrega.
@@ -255,20 +255,20 @@ La instalación desde un clon nuevo del commit `98dfdd6` permitió construir e i
 Al terminar se detuvo el clon y se restauró la plataforma original con sus contenedores y su volumen PostgreSQL conservados. Los resultados constituyen **evidencia técnica reproducible del MVP académico**, limitada a las operaciones realmente efectuadas y sin implicar certificación de seguridad o producción.
 
 
-## 10. Validacion integral desde clon nuevo - 2026-10-29
+## 12. Validación integral desde clon nuevo - 2026-10-29
 
-Se realizo una instalacion desde un clon nuevo de GitHub,
+Se realizó una instalación desde un clon nuevo de GitHub,
 correspondiente al commit 2872b92.
 
-El clon se preparo en PluriOne_Validacion_Final_Corte6.
+El clon se preparó en PluriOne_Validacion_Final_Corte6.
 
-Se utilizo un proyecto Docker independiente llamado
+Se utilizó un proyecto Docker independiente llamado
 plurione_validacion_final_c6.
 
 Se generaron credenciales nuevas y un volumen PostgreSQL
 independiente del proyecto principal.
 
-### Puertos de la instalacion
+### Puertos de la instalación
 
 | Servicio | Puerto |
 | --- | --- |
@@ -284,90 +284,90 @@ puertos y mantener ambas instalaciones separadas.
 
 React, FastAPI y Mailpit respondieron HTTP 200.
 
-PostgreSQL alcanzo el estado healthy.
+PostgreSQL alcanzó el estado healthy.
 
-La verificacion CORS devolvio HTTP 200 y autorizo
+La verificación CORS devolvió HTTP 200 y autorizó
 el origen http://127.0.0.1:5174.
 
-### Registro y autenticacion
+### Registro y autenticación
 
-Se registro y verifico una cuenta nueva mediante React
+Se registró y verificó una cuenta nueva mediante React
 y Mailpit en el clon independiente.
 
-El primer inicio de sesion funciono sin recuperar
-la contrasena.
+El primer inicio de sesión funcionó sin recuperar
+la contraseña.
 
-La pestaña Network mostro POST /login/ con HTTP 200.
+La pestaña Network mostró POST /login/ con HTTP 200.
 
-Se confirmo el acceso al Dashboard.
+Se confirmó el acceso al Dashboard.
 
 ### Pipeline e ingesta
 
-Se creo el pipeline pipeline-corte6-final.
+Se creó el pipeline pipeline-corte6-final.
 
-La interfaz confirmo su creacion mediante HTTP 201.
+La interfaz confirmó su creación mediante HTTP 201.
 
-Posteriormente, se envio una solicitud autenticada
+Posteriormente, se envió una solicitud autenticada
 a http://127.0.0.1:8001/metricas/externas/.
 
-La metrica enviada fue latencia_ms con valor 9500.
+La métrica enviada fue latencia_ms con valor 9500.
 
 La clave X-Pipeline-Key se introdujo de forma privada
-y no se incorporo a la documentacion.
+y no se incorporó a la documentación.
 
-La API devolvio HTTP 201.
+La API devolvió HTTP 201.
 
-### Alerta critica
+### Alerta crítica
 
-El Dashboard mostro una alerta critica correspondiente
+El Dashboard mostró una alerta crítica correspondiente
 al pipeline pipeline-corte6-final.
 
-La alerta identifico la metrica latencia_ms
+La alerta identificó la métrica latencia_ms
 con el valor 9500.
 
-El evento aparecio en el feed de alertas recientes
+El evento apareció en el feed de alertas recientes
 a las 10:59:08 del 29 de octubre de 2026.
 
 ### Conclusiones y limitaciones
 
-La instalacion nueva permitio comprobar el recorrido
-de registro, verificacion, primer login, creacion
-de pipeline, ingesta HTTP 201 y alerta critica.
+La instalación nueva permitió comprobar el recorrido
+de registro, verificación, primer login, creación
+de pipeline, ingesta HTTP 201 y alerta crítica.
 
 El proyecto principal y su base de datos se conservaron
 sin modificaciones.
 
-La causa exacta del HTTP 401 historico del Corte 5
-continua sin demostrarse.
+La causa exacta del HTTP 401 histórico del Corte 5
+continúa sin demostrarse.
 
 Esta prueba confirma el funcionamiento del flujo actual,
-pero no constituye una certificacion de produccion.
+pero no constituye una certificación de producción.
 
-No se publicaron contrasenas, codigos, JWT ni claves
+No se publicaron contraseñas, códigos, JWT ni claves
 de pipelines.
 
 
-## 11. Investigacion complementaria del HTTP 401 - 2026-10-29
+## 13. Investigación complementaria del HTTP 401 - 2026-10-29
 
-Se reviso el codigo historico de autenticacion del commit
-98dfdd6 y se comparo con la correccion 3cbc283.
+Se revisó el código histórico de autenticación del commit
+98dfdd6 y se comparó con la corrección 3cbc283.
 
-El registro historico almacenaba un hash bcrypt de la
-contrasena original. La recuperacion generaba un nuevo
-hash y el login verificaba la contrasena proporcionada
+El registro histórico almacenaba un hash bcrypt de la
+contraseña original. La recuperación generaba un nuevo
+hash y el login verificaba la contraseña proporcionada
 contra el hash almacenado.
 
-Se identifico un mecanismo adicional que puede producir
+Se identificó un mecanismo adicional que puede producir
 HTTP 401 cuando una cuenta existente intenta registrarse
-nuevamente con otra contrasena.
+nuevamente con otra contraseña.
 
-### Reproduccion controlada
+### Reproducción controlada
 
-Se utilizo el clon independiente del Corte 6, con
+Se utilizó el clon independiente del Corte 6, con
 FastAPI en el puerto 8001 y PostgreSQL aislado.
 
-Se genero una cuenta ficticia con correo aleatorio y
-dos contrasenas distintas, sin publicar sus valores.
+Se generó una cuenta ficticia con correo aleatorio y
+dos contraseñas distintas, sin publicar sus valores.
 
 Resultados observados:
 
@@ -375,31 +375,31 @@ Resultados observados:
 | --- | --- |
 | Primer registro | HTTP 200 |
 | Segundo registro con el mismo correo | HTTP 200 |
-| Comparacion de respuestas de registro | Identicas |
-| Login con la segunda contrasena | HTTP 401 |
-| Login con la primera contrasena | HTTP 403 |
+| Comparación de respuestas de registro | Idénticas |
+| Login con la segunda contraseña | HTTP 401 |
+| Login con la primera contraseña | HTTP 403 |
 
-El segundo registro no reemplazo la contrasena original.
+El segundo registro no reemplazó la contraseña original.
 
-El HTTP 403 con la primera contrasena confirma que esta
-fue reconocida, pero la cuenta permanecia sin verificar.
+El HTTP 403 con la primera contraseña confirma que esta
+fue reconocida, pero la cuenta permanecía sin verificar.
 
-### Interpretacion
+### Interpretación
 
-La respuesta generica del registro no confirma que se
-haya creado otra cuenta ni que la contrasena se actualizara.
+La respuesta genérica del registro no confirma que se
+haya creado otra cuenta ni que la contraseña se actualizara.
 
 Este comportamiento puede explicar una secuencia donde
 aparece HTTP 401 y posteriormente funciona el acceso
-tras recuperar la contrasena.
+tras recuperar la contraseña.
 
 Sin embargo, no se dispone de evidencia suficiente para
 demostrar que hubo un segundo registro durante el
-incidente historico del Corte 5.
+incidente histórico del Corte 5.
 
 Por tanto, se considera reproducido un mecanismo posible,
-pero la causa exacta del HTTP 401 historico permanece
-sin confirmacion forense.
+pero la causa exacta del HTTP 401 histórico permanece
+sin confirmación forense.
 
-No se modifico el codigo de autenticacion ni se publicaron
-contrasenas, tokens, claves privadas o datos reales.
+No se modificó el código de autenticación ni se publicaron
+contraseñas, tokens, claves privadas o datos reales.
