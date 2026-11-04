@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from './api';
 import ParticlesBackground from './ParticlesBackground';
+import './Auth.css';
 
 export default function RecuperarPassword() {
 
@@ -79,23 +80,23 @@ export default function RecuperarPassword() {
 
   return (
 
-    <div style={{ position: 'relative', width: '100%', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b0c10', overflow: 'hidden' }}>
+    <div className="auth-page">
 
       <ParticlesBackground />
 
-      <div style={{ position: 'relative', zIndex: 10, width: '400px', padding: '40px', backgroundColor: 'rgba(26, 26, 29, 0.9)', border: '1px solid #E5B80B', borderRadius: '10px', boxShadow: '0 0 30px rgba(229,184,11,0.2)', color: '#c5c6c7', textAlign: 'center' }}>
+      <div className="auth-card">
 
-        <h2 style={{ color: '#E5B80B', marginBottom: '5px' }}>Recuperar Acceso</h2>
+        <h2 className="auth-title">Recuperar Acceso</h2>
 
-        <p style={{ color: '#888', fontSize: '0.9em', marginBottom: '20px' }}>Ingresa tu correo, el código de verificación y tu nueva contraseña.</p>
+        <p className="auth-description auth-description--muted">Ingresa tu correo, el código de verificación y tu nueva contraseña.</p>
 
-        {error && <div style={{ color: '#ff4444', marginBottom: '15px' }}>{error}</div>}
+        {error && <div className="auth-message auth-message--error">{error}</div>}
 
-        {mensaje && <div style={{ color: '#4BB543', marginBottom: '15px' }}>{mensaje}</div>}
+        {mensaje && <div className="auth-message auth-message--success">{mensaje}</div>}
 
-        <form onSubmit={manejarRecuperacion} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <form onSubmit={manejarRecuperacion} className="auth-form">
 
-          <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo registrado" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+          <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} required placeholder="Correo registrado" className="auth-input" />
 
           <button
 
@@ -105,25 +106,7 @@ export default function RecuperarPassword() {
 
             disabled={!correo.trim() || enviandoCodigo}
 
-            style={{
-
-              background: '#E5B80B',
-
-              color: '#111',
-
-              border: 'none',
-
-              padding: '12px',
-
-              fontWeight: 'bold',
-
-              borderRadius: '4px',
-
-              cursor: enviandoCodigo ? 'wait' : 'pointer',
-
-              opacity: !correo.trim() || enviandoCodigo ? 0.6 : 1
-
-            }}
+            className="auth-button auth-button--send"
 
           >
 
@@ -131,15 +114,15 @@ export default function RecuperarPassword() {
 
           </button>
 
-          <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} required placeholder="Código de 6 dígitos" maxLength="6" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px', textAlign: 'center', letterSpacing: '3px' }} />
+          <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value)} required placeholder="Código de 6 dígitos" maxLength="6" className="auth-input auth-input--code-recovery" />
 
-          <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required placeholder="Nueva Contraseña" style={{ padding: '12px', backgroundColor: '#111217', border: '1px solid #444', color: '#fff', borderRadius: '4px' }} />
+          <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required placeholder="Nueva Contraseña" className="auth-input" />
 
-          <button type="submit" style={{ background: '#457B9D', color: '#fff', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>Actualizar Contraseña</button>
+          <button type="submit" className="auth-button auth-button--blue">Actualizar Contraseña</button>
 
         </form>
 
-        <div style={{ marginTop: '20px' }}><Link to="/login" style={{ color: '#888', textDecoration: 'none', fontSize: '0.9em' }}>Volver al Login</Link></div>
+        <div className="auth-footer"><Link to="/login" className="auth-link auth-link--muted auth-link--back">Volver al Login</Link></div>
 
       </div>
 
