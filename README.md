@@ -30,7 +30,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta Ruff (`--select F`), 41 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, además de ESLint y la compilación de React. Las suites HTTP y archivado requieren servicios y todavía no forman parte de CI.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta Ruff (`--select F`), 41 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, además de ESLint y la compilación de React. Las suites HTTP y archivado se ejecutan en CI mediante Docker Compose aislado: 9 pruebas de integración HTTP y 8 de seguridad y archivado.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -260,8 +260,8 @@ El repositorio contiene **seis archivos de pruebas**. Las 58 pruebas documentada
 | `backend/tests/test_cors_config.py` | 4 funciones parametrizadas | Sí |
 | `backend/tests/test_smtp_config.py` | 1 función, 3 casos | Sí |
 | `backend/tests/test_plantillas_correo.py` | 4 pruebas | Sí |
-| `backend/tests/test_seguridad_archivado.py` | 8 pruebas de seguridad y archivado | No; requiere servicios |
-| `backend/tests/test_integracion_http.py` | 9 pruebas de integración HTTP | No; requiere servicios |
+| `backend/tests/test_seguridad_archivado.py` | 8 pruebas de seguridad y archivado | Sí; Docker Compose aislado |
+| `backend/tests/test_integracion_http.py` | 9 pruebas de integración HTTP | Sí; Docker Compose aislado |
 
 **Validación local del refactor (24 de octubre de 2026):** aprobaron 41 pruebas aisladas, 8 pruebas de seguridad/archivado y 9 pruebas de integración HTTP (incluida conexión y estructura PostgreSQL). Las tres suites se ejecutaron por separado y aprobaron: **58 de 58 casos**, no en un único proceso ni dentro del CI. Además, se confirmaron manualmente cinco flujos de autenticación y aislamiento entre cuentas: login, rechazo de contraseña incorrecta, recuperación mediante código SMTP, acceso con contraseña nueva y separación de pipelines entre usuarios. Antes de reiniciar la API reconstruida se generó y verificó un respaldo local de PostgreSQL; la verificación no equivale a una restauración probada.
 
@@ -294,9 +294,9 @@ npm --prefix ./frontend run build
 
 ### GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta Ruff con reglas F, 43 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. El commit `3cbc283` obtuvo resultado satisfactorio en PluriOne CI #66. El commit histórico `1381f3c` también obtuvo `success` en la ejecución 40615699143. Las 17 pruebas HTTP/archivado siguen pendientes de integración en CI.
+El workflow `.github/workflows/ci.yml` ejecuta Ruff con reglas F, 43 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo. El trabajo de frontend utiliza Node.js 22, `npm ci`, `npm run lint` y `npm run build`. El commit `3cbc283` obtuvo resultado satisfactorio en PluriOne CI #66. El commit histórico `1381f3c` también obtuvo `success` en la ejecución 40615699143. Las 17 pruebas HTTP/archivado ya se ejecutan en GitHub Actions (9 de integración y 8 de seguridad/archivado). El commit `a2f2b6c` obtuvo `success` en la [ejecución 41777217548](https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC/actions/runs/41777217548).
 
-**Cobertura pendiente:** integrar las 17 pruebas HTTP/archivado en CI con servicios, añadir pruebas automatizadas de navegador, carga y seguridad, y verificar más variantes de esquemas históricos. La instalación funcional desde un clon limpio ya se comprobó en el Corte 5 usando Mailpit, un proyecto Compose aislado y los puertos del README liberados temporalmente; véase [el informe](docs/INSTALACION_LITERAL_CORTE5.md). No fue una instalación sin adaptaciones del entorno.
+**Cobertura pendiente:** añadir pruebas automatizadas de navegador, carga y seguridad, y verificar más variantes de esquemas históricos. La instalación funcional desde un clon limpio ya se comprobó en el Corte 5 usando Mailpit, un proyecto Compose aislado y los puertos del README liberados temporalmente; véase [el informe](docs/INSTALACION_LITERAL_CORTE5.md). No fue una instalación sin adaptaciones del entorno.
 
 **Evidencia funcional adicional:** se comprobó el arranque de FastAPI reconstruido desde Docker con el nuevo router, las seis rutas de identidad en OpenAPI, la disponibilidad del frontend, las respuestas HTTP 401 y CORS, el acceso a PostgreSQL y los cinco flujos manuales de identidad indicados. Posteriormente, la prueba E2E del cuarto corte confirmó `POST /metricas/externas/` con HTTP 201, el aumento de anomalías de 27 a 28 en PostgreSQL aislado y la alerta visual en React; véase [el informe y su captura](docs/PRUEBA_E2E_CORTE4.md). No se han completado pruebas automatizadas de navegador, cargas concurrentes, restauración de respaldos ni una campaña integral de producción.
 
