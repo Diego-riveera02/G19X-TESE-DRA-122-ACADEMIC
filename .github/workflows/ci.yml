@@ -90,3 +90,108 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+  http-integration:
+    name: HTTP integration - Docker isolated
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      COMPOSE_PROJECT_NAME: plurione_http_ci
+      POSTGRES_PASSWORD: ci-only-postgres-password-not-for-production
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create isolated CI environment
+        run: |
+          test ! -f .env
+          test ! -f backend/.env
+
+          cat > backend/.env <<'EOF'
+          DATABASE_URL=postgresql+psycopg2://postgres:ci-only-postgres-password-not-for-production@db:5432/observabilidad_db
+          SECRET_KEY=ci-only-secret-key-for-http-tests-2026
+          SENDER_EMAIL=ci@example.invalid
+          SENDER_PASSWORD=ci-fictitious-password
+          GROQ_API_KEY=ci-unused-placeholder-key
+          SMTP_SERVER=localhost
+          SMTP_PORT=1025
+          SMTP_STARTTLS=false
+          SMTP_AUTH=false
+          CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+          EOF
+
+          test -f backend/.env
+          echo "Isolated CI configuration created"
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build and start isolated services
+        run: docker compose up -d --build db api frontend
+
+      - name: Wait for FastAPI
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/docs > /dev/null; then
+              echo "FastAPI ready"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "FastAPI did not become ready"
+          exit 1
+
+      - name: Wait for React
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5173/ > /dev/null; then
+              echo "React ready"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "React did not become ready"
+          exit 1
+
+      - name: Run 9 HTTP integration tests
+        run: |
+          python -m unittest discover \
+            -s backend/tests \
+            -p "test_integracion_http.py" \
+            -v
+
+      - name: Run 8 security and archive tests
+        run: |
+          python -m unittest discover \
+            -s backend/tests \
+            -p "test_seguridad_archivado.py" \
+            -v
+
+      - name: Show service status
+        if: always()
+        run: |
+          if [ -f backend/.env ]; then
+            docker compose ps
+          fi
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          if [ -f backend/.env ]; then
+            docker compose logs --no-color --tail=80
+          fi
+
+      - name: Remove isolated CI containers and volumes
+        if: always()
+        run: |
+          if [ -f backend/.env ]; then
+            docker compose down -v --remove-orphans
+          fi
