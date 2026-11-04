@@ -4,7 +4,8 @@ Los servicios y callbacks se inyectan desde main para conservar el contrato
 HTTP y permitir las sustituciones utilizadas por las pruebas aisladas.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+from .tiempo import ahora_utc
 from typing import Callable
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -66,7 +67,7 @@ def crear_router_auth(
             codigo_verificacion=crear_hash_codigo(
                 codigo_secreto, user.correo, "verificacion", secret_key
             ),
-            codigo_expira_en=datetime.utcnow() + timedelta(
+            codigo_expira_en=ahora_utc() + timedelta(
                 minutes=codigo_duracion_minutos
             ),
             codigo_intentos=0,
@@ -114,7 +115,7 @@ def crear_router_auth(
             )
 
         # Rechazar codigos vencidos
-        if datetime.utcnow() >= user.codigo_expira_en:
+        if ahora_utc() >= user.codigo_expira_en:
             user.codigo_verificacion = None
             user.codigo_expira_en = None
             user.codigo_proposito = None
@@ -206,7 +207,7 @@ def crear_router_auth(
         if user is None or user.is_active:
             return respuesta
 
-        ahora = datetime.now(timezone.utc).replace(tzinfo=None)
+        ahora = ahora_utc()
 
         # Evitar inundar el buzon y preservar el bloqueo de cinco intentos.
         if (
@@ -260,7 +261,7 @@ def crear_router_auth(
         if not user.is_active:
             return respuesta
 
-        ahora = datetime.utcnow()
+        ahora = ahora_utc()
 
         # Mantener el periodo de espera de 10 minutos.
         # No permitir otro codigo aunque se hayan agotado
@@ -323,7 +324,7 @@ def crear_router_auth(
             )
 
         # Vencimiento de 10 minutos (fecha UTC almacenada en PostgreSQL).
-        if datetime.utcnow() >= user.codigo_expira_en:
+        if ahora_utc() >= user.codigo_expira_en:
             user.codigo_verificacion = None
             user.codigo_expira_en = None
             user.codigo_intentos = 0

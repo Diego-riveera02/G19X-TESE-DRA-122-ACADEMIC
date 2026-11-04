@@ -1,4 +1,4 @@
-from datetime import datetime
+from .tiempo import ahora_utc
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 
@@ -16,7 +16,7 @@ class AnomalyLog(Base):
     value = Column(Float)
     status = Column(String)
     ai_recommendation = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=ahora_utc)
     archived = Column(Boolean, nullable=False, server_default="false")
     archived_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -38,7 +38,7 @@ class User(Base):
     codigo_intentos = Column(Integer, nullable=False, default=0)
     codigo_proposito = Column(String, nullable=True)
 
-    fecha_registro = Column(DateTime, default=datetime.utcnow)
+    fecha_registro = Column(DateTime, default=ahora_utc)
 
 
 # Cuotas por origen y endpoint; persistentes en PostgreSQL.
@@ -79,5 +79,5 @@ class Pipeline(Base):
     creado_en = Column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow
+        default=ahora_utc
     )
