@@ -91,7 +91,7 @@ class PruebasTiempoUTC(unittest.TestCase):
             "from .tiempo import ahora_utc",
             texto,
         )
-        self.assertEqual(texto.count("ahora_utc()"), 5)
+        self.assertGreaterEqual(texto.count("ahora_utc()"), 6)
         self.assertNotIn(
             "datetime.now(timezone.utc)",
             texto,
