@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from pydantic import Field, validator
 
 
@@ -21,6 +21,13 @@ class AnomalyLogCreate(AnomalyLogBase):
 class AnomalyLogResponse(AnomalyLogBase):
     id: int
     timestamp: datetime
+
+    @field_validator("timestamp")
+    @classmethod
+    def con_zona_utc(cls, valor: datetime) -> datetime:
+        if valor.tzinfo is None:
+            return valor.replace(tzinfo=timezone.utc)
+        return valor
 
     class Config:
         from_attributes = True

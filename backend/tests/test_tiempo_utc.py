@@ -97,6 +97,41 @@ class PruebasTiempoUTC(unittest.TestCase):
             texto,
         )
 
+    def test_06b_anomalia_timestamp_serializado_utc(self):
+        import json
+        from app.schemas import AnomalyLogResponse
+
+        fecha = datetime(2026, 11, 3, 18, 30, 15)
+
+        respuesta = AnomalyLogResponse(
+            pipeline_name="pipeline-prueba",
+            metric_type="latencia_ms",
+            value=9500,
+            status="Critica",
+            id=1,
+            timestamp=fecha,
+        )
+
+        esperado = fecha.replace(tzinfo=timezone.utc)
+
+        self.assertEqual(respuesta.timestamp, esperado)
+        self.assertEqual(respuesta.timestamp.tzinfo, timezone.utc)
+
+        fecha_json = json.loads(
+            respuesta.model_dump_json()
+        )["timestamp"]
+
+        self.assertTrue(
+            fecha_json.endswith(("Z", "+00:00")),
+            fecha_json,
+        )
+
+        fecha_recuperada = datetime.fromisoformat(
+            fecha_json.replace("Z", "+00:00")
+        )
+
+        self.assertEqual(fecha_recuperada, esperado)
+
     def test_07_jwt_expiracion_explicita(self):
         if importlib.util.find_spec("jose") is None:
             self.skipTest("python-jose no instalado localmente")
