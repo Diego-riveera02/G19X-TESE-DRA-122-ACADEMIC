@@ -36,6 +36,14 @@ def crear_router_chat(
         _limite_chat: None = Depends(limitar_chat_por_usuario)
     ):
 
+        if client is None:
+            return {
+                "respuesta": (
+                    "J.A.R.V.I.S. no tiene configurada la llave de Groq. "
+                    "Agrega GROQ_API_KEY en backend/.env y reinicia la API."
+                )
+            }
+
         # Preparar un historial de conversación seguro y limitado.
         historial_seguro = []
 

@@ -41,7 +41,8 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 # Obligamos a Groq a usar la llave del archivo .env
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+groq_api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+client = Groq(api_key=groq_api_key) if groq_api_key else None
 
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

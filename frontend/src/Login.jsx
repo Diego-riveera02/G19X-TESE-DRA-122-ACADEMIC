@@ -24,12 +24,25 @@ export default function Login() {
       localStorage.setItem('usuario_nombre', response.data.nombre);
       sessionStorage.removeItem('plurione_jarvis_mostrada');
       navigate('/app');
-    } catch (err) { 
-      if (err.response?.status === 403) {
-        setError(err.response.data.detail);
+    } catch (err) {
+      const estado = err.response?.status;
+
+      if (estado === 403) {
+        setError(err.response?.data?.detail || 'Debes verificar tu cuenta.');
         setNecesitaVerificacion(true);
+      } else if (estado === 429) {
+        const detalle = err.response?.data?.detail;
+        setError(
+          typeof detalle === 'string'
+            ? detalle
+            : 'Demasiados intentos. Espera unos minutos.'
+        );
+      } else if (!err.response) {
+        setError('No hay conexión con el servidor. Revisa que la API esté disponible.');
+      } else if (estado === 401) {
+        setError('Correo o contraseña incorrectos.');
       } else {
-        setError('Correo o contraseña incorrectos.'); 
+        setError('No se pudo iniciar sesión. Intenta nuevamente.');
       }
     } finally { setCargando(false); }
   };

@@ -50,7 +50,7 @@ Antes de iniciar una instalación nueva, comprobar estas variables:
 | Variable | Requisito | Comportamiento |
 | --- | --- | --- |
 | `SECRET_KEY` | Obligatoria; al menos 32 caracteres. | Si falta o es demasiado corta, FastAPI no inicia. |
-| `GROQ_API_KEY` | Opcional para el sistema base; necesaria para el chat con Groq. | Sin ella, el registro, las métricas y el dashboard pueden funcionar, pero J.A.R.V.I.S. no puede consultar Groq. Actualmente el chat puede mostrar un mensaje genérico de indisponibilidad. |
+| `GROQ_API_KEY` | Opcional para el sistema base; necesaria para el chat con Groq. | Sin ella, el registro, las métricas y el dashboard pueden funcionar, pero J.A.R.V.I.S. no puede consultar Groq. Cuando falta la llave, J.A.R.V.I.S. indica que debes configurar GROQ_API_KEY en backend/.env y reiniciar la API. |
 
 Para generar una `SECRET_KEY` segura: `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Guardar el resultado únicamente en `backend/.env`, nunca en GitHub.
 
