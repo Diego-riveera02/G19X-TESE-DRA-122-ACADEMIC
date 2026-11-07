@@ -209,14 +209,30 @@ docker compose stop
 
 ### 7.1. Flujo desde React
 
-> **Registro duplicado:** Si una persona intenta registrarse
-> nuevamente con un correo existente, el sistema devuelve
-> una respuesta genérica por seguridad y no reemplaza la
-> contraseña original. Para iniciar sesión debe utilizar
-> su contraseña original o seleccionar
-> **«¿Olvidaste tu contraseña?»** para recuperarla.
-> Si la cuenta todavía no ha sido verificada, también
-> deberá completar su proceso de verificación.
+> **Registro y verificación:** El sistema devuelve una respuesta
+> genérica para no revelar si una cuenta ya existe.
+>
+> **Cuentas verificadas:** Un nuevo registro no modifica su
+> nombre, teléfono ni contraseña. Para recuperar el acceso
+> se utiliza la opción «¿Olvidaste tu contraseña?».
+>
+> **Cuentas pendientes:** Un nuevo registro puede actualizar
+> el nombre, teléfono y contraseña. Se genera otro código
+> de verificación y se invalida el código anterior.
+> La cuenta debe verificarse antes de iniciar sesión.
+>
+> **Protección contra abusos:** Se permiten hasta 3 solicitudes
+> de registro por correo electrónico cada hora y 20 por
+> dirección IP cada hora. Al superar el límite se responde
+> con HTTP 429 y el encabezado Retry-After.
+>
+> Los códigos de verificación admiten un máximo de 5 intentos.
+> Un nuevo registro no elimina ese bloqueo mientras siga
+> vigente el plazo del código anterior.
+>
+> **Recomendación de seguridad:** Verificar solamente códigos
+> correspondientes a registros solicitados personalmente.
+> No compartir códigos recibidos inesperadamente.
 
 1. Registrarse y verificar la cuenta con el código de correo; iniciar sesión.
 2. Abrir el dashboard y observar las métricas y alertas de demostración recibidas por WebSocket.
@@ -368,3 +384,36 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
 **Estado documental (noviembre de 2026):** referencia vigente `5d9020f`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas; PluriOne CI #66 aprobó la corrección anterior `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La instalación desde clon nuevo del Corte 5 está documentada con sus adaptaciones. En el Corte 6 se comprobó en un clon aislado existente el registro, verificación con Mailpit, primer login sin recuperar contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica. La validación adicional del 29 de octubre en main confirmó el primer login HTTP 200 de una cuenta nueva, con evidencia visual publicada en 9b5a4e3. El análisis técnico reproducible se documentó en 6a6bf0c y la bitácora se actualizó en 48f360e. La causa exacta del HTTP 401 histórico permanece sin determinarse. Siguen pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y validación de producción. Consultar [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md) y [EVIDENCIAS_FUNCIONALES_CORTE6.md](docs/EVIDENCIAS_FUNCIONALES_CORTE6.md).
+
+
+## Activación segura de cuentas
+
+La activación de una cuenta pendiente requiere el código enviado al correo electrónico y la contraseña correspondiente al registro vigente. Conocer solamente el código no permite activar la cuenta.
+
+### Solicitud de verificación
+
+El endpoint `POST /verificar/` recibe:
+
+```json
+{
+  "correo": "usuario@ejemplo.com",
+  "codigo": "123456",
+  "password": "ContrasenaDelRegistro"
+}
+```
+
+La contraseña debe tener al menos ocho caracteres. El formulario React la envía en la solicitud HTTPS cuando el despliegue utiliza TLS, sin almacenarla en `localStorage` ni incluirla en la URL.
+
+### Validaciones y protecciones
+
+- `HTTP 422`: falta la contraseña o no cumple la longitud mínima.
+- `HTTP 400`: el código o la contraseña son incorrectos, o la verificación no es válida.
+- `HTTP 200`: la combinación correcta permite activar la cuenta pendiente.
+- Los intentos fallidos de verificación con código o contraseña incorrectos respetan el límite de cinco intentos.
+- El registro aplica límites de tres solicitudes por correo por hora y veinte por IP por hora.
+- La renovación de un registro pendiente puede generar nuevas credenciales y un nuevo código, sujeto a los controles de seguridad.
+- Una cuenta ya activada no debe sustituir sus credenciales mediante un nuevo registro.
+
+### Evidencia de validación
+
+La batería aislada `backend/tests/test_flujos_aislados.py` superó 47 pruebas, incluidas las validaciones de activación segura, renovación de credenciales, bloqueo de intentos y límites de registro. Estas pruebas utilizan SQLite aislado y no sustituyen la verificación de integración con PostgreSQL.

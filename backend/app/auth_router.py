@@ -23,6 +23,7 @@ from .verification_codes import crear_hash_codigo, verificar_codigo_guardado
 class VerificarRequest(BaseModel):
     correo: str
     codigo: str
+    password: str = Field(min_length=8)
 
 class SolicitarCodigoRequest(BaseModel):
     correo: str
@@ -39,6 +40,7 @@ def crear_router_auth(
     codigo_duracion_minutos: int,
     codigo_max_intentos: int,
     token_expire_minutes: int,
+    consumir_limite_registro: Callable[[Session, str, int, int], None],
     generar_codigo: Callable[[], str],
     enviar_correo: Callable[[str, str], None],
     emitir_token: Callable[..., str],
@@ -56,9 +58,75 @@ def crear_router_auth(
                 "cuenta, inicia sesion o recupera tu acceso."
             )
         }
-        if db.query(models.User).filter(func.lower(func.trim(models.User.correo)) == schemas.normalizar_correo(user.correo)).first():
+        # Cuota compartida por correo, independiente de la IP.
+        # El identificador se protege con HMAC en el contador.
+        consumir_limite_registro(
+            db,
+            f"registro-correo|{schemas.normalizar_correo(user.correo)}",
+            3,
+            3600,
+        )
+
+        existente = (
+            db.query(models.User)
+            .filter(
+                func.lower(func.trim(models.User.correo))
+                == schemas.normalizar_correo(user.correo)
+            )
+            .with_for_update()
+            .first()
+        )
+
+        # Nunca modificar credenciales de una cuenta verificada.
+        if existente is not None and existente.is_active:
             return respuesta
+
+        ahora = ahora_utc()
+        codigo_vigente = (
+            existente is not None
+            and existente.codigo_expira_en is not None
+            and ahora < existente.codigo_expira_en
+        )
+
+        # Impedir que un nuevo registro elimine el bloqueo
+        # de cinco intentos durante la vigencia del codigo.
+        if (
+            codigo_vigente
+            and existente.codigo_intentos >= codigo_max_intentos
+        ):
+            return respuesta
+
         codigo_secreto = generar_codigo()
+
+        if existente is not None:
+            # Renovar los datos de la cuenta pendiente.
+            existente.nombre_completo = user.nombre_completo
+            existente.telefono = user.telefono
+            existente.hashed_password = get_password_hash(user.password)
+            existente.codigo_verificacion = crear_hash_codigo(
+                codigo_secreto,
+                existente.correo,
+                "verificacion",
+                secret_key,
+            )
+            existente.codigo_expira_en = ahora + timedelta(
+                minutes=codigo_duracion_minutos
+            )
+
+            # Conservar intentos mientras el codigo anterior
+            # siga vigente; reiniciar solo tras su vencimiento.
+            existente.codigo_intentos = (
+                existente.codigo_intentos if codigo_vigente else 0
+            )
+            existente.codigo_proposito = "verificacion"
+
+            db.commit()
+            background_tasks.add_task(
+                enviar_correo,
+                existente.correo,
+                codigo_secreto,
+            )
+            return respuesta
         nuevo_usuario = models.User(
             nombre_completo=user.nombre_completo,
             correo=user.correo,
@@ -140,12 +208,18 @@ def crear_router_auth(
             )
 
         # Comparar el codigo de forma segura
+        # El codigo y la contrasena deben corresponder
+        # al mismo registro pendiente.
+        # Ambos errores consumen el mismo limite de intentos.
         if not verificar_codigo_guardado(
             user.codigo_verificacion,
             req.codigo,
             user.correo,
             "verificacion",
             secret_key,
+        ) or not verify_password(
+            req.password,
+            user.hashed_password,
         ):
             user.codigo_intentos += 1
 

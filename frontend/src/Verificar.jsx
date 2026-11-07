@@ -9,6 +9,7 @@ export default function Verificar() {
   const navigate = useNavigate();
   const [correo, setCorreo] = useState(location.state?.email || '');
   const [codigo, setCodigo] = useState('');
+  const [password, setPassword] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [verificando, setVerificando] = useState(false);
@@ -25,7 +26,8 @@ export default function Verificar() {
     try {
       await api.post('/verificar/', {
         correo: correo.trim(),
-        codigo
+        codigo,
+        password
       });
       setVerificado(true);
       setMensaje('¡Cuenta verificada exitosamente! Redirigiendo al inicio de sesión...');
@@ -72,7 +74,7 @@ export default function Verificar() {
       <ParticlesBackground />
       <div className="auth-card auth-card--compact">
         <h2 className="auth-title">Verificación</h2>
-        <p className="auth-description">Ingresa el código de 6 dígitos que enviamos a tu correo.</p>
+        <p className="auth-description">Ingresa el código de 6 dígitos enviado a tu correo y la contraseña utilizada durante el registro.</p>
 
         {error && <div role="alert" className="auth-message auth-message--error">{error}</div>}
         {mensaje && <div role="status" className="auth-message auth-message--success">{mensaje}</div>}
@@ -102,9 +104,21 @@ export default function Verificar() {
             maxLength={6}
             className="auth-input auth-input--code"
           />
+          <input
+            type="password"
+            aria-label="Contraseña utilizada durante el registro"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            disabled={verificado}
+            placeholder="Contraseña del registro"
+            className="auth-input"
+          />
           <button
             type="submit"
-            disabled={verificando || reenviando || verificado || codigo.length !== 6}
+            disabled={verificando || reenviando || verificado || codigo.length !== 6 || password.length < 8}
             className="auth-button"
           >
             {verificando ? 'Verificando...' : verificado ? 'Cuenta activada' : 'Activar cuenta'}

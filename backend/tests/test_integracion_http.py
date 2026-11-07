@@ -1,4 +1,5 @@
 ﻿import json
+import os
 import subprocess
 import unittest
 import urllib.error
@@ -157,6 +158,177 @@ class PruebasIntegracionPluriOne(unittest.TestCase):
         )
         self.assertIn("POSTGRESQL OK", resultado.stdout)
 
+
+    @unittest.skipUnless(
+        os.environ.get("GITHUB_ACTIONS") == "true"
+        and os.environ.get("COMPOSE_PROJECT_NAME")
+        == "plurione_http_ci",
+        "Solo en GitHub Actions con Docker aislado",
+    )
+    def test_10_registro_limite_y_activacion_mailpit(self):
+        import re
+        import time
+        import uuid
+
+        mailpit = "http://127.0.0.1:8025"
+        correo = f"ci-auth-{uuid.uuid4().hex}@example.invalid"
+
+        claves = [
+            "ClaveTemporal01!",
+            "ClaveTemporal02!",
+            "ClaveTemporal03!",
+        ]
+
+        def enviar_json(ruta, cuerpo):
+            return solicitar(
+                API + ruta,
+                metodo="POST",
+                cuerpo=cuerpo,
+                headers={"Content-Type": "application/json"},
+            )
+
+        # Tres registros del mismo correo deben permitirse.
+        for indice, clave in enumerate(claves, start=1):
+            codigo_http, contenido, _ = enviar_json(
+                "/registro/",
+                {
+                    "nombre_completo": "Usuario CI aislado",
+                    "correo": correo,
+                    "telefono": None,
+                    "password": clave,
+                },
+            )
+
+            self.assertEqual(
+                codigo_http,
+                200,
+                f"Registro {indice}: {contenido!r}",
+            )
+
+        # La cuarta solicitud excede el limite por correo.
+        codigo_http, contenido, encabezados = enviar_json(
+            "/registro/",
+            {
+                "nombre_completo": "Intento excedido CI",
+                "correo": correo,
+                "telefono": None,
+                "password": "ClaveTemporal04!",
+            },
+        )
+
+        self.assertEqual(
+            codigo_http,
+            429,
+            contenido.decode("utf-8", errors="replace"),
+        )
+
+        reintentar = encabezados.get("Retry-After")
+
+        self.assertIsNotNone(reintentar)
+        self.assertGreater(int(reintentar), 0)
+
+        # Confirmar que Mailpit recibio los tres correos.
+        mensajes = []
+
+        for _ in range(40):
+            estado, cuerpo, _ = solicitar(
+                mailpit + "/api/v1/messages?limit=100"
+            )
+
+            self.assertEqual(estado, 200)
+
+            bandeja = json.loads(cuerpo.decode("utf-8"))
+
+            mensajes = [
+                mensaje
+                for mensaje in bandeja.get("messages", [])
+                if correo in [
+                    destino.get("Address", "").lower()
+                    for destino in mensaje.get("To", [])
+                    if isinstance(destino, dict)
+                ]
+            ]
+
+            if len(mensajes) >= 3:
+                break
+
+            time.sleep(0.25)
+
+        self.assertEqual(
+            len(mensajes),
+            3,
+            "Mailpit no recibio exactamente tres correos.",
+        )
+
+        # Recuperar el codigo del ultimo registro.
+        ultimo = max(
+            mensajes,
+            key=lambda mensaje: mensaje.get("Created", ""),
+        )
+
+        identificador = ultimo.get("ID")
+        self.assertTrue(identificador)
+
+        estado, cuerpo, _ = solicitar(
+            mailpit + "/api/v1/message/" + identificador
+        )
+
+        self.assertEqual(estado, 200)
+
+        mensaje = json.loads(cuerpo.decode("utf-8"))
+        html = mensaje.get("HTML", "")
+
+        encontrado = re.search(
+            r"<h1\b[^>]*>\s*([0-9]{6})\s*</h1>",
+            html,
+            flags=re.IGNORECASE,
+        )
+
+        self.assertIsNotNone(
+            encontrado,
+            "No se encontro el codigo en el correo de Mailpit.",
+        )
+
+        codigo_correo = encontrado.group(1)
+
+        # Sin password no se debe activar.
+        estado, _, _ = enviar_json(
+            "/verificar/",
+            {
+                "correo": correo,
+                "codigo": codigo_correo,
+            },
+        )
+
+        self.assertEqual(estado, 422)
+
+        # La clave del primer registro ya no debe servir.
+        estado, _, _ = enviar_json(
+            "/verificar/",
+            {
+                "correo": correo,
+                "codigo": codigo_correo,
+                "password": claves[0],
+            },
+        )
+
+        self.assertEqual(estado, 400)
+
+        # El codigo y la ultima clave deben activar.
+        estado, contenido, _ = enviar_json(
+            "/verificar/",
+            {
+                "correo": correo,
+                "codigo": codigo_correo,
+                "password": claves[-1],
+            },
+        )
+
+        self.assertEqual(
+            estado,
+            200,
+            contenido.decode("utf-8", errors="replace"),
+        )
 
 if __name__ == "__main__":
     unittest.main()

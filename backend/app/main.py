@@ -343,6 +343,7 @@ app.include_router(
         codigo_duracion_minutos=CODIGO_DURACION_MINUTOS,
         codigo_max_intentos=CODIGO_MAX_INTENTOS,
         token_expire_minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
+        consumir_limite_registro=consumir_limite_solicitudes,
         generar_codigo=lambda: generar_codigo_seguro(),
         enviar_correo=lambda destinatario, codigo: enviar_correo_verificacion(
             destinatario, codigo

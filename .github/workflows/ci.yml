@@ -122,7 +122,7 @@ jobs:
           SENDER_EMAIL=ci@example.invalid
           SENDER_PASSWORD=ci-fictitious-password
           GROQ_API_KEY=ci-unused-placeholder-key
-          SMTP_SERVER=localhost
+          SMTP_SERVER=mailpit
           SMTP_PORT=1025
           SMTP_STARTTLS=false
           SMTP_AUTH=false
@@ -136,7 +136,7 @@ jobs:
         run: docker compose config --quiet
 
       - name: Build and start isolated services
-        run: docker compose up -d --build db api frontend
+        run: docker compose --profile correo-local up -d --build db mailpit api frontend
 
       - name: Wait for FastAPI
         run: |
@@ -162,7 +162,19 @@ jobs:
           echo "React did not become ready"
           exit 1
 
-      - name: Run 9 HTTP integration tests
+      - name: Wait for Mailpit
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8025/ > /dev/null; then
+              echo "Mailpit ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Mailpit did not become ready"
+          exit 1
+
+      - name: Run 10 HTTP integration tests
         run: |
           python -m unittest discover \
             -s backend/tests \
@@ -194,5 +206,5 @@ jobs:
         if: always()
         run: |
           if [ -f backend/.env ]; then
-            docker compose down -v --remove-orphans
+            docker compose --profile correo-local down -v --remove-orphans
           fi

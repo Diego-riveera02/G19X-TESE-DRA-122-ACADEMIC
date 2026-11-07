@@ -136,12 +136,18 @@ class PruebasFlujosAislados(unittest.TestCase):
         )
         return respuesta
 
-    def verificar(self, correo, codigo="135791"):
+    def verificar(
+        self,
+        correo,
+        codigo="135791",
+        password="ClaveSegura123!"
+    ):
         return self.client.post(
             "/verificar/",
             json={
                 "correo": correo,
-                "codigo": codigo
+                "codigo": codigo,
+                "password": password
             }
         )
 
@@ -219,6 +225,353 @@ class PruebasFlujosAislados(unittest.TestCase):
         self.registrar("legado@example.invalid")
         with self.Session() as db:
             self.assertEqual(db.query(self.models.User).count(), 1)
+
+    def test_01d_registro_pendiente_renueva_credenciales(self):
+        correo = "pendiente01d@example.invalid"
+
+        primera = self.registrar(correo)
+        anterior = self.usuario(correo)
+        self.assertFalse(anterior["activo"])
+
+        generador = self.main.generar_codigo_seguro
+        codigo_original = generador.return_value
+
+        try:
+            generador.return_value = "246802"
+            segunda = self.client.post(
+                "/registro/",
+                json={
+                    "nombre_completo": "Titular de prueba",
+                    "correo": correo,
+                    "telefono": None,
+                    "password": "SegundaClave987!"
+                }
+            )
+        finally:
+            generador.return_value = codigo_original
+
+        self.assertEqual(segunda.status_code, 200, segunda.text)
+        self.assertEqual(primera.json(), segunda.json())
+
+        pendiente = self.usuario(correo)
+        self.assertFalse(pendiente["activo"])
+        self.assertNotEqual(
+            anterior["codigo"], pendiente["codigo"]
+        )
+
+        codigo_viejo = self.verificar(correo, "135791")
+        self.assertEqual(codigo_viejo.status_code, 400)
+
+        codigo_nuevo = self.verificar(correo, "246802", password="SegundaClave987!")
+        self.assertEqual(codigo_nuevo.status_code, 200)
+
+        def iniciar(password):
+            return self.client.post(
+                "/login/",
+                data={"username": correo, "password": password}
+            )
+
+        self.assertEqual(
+            iniciar("ClaveSegura123!").status_code, 401
+        )
+        self.assertEqual(
+            iniciar("SegundaClave987!").status_code, 200
+        )
+
+        with self.Session() as db:
+            usuario = db.query(self.models.User).filter_by(
+                correo=correo
+            ).one()
+            self.assertEqual(
+                usuario.nombre_completo, "Titular de prueba"
+            )
+            self.assertEqual(
+                db.query(self.models.User).count(), 1
+            )
+
+        tercera = self.client.post(
+            "/registro/",
+            json={
+                "nombre_completo": "Intento posterior",
+                "correo": correo,
+                "telefono": None,
+                "password": "TerceraClave123!"
+            }
+        )
+
+        self.assertEqual(tercera.status_code, 200)
+        self.assertEqual(primera.json(), tercera.json())
+        self.assertEqual(
+            iniciar("SegundaClave987!").status_code, 200
+        )
+        self.assertEqual(
+            iniciar("TerceraClave123!").status_code, 401
+        )
+
+    def test_01e_registro_respeta_bloqueo_cinco_intentos(self):
+        correo = "bloqueado01e@example.invalid"
+        self.registrar(correo)
+
+        # Agotar los cinco intentos de verificacion.
+        for _ in range(5):
+            respuesta = self.verificar(correo, "000000")
+            self.assertEqual(respuesta.status_code, 400)
+
+        with self.Session() as db:
+            usuario = db.query(self.models.User).filter_by(
+                correo=correo
+            ).one()
+
+            self.assertEqual(usuario.codigo_intentos, 5)
+            self.assertIsNone(usuario.codigo_verificacion)
+
+            hash_original = usuario.hashed_password
+            vencimiento_original = usuario.codigo_expira_en
+
+            self.assertIsNotNone(vencimiento_original)
+
+        datos_nuevos = {
+            "nombre_completo": "Titular renovado",
+            "correo": correo,
+            "telefono": None,
+            "password": "NuevaClave987!"
+        }
+
+        generador = self.main.generar_codigo_seguro
+        llamadas_anteriores = generador.call_count
+
+        # No debe renovar un registro bloqueado y vigente.
+        respuesta = self.client.post(
+            "/registro/",
+            json=datos_nuevos
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(
+            generador.call_count,
+            llamadas_anteriores
+        )
+
+        with self.Session() as db:
+            usuario = db.query(self.models.User).filter_by(
+                correo=correo
+            ).one()
+
+            self.assertEqual(usuario.codigo_intentos, 5)
+            self.assertIsNone(usuario.codigo_verificacion)
+            self.assertEqual(
+                usuario.hashed_password,
+                hash_original
+            )
+            self.assertEqual(
+                usuario.codigo_expira_en,
+                vencimiento_original
+            )
+            self.assertEqual(
+                usuario.nombre_completo,
+                "Usuario de prueba"
+            )
+
+            # Simular vencimiento solo en SQLite de pruebas.
+            usuario.codigo_expira_en = (
+                datetime.now() - timedelta(minutes=1)
+            )
+            db.commit()
+
+        codigo_original = generador.return_value
+
+        try:
+            generador.return_value = "246802"
+
+            respuesta = self.client.post(
+                "/registro/",
+                json=datos_nuevos
+            )
+        finally:
+            generador.return_value = codigo_original
+
+        self.assertEqual(respuesta.status_code, 200)
+
+        pendiente = self.usuario(correo)
+        self.assertFalse(pendiente["activo"])
+        self.assertEqual(pendiente["intentos"], 0)
+        self.assertIsNotNone(pendiente["codigo"])
+
+        # Solo el codigo renovado debe activar la cuenta.
+        self.assertEqual(
+            self.verificar(correo, "135791").status_code,
+            400
+        )
+        self.assertEqual(
+            self.verificar(correo, "246802", password="NuevaClave987!").status_code,
+            200
+        )
+
+        def iniciar(password):
+            return self.client.post(
+                "/login/",
+                data={
+                    "username": correo,
+                    "password": password
+                }
+            )
+
+        self.assertEqual(
+            iniciar("ClaveSegura123!").status_code,
+            401
+        )
+        self.assertEqual(
+            iniciar("NuevaClave987!").status_code,
+            200
+        )
+
+    def test_01f_registro_limite_por_correo(self):
+        correo = "limite01f@example.invalid"
+
+        datos = {
+            "nombre_completo": "Usuario de prueba",
+            "correo": correo,
+            "telefono": None,
+            "password": "ClaveSegura123!"
+        }
+
+        # Se permiten tres solicitudes por correo.
+        for _ in range(3):
+            respuesta = self.client.post(
+                "/registro/",
+                json=datos
+            )
+            self.assertEqual(
+                respuesta.status_code, 200, respuesta.text
+            )
+
+        with self.Session() as db:
+            usuario = db.query(self.models.User).filter_by(
+                correo=correo
+            ).one()
+
+            hash_anterior = usuario.hashed_password
+            codigo_anterior = usuario.codigo_verificacion
+            nombre_anterior = usuario.nombre_completo
+
+        # La cuarta solicitud usa otra escritura del correo.
+        # La normalizacion debe conservar el mismo limite.
+        bloqueo = self.client.post(
+            "/registro/",
+            json={
+                "nombre_completo": "Intento adicional",
+                "correo": "  LIMITE01F@EXAMPLE.INVALID  ",
+                "telefono": None,
+                "password": "ClaveDistinta987!"
+            }
+        )
+
+        self.assertEqual(
+            bloqueo.status_code, 429, bloqueo.text
+        )
+
+        self.assertGreater(
+            int(bloqueo.headers.get("retry-after", "0")),
+            0
+        )
+
+        # El intento bloqueado no debe modificar credenciales.
+        with self.Session() as db:
+            usuario = db.query(self.models.User).filter_by(
+                correo=correo
+            ).one()
+
+            self.assertEqual(
+                usuario.hashed_password, hash_anterior
+            )
+            self.assertEqual(
+                usuario.codigo_verificacion, codigo_anterior
+            )
+            self.assertEqual(
+                usuario.nombre_completo, nombre_anterior
+            )
+            self.assertEqual(
+                db.query(self.models.User).count(), 1
+            )
+
+        # Un correo diferente conserva su propio cupo.
+        respuesta_otro = self.client.post(
+            "/registro/",
+            json={
+                "nombre_completo": "Otro usuario",
+                "correo": "otro01f@example.invalid",
+                "telefono": None,
+                "password": "OtraClaveSegura123!"
+            }
+        )
+
+        self.assertEqual(
+            respuesta_otro.status_code,
+            200,
+            respuesta_otro.text
+        )
+
+    def test_01g_activacion_exige_codigo_y_password(self):
+        correo = "activacion01g@example.invalid"
+
+        self.registrar(correo)
+
+        # Un codigo correcto no debe bastar para activar.
+        sin_password = self.client.post(
+            "/verificar/",
+            json={
+                "correo": correo,
+                "codigo": "135791"
+            }
+        )
+
+        self.assertEqual(
+            sin_password.status_code,
+            422,
+            sin_password.text
+        )
+
+        self.assertFalse(self.usuario(correo)["activo"])
+
+        # Contrasena incorrecta: no activar la cuenta.
+        incorrecta = self.client.post(
+            "/verificar/",
+            json={
+                "correo": correo,
+                "codigo": "135791",
+                "password": "ClaveEquivocada987!"
+            }
+        )
+
+        self.assertEqual(
+            incorrecta.status_code,
+            400,
+            incorrecta.text
+        )
+
+        self.assertFalse(self.usuario(correo)["activo"])
+
+        # Codigo y contrasena correctos: activacion valida.
+        correcta = self.client.post(
+            "/verificar/",
+            json={
+                "correo": correo,
+                "codigo": "135791",
+                "password": "ClaveSegura123!"
+            }
+        )
+
+        self.assertEqual(
+            correcta.status_code,
+            200,
+            correcta.text
+        )
+
+        self.assertTrue(self.usuario(correo)["activo"])
+
+        # Confirmar que el inicio de sesion sigue funcionando.
+        token = self.token(correo)
+        self.assertTrue(token)
 
     def test_02_codigo_incorrecto(self):
         correo = "incorrecto@example.invalid"
