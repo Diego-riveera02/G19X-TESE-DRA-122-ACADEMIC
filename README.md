@@ -1,6 +1,6 @@
 # PluriOne — Plataforma de Observabilidad de Datos con Inteligencia Artificial
 
-**Proyecto académico · Corte 6 (octubre de 2026).** Estado verificable hasta el commit `48f360e`: normalización de correos y compatibilidad con cuentas antiguas simuladas; 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas. PluriOne CI #66 aprobó la corrección anterior; el commit `48f360e` también obtuvo `success` en la ejecución 40854100123. `Dashboard.jsx` quedó modularizado en 391 líneas y los estilos repetidos de sus cuatro componentes se trasladaron a `Dashboard.css`, con ESLint y build aprobados (commit `fe51c53`). Se conservan las evidencias históricas del Corte 5 y se documenta la validación funcional del Corte 6.
+**Proyecto académico · Corte 8 (noviembre de 2026).** Estado de la rama `main` hasta el commit `5d9020f`. El proyecto incorpora 43 pruebas aisladas, 18 pruebas CORS, 7 pruebas de correo y 17 pruebas HTTP/archivado en CI. La autenticación React utiliza `Auth.css`, el manejo UTC está centralizado en `backend/app/tiempo.py` y las bitácoras están organizadas en `docs/README.md`. Las evidencias históricas y las revisiones funcionales anteriores se conservan en `docs/`.
 
 PluriOne es un prototipo de observabilidad de datos construido con FastAPI, PostgreSQL y React. Recibe métricas por API autenticada o desde un simulador, clasifica los eventos, conserva las anomalías relevantes, las presenta en un dashboard y ofrece consultas y diagnósticos orientativos a través de J.A.R.V.I.S. 2.0, integrado con Groq.
 
@@ -30,7 +30,7 @@ Las recomendaciones asociadas a los eventos del simulador se generan mediante re
 - **PDF:** jsPDF y jspdf-autotable.
 - **Inteligencia artificial:** Groq; el prototipo documenta el identificador de modelo `openai/gpt-oss-20b`. Ese nombre no constituye evidencia de una segunda integración independiente con la API de OpenAI.
 - **Contenedores:** Docker Compose; la imagen de frontend usa Node.js 22 Alpine.
-- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta Ruff (`--select F`), 41 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, además de ESLint y la compilación de React. Las suites HTTP y archivado se ejecutan en CI mediante Docker Compose aislado: 9 pruebas de integración HTTP y 8 de seguridad y archivado.
+- **CI actual:** GitHub Actions utiliza Python 3.12 y Node.js 22. Ejecuta Ruff (`--select F`), 43 pruebas aisladas, pruebas CORS, SMTP y plantillas de correo, además de ESLint y la compilación de React. Las suites HTTP y archivado se ejecutan en CI mediante Docker Compose aislado: 9 pruebas de integración HTTP y 8 de seguridad y archivado.
 
 **Flujo de datos:** simulador **o** cliente de ingesta autenticado → validación y clasificación en FastAPI → almacenamiento de anomalías en PostgreSQL → evento WebSocket del usuario → dashboard React. J.A.R.V.I.S. consulta información del usuario únicamente a través de herramientas autorizadas del backend.
 
@@ -44,6 +44,15 @@ El proyecto distingue dos archivos privados, que deben crearse **solamente si to
 
 - **Raíz:** copiar `.env.example` a `.env` y definir `POSTGRES_PASSWORD`.
 - **Backend:** copiar `backend/.env.example` a `backend/.env` y configurar `DATABASE_URL`, `SECRET_KEY`, `SENDER_EMAIL`, `SENDER_PASSWORD` y `GROQ_API_KEY` según el entorno.
+
+Antes de iniciar una instalación nueva, comprobar estas variables:
+
+| Variable | Requisito | Comportamiento |
+| --- | --- | --- |
+| `SECRET_KEY` | Obligatoria; al menos 32 caracteres. | Si falta o es demasiado corta, FastAPI no inicia. |
+| `GROQ_API_KEY` | Opcional para el sistema base; necesaria para el chat con Groq. | Sin ella, el registro, las métricas y el dashboard pueden funcionar, pero J.A.R.V.I.S. no puede consultar Groq. Actualmente el chat puede mostrar un mensaje genérico de indisponibilidad. |
+
+Para generar una `SECRET_KEY` segura: `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Guardar el resultado únicamente en `backend/.env`, nunca en GitHub.
 
 En una instalación nueva, desde PowerShell y en la raíz:
 
@@ -133,6 +142,8 @@ Abrir la bandeja local en `http://127.0.0.1:8025`. Los códigos de verificación
 El puerto SMTP `1025` se utiliza dentro de la red de Docker mediante el nombre de servicio `mailpit`; no necesita publicarse en Windows.
 
 Para iniciar los servicios habituales en una instalación nueva, sin activar el correo de pruebas, utilizar `docker compose up -d`. Mailpit solo se incorpora al arranque cuando se solicita su perfil.
+
+**Frontend incluido en Docker:** el comando `docker compose --profile correo-local up -d --build` también inicia React. La aplicación está disponible en `http://127.0.0.1:5173/app`. Por ello, la sección 5.3 es opcional y solo se requiere para ejecutar React fuera de Docker.
 
 ### 5.3. Ejecutar el frontend
 
@@ -252,16 +263,17 @@ Estas operaciones requieren JWT y filtran los registros por usuario. La API util
 
 ## 8. Pruebas, verificaciones e integración continua
 
-El repositorio contiene **seis archivos de pruebas**. Las 58 pruebas documentadas el 24 de octubre corresponden a tres suites históricas ejecutadas por separado; las pruebas de CORS y correo se incorporaron posteriormente al flujo de CI.
+El repositorio contiene **siete archivos de pruebas**. Las 58 pruebas documentadas el 24 de octubre corresponden a tres suites históricas ejecutadas por separado; las pruebas de CORS y correo se incorporaron posteriormente al flujo de CI.
 
 | Archivo | Pruebas documentadas | ¿En CI actual? |
 | --- | --- | --- |
-| `backend/tests/test_flujos_aislados.py` | 41 pruebas aisladas | Sí |
+| `backend/tests/test_flujos_aislados.py` | 43 pruebas aisladas | Sí |
 | `backend/tests/test_cors_config.py` | 4 funciones parametrizadas | Sí |
 | `backend/tests/test_smtp_config.py` | 1 función, 3 casos | Sí |
 | `backend/tests/test_plantillas_correo.py` | 4 pruebas | Sí |
 | `backend/tests/test_seguridad_archivado.py` | 8 pruebas de seguridad y archivado | Sí; Docker Compose aislado |
 | `backend/tests/test_integracion_http.py` | 9 pruebas de integración HTTP | Sí; Docker Compose aislado |
+| `backend/tests/test_tiempo_utc.py` | Validación de fechas UTC | Sí |
 
 **Validación local del refactor (24 de octubre de 2026):** aprobaron 41 pruebas aisladas, 8 pruebas de seguridad/archivado y 9 pruebas de integración HTTP (incluida conexión y estructura PostgreSQL). Las tres suites se ejecutaron por separado y aprobaron: **58 de 58 casos**, no en un único proceso ni dentro del CI. Además, se confirmaron manualmente cinco flujos de autenticación y aislamiento entre cuentas: login, rechazo de contraseña incorrecta, recuperación mediante código SMTP, acceso con contraseña nueva y separación de pipelines entre usuarios. Antes de reiniciar la API reconstruida se generó y verificó un respaldo local de PostgreSQL; la verificación no equivale a una restauración probada.
 
@@ -344,7 +356,7 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [x] Interceptores Axios para añadir JWT solo a rutas privadas y cerrar sesiones rechazadas con HTTP 401; se comprobaron manualmente los flujos principales de identidad, pero faltan pruebas automatizadas de navegador y expiración de sesión.
 - [x] Extracción de rutas a `pipelines_router.py`, `chat_router.py`, `metricas_router.py`, `websocket_router.py`, router de anomalías y `auth_router.py` para las seis operaciones de identidad. `main.py` conserva el montaje de routers y configuración compartida.
 - [x] Límites de ingesta y chat y máximo de 20 pipelines activos por usuario, con pruebas aisladas.
-- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado se repitieron localmente y aprobaron tras el refactor; sigue pendiente integrarlas en CI con los servicios correspondientes.
+- [x] ESLint y compilación configurados en CI para `main`. Las 17 pruebas HTTP/archivado ya se ejecutan en el trabajo `http-integration` de `.github/workflows/ci.yml` mediante Docker Compose aislado ([ejecución 41777217548](https://github.com/Diego-riveera02/G19X-TESE-DRA-122-ACADEMIC/actions/runs/41777217548)).
 - [x] Prueba E2E aislada de pipeline, ingesta externa HTTP 201, registro de anomalía y alerta en React, documentada con captura en el PR #24.
 - [x] Separación de `App.jsx` en componentes `Verificar.jsx`, `RecuperarPassword.jsx`, `Dashboard.jsx` y `RespuestaJarvis.jsx`; ESLint y compilación aprobados en la copia revisada.
 - [x] Modularización del Dashboard: `ChatJarvis.jsx`, `HistorialAnomalias.jsx`, `PanelMetricas.jsx` y `CabeceraDashboard.jsx`; `Dashboard.jsx` reducido de 918 a 391 líneas, con ESLint, build y CI aprobados.
@@ -355,4 +367,4 @@ Durante el desarrollo se utilizó **asistencia de IA generativa** para analizar 
 - [ ] Preparar contenedores adecuados para producción, evidencias y revisión de seguridad de secretos/ZIP.
 - [ ] Conectores a fuentes productivas y remediación automática, fuera del alcance demostrado.
 
-**Estado documental:** referencia actual `48f360e`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas; PluriOne CI #66 aprobó la corrección anterior `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La instalación desde clon nuevo del Corte 5 está documentada con sus adaptaciones. En el Corte 6 se comprobó en un clon aislado existente el registro, verificación con Mailpit, primer login sin recuperar contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica. La validación adicional del 29 de octubre en main confirmó el primer login HTTP 200 de una cuenta nueva, con evidencia visual publicada en 9b5a4e3. El análisis técnico reproducible se documentó en 6a6bf0c y la bitácora se actualizó en 48f360e. La causa exacta del HTTP 401 histórico permanece sin determinarse. Siguen pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y validación de producción. Consultar [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md) y [EVIDENCIAS_FUNCIONALES_CORTE6.md](docs/EVIDENCIAS_FUNCIONALES_CORTE6.md).
+**Estado documental (noviembre de 2026):** referencia vigente `5d9020f`, con 43 pruebas aisladas, 18 pruebas CORS y 7 pruebas de correo aprobadas; PluriOne CI #66 aprobó la corrección anterior `3cbc283`. Las 43 pruebas aisladas se repitieron correctamente el 29 de octubre de 2026. La instalación desde clon nuevo del Corte 5 está documentada con sus adaptaciones. En el Corte 6 se comprobó en un clon aislado existente el registro, verificación con Mailpit, primer login sin recuperar contraseña, creación de pipeline, ingesta HTTP 201 y alerta crítica. La validación adicional del 29 de octubre en main confirmó el primer login HTTP 200 de una cuenta nueva, con evidencia visual publicada en 9b5a4e3. El análisis técnico reproducible se documentó en 6a6bf0c y la bitácora se actualizó en 48f360e. La causa exacta del HTTP 401 histórico permanece sin determinarse. Siguen pendientes pruebas automatizadas de navegador, restauración de respaldo, variantes históricas de migración y validación de producción. Consultar [INSTALACION_LITERAL_CORTE5.md](docs/INSTALACION_LITERAL_CORTE5.md) y [EVIDENCIAS_FUNCIONALES_CORTE6.md](docs/EVIDENCIAS_FUNCIONALES_CORTE6.md).
